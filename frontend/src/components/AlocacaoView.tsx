@@ -722,6 +722,7 @@ export function AlocacaoView({
     enablePagination: false,
     enableBottomToolbar: false,
     enableTopToolbar: true,
+    initialState: { density: 'xs' },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,
@@ -729,24 +730,24 @@ export function AlocacaoView({
     },
     mantinePaperProps: {
       withBorder: true,
-      radius: 'md',
+      radius: 'sm',
       shadow: 'none',
     },
   })
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       {/* Cabeçalho Superior com Seletor e Botões de Ação */}
       <PageHeader
         icon={IconListCheck}
         iconColor="teal"
         title="Alocação de Compras"
-        subtitle="Defina o fornecedor e volume de compra com arredondamento automático para embalagens fechadas"
+        subtitle="Divisão e arredondamento automático para embalagens fechadas"
         rightSection={
-          <Group gap="sm">
+          <Group gap="xs">
             {isFechada && (
-              <Badge variant="filled" color="red" size="md">
-                Rodada Fechada - Somente Leitura
+              <Badge variant="filled" color="red" size="xs">
+                Rodada Fechada
               </Badge>
             )}
 
@@ -763,7 +764,8 @@ export function AlocacaoView({
             <Button
               variant="light"
               color="indigo"
-              leftSection={<IconSparkles size={16} />}
+              size="xs"
+              leftSection={<IconSparkles size={14} />}
               onClick={handleSugerirMenorPreco}
               disabled={isFechada}
             >
@@ -773,23 +775,24 @@ export function AlocacaoView({
             <Button
               variant="filled"
               color="teal"
-              leftSection={<IconDeviceFloppy size={16} />}
+              size="xs"
+              leftSection={<IconDeviceFloppy size={14} />}
               onClick={handleSalvar}
               loading={saving}
               disabled={isFechada}
             >
-              Salvar Decisões <Kbd ml={6} size="xs">Ctrl+S</Kbd>
+              Salvar <Kbd ml={4} size="xs">Ctrl+S</Kbd>
             </Button>
           </Group>
         }
       />
 
       {/* Cartões de Resumo Analítico */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
         <StatCard
-          label="Valor Total do Pedido"
+          label="Total do Pedido"
           value={formatMoney(totaisGerais.subtotalGeral)}
-          subtitle="Total faturado em embalagens fechadas"
+          subtitle="Total faturado"
           icon={IconScale}
           color="teal"
           badge={{ label: 'Embalagens Fechadas', color: 'teal' }}
@@ -797,20 +800,20 @@ export function AlocacaoView({
 
         <StatCard
           label="Produtos & Linhas"
-          value={`${totaisGerais.produtosComAlocacao} de ${necessidades.length} produtos`}
-          subtitle={`${linhas.length} ${linhas.length === 1 ? 'linha de compra' : 'linhas de compra'}`}
+          value={`${totaisGerais.produtosComAlocacao} de ${necessidades.length}`}
+          subtitle={`${linhas.length} ${linhas.length === 1 ? 'linha' : 'linhas'}`}
           icon={IconArrowsSplit}
           color="blue"
-          badge={{ label: `${totaisGerais.totalItensComprados} itens entregues`, color: 'blue' }}
+          badge={{ label: `${totaisGerais.totalItensComprados} itens`, color: 'blue' }}
         />
 
         <StatCard
-          label="Fornecedores Contemplados"
+          label="Fornecedores"
           value={`${totaisGerais.fornecedoresContemplados} ${totaisGerais.fornecedoresContemplados === 1 ? 'fornecedor' : 'fornecedores'}`}
-          subtitle="Parceiros com compras alocadas"
+          subtitle="Com compras alocadas"
           icon={IconTruck}
           color="indigo"
-          badge={{ label: 'Distribuição Ativa', color: 'indigo' }}
+          badge={{ label: 'Ativos', color: 'indigo' }}
         />
       </SimpleGrid>
 

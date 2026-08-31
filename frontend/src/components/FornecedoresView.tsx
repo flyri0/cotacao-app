@@ -555,6 +555,7 @@ export function FornecedoresView() {
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
+    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,
@@ -562,28 +563,29 @@ export function FornecedoresView() {
     },
     mantinePaperProps: {
       withBorder: true,
-      radius: 'md',
+      radius: 'sm',
       shadow: 'none',
     },
   })
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       <PageHeader
         icon={IconTruck}
         iconColor="cyan"
         title="Cadastro de Fornecedores"
-        subtitle="Cadastro mestre de fornecedores participantes e seus respectivos pedidos mínimos"
+        subtitle="Cadastro mestre e pedidos mínimos"
         badge={{
           label: `${fornecedores.length} ${fornecedores.length === 1 ? 'fornecedor' : 'fornecedores'}`,
           color: 'cyan',
         }}
         rightSection={
-          <Group gap="sm">
+          <Group gap="xs">
             <Button
               variant="light"
               color="cyan"
-              leftSection={<IconDownload size={16} />}
+              size="xs"
+              leftSection={<IconDownload size={14} />}
               loading={exportandoExcel}
               onClick={handleExportarExcel}
             >
@@ -592,7 +594,8 @@ export function FornecedoresView() {
             <Button
               variant="outline"
               color="cyan"
-              leftSection={<IconUpload size={16} />}
+              size="xs"
+              leftSection={<IconUpload size={14} />}
               onClick={openModalImportar}
             >
               Importar Excel
@@ -604,34 +607,39 @@ export function FornecedoresView() {
       {/* Formulário de Cadastro */}
       <SectionCard
         title="Novo Fornecedor"
-        subtitle="Informe os dados de contato e o valor de faturamento mínimo para compra"
+        subtitle="Informe dados de contato e pedido mínimo"
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack gap="md">
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+          <Stack gap="xs">
+            <SimpleGrid cols={{ base: 1, sm: 2, md: 5 }} spacing="xs">
               <TextInput
                 label="Nome / Razão Social"
+                size="xs"
                 placeholder="Ex: Distribuidora Alvorada"
                 required
                 {...form.getInputProps('nome')}
               />
               <TextInput
                 label="Contato / Vendedor"
+                size="xs"
                 placeholder="Ex: Carlos Oliveira"
                 {...form.getInputProps('contato')}
               />
               <TextInput
                 label="Telefone / WhatsApp"
+                size="xs"
                 placeholder="Ex: (11) 98765-4321"
                 {...form.getInputProps('telefone')}
               />
               <TextInput
                 label="E-mail"
+                size="xs"
                 placeholder="Ex: vendas@empresa.com.br"
                 {...form.getInputProps('email')}
               />
               <NumberInput
                 label="Pedido Mínimo (R$)"
+                size="xs"
                 placeholder="0,00"
                 min={0}
                 decimalScale={2}
@@ -646,7 +654,8 @@ export function FornecedoresView() {
             <Group justify="flex-end">
               <Button
                 type="submit"
-                leftSection={<IconPlus size={18} />}
+                size="xs"
+                leftSection={<IconPlus size={15} />}
                 loading={submitting}
               >
                 Adicionar Fornecedor

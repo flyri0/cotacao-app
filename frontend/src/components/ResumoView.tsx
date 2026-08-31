@@ -352,26 +352,27 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
     enablePagination: false,
     enableBottomToolbar: false,
     enableTopToolbar: false,
+    initialState: { density: 'xs' },
     renderDetailPanel: ({ row }) => {
       const { itens_detalhes, fornecedor_nome } = row.original
       if (!itens_detalhes || itens_detalhes.length === 0) {
         return (
-          <Text size="xs" c="dimmed" p="sm">
+          <Text size="xs" c="dimmed" p="xs">
             Nenhum item alocado para este fornecedor.
           </Text>
         )
       }
       return (
         <Paper p="xs" withBorder radius="sm" bg="var(--mantine-color-body)" m="xs">
-          <Text size="xs" fw={700} mb="xs" c="dimmed" tt="uppercase">
+          <Text size="11px" fw={700} mb={4} c="dimmed" tt="uppercase">
             Itens alocados para {fornecedor_nome} ({itens_detalhes.length})
           </Text>
-          <Table striped highlightOnHover withTableBorder>
+          <Table striped highlightOnHover withTableBorder verticalSpacing={2} horizontalSpacing={6}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Produto</Table.Th>
                 <Table.Th>Qtd Alocada</Table.Th>
-                <Table.Th>Embalagens Fechadas</Table.Th>
+                <Table.Th>Embalagens</Table.Th>
                 <Table.Th>Subtotal</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -404,19 +405,19 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
     },
     mantinePaperProps: {
       withBorder: true,
-      radius: 'md',
+      radius: 'sm',
       shadow: 'none',
     },
   })
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       {/* Cabeçalho */}
       <PageHeader
         icon={IconChartBar}
         iconColor="indigo"
         title="Resumo por Fornecedor"
-        subtitle="Acompanhamento consolidado de valores alocados e atingimento do pedido mínimo por fornecedor"
+        subtitle="Acompanhamento consolidado de valores alocados e pedidos mínimos"
         rightSection={
           <RoundHeaderSelector
             rodadas={rodadas}
@@ -431,35 +432,35 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       />
 
       {/* Cartões KPIs */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
         <StatCard
-          label="Valor Total do Pedido"
+          label="Total do Pedido"
           value={formatMoney(metricas.totalFinanceiro)}
-          subtitle="Total consolidado em embalagens fechadas"
+          subtitle="Consolidado em embalagens fechadas"
           icon={IconScale}
           color="teal"
         />
 
         <StatCard
-          label="Fornecedores Aptos (Pedido Mínimo)"
+          label="Fornecedores Aptos"
           value={`${metricas.fornecedoresAptosCount} de ${metricas.fornecedoresAtivosCount}`}
           subtitle={
             metricas.fornecedoresAbaixoCount > 0
-              ? `⚠️ ${metricas.fornecedoresAbaixoCount} fornecedor(es) abaixo do mínimo!`
-              : '✓ Todos os fornecedores ativos atingiram o mínimo'
+              ? `⚠️ ${metricas.fornecedoresAbaixoCount} abaixo do mínimo!`
+              : '✓ Todos atingiram o pedido mínimo'
           }
           icon={IconTruck}
           color={metricas.fornecedoresAbaixoCount > 0 ? 'red' : 'teal'}
           badge={{
-            label: metricas.fornecedoresAbaixoCount > 0 ? 'Abaixo do Mínimo' : 'Todos Aprovados',
+            label: metricas.fornecedoresAbaixoCount > 0 ? 'Abaixo Mínimo' : 'Aprovados',
             color: metricas.fornecedoresAbaixoCount > 0 ? 'red' : 'teal',
           }}
         />
 
         <StatCard
-          label="Total de Itens Alocados"
+          label="Itens Alocados"
           value={`${metricas.totalItensAlocados}`}
-          subtitle={`${metricas.fornecedoresAtivosCount} fornecedor(es) com compras ativas`}
+          subtitle={`${metricas.fornecedoresAtivosCount} fornecedor(es) com compras`}
           icon={IconPackage}
           color="indigo"
         />

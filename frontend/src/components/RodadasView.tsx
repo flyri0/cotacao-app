@@ -336,18 +336,18 @@ export function RodadasView({
   }
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       {/* Cabeçalho */}
       <PageHeader
         icon={IconRotate}
         iconColor="blue"
         title="Gestão de Rodadas de Cotação"
-        subtitle="Crie novos ciclos de compras, acompanhe o andamento de cotações e arquive rodadas concluídas"
+        subtitle="Ciclos de compras e acompanhamento de cotações"
         rightSection={
           <Button
-            leftSection={<IconPlus size={16} />}
+            leftSection={<IconPlus size={14} />}
             color="blue"
-            size="sm"
+            size="xs"
             onClick={openModalCriar}
           >
             Nova Rodada
@@ -356,9 +356,9 @@ export function RodadasView({
       />
 
       {/* Painel de Indicadores (KPIs) */}
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs">
         <StatCard
-          label="Total de Rodadas"
+          label="Total Rodadas"
           value={rodadas.length}
           subtitle="Ciclos registrados"
           icon={IconRotate}
@@ -366,15 +366,15 @@ export function RodadasView({
         />
 
         <StatCard
-          label="Rodadas Abertas"
+          label="Abertas"
           value={totalAbertas}
-          subtitle="Em cotação ou compra ativa"
+          subtitle="Em cotação ativa"
           icon={IconLockOpen}
           color="green"
         />
 
         <StatCard
-          label="Fechadas / Concluídas"
+          label="Fechadas"
           value={totalFechadas}
           subtitle="Histórico consolidado"
           icon={IconLock}
@@ -384,32 +384,32 @@ export function RodadasView({
         <StatCard
           label="Volume Comprado"
           value={formatMoney(totalFinanceiro)}
-          subtitle="Total financeiro alocado"
+          subtitle="Total alocado"
           icon={IconTrendingUp}
           color="teal"
         />
       </SimpleGrid>
 
       {/* Barra de Filtros e Busca */}
-      <Card withBorder p="sm" radius="md">
+      <Card withBorder p="xs" radius="sm">
         <Group justify="space-between">
-          <Group gap="sm" style={{ flex: 1, maxWidth: 500 }}>
+          <Group gap="xs" style={{ flex: 1, maxWidth: 400 }}>
             <TextInput
               placeholder="Buscar rodada por nome ou ID..."
-              leftSection={<IconSearch size={16} />}
+              leftSection={<IconSearch size={14} />}
               value={busca}
               onChange={(e) => setBusca(e.currentTarget.value)}
               style={{ flex: 1 }}
-              size="sm"
+              size="xs"
             />
           </Group>
 
-          <Group gap="xs">
-            <Text size="xs" c="dimmed" fw={700}>
+          <Group gap={4}>
+            <Text size="11px" c="dimmed" fw={700}>
               Status:
             </Text>
             <Button
-              size="xs"
+              size="compact-xs"
               variant={filtroStatus === 'todas' ? 'filled' : 'light'}
               color="gray"
               onClick={() => setFiltroStatus('todas')}
@@ -417,7 +417,7 @@ export function RodadasView({
               Todas ({rodadas.length})
             </Button>
             <Button
-              size="xs"
+              size="compact-xs"
               variant={filtroStatus === 'abertas' ? 'filled' : 'light'}
               color="green"
               onClick={() => setFiltroStatus('abertas')}
@@ -425,7 +425,7 @@ export function RodadasView({
               Abertas ({totalAbertas})
             </Button>
             <Button
-              size="xs"
+              size="compact-xs"
               variant={filtroStatus === 'fechadas' ? 'filled' : 'light'}
               color="gray"
               onClick={() => setFiltroStatus('fechadas')}
@@ -433,7 +433,7 @@ export function RodadasView({
               Fechadas ({totalFechadas})
             </Button>
             <Button
-              size="xs"
+              size="compact-xs"
               variant={filtroStatus === 'canceladas' ? 'filled' : 'light'}
               color="red"
               onClick={() => setFiltroStatus('canceladas')}
@@ -472,17 +472,17 @@ export function RodadasView({
           }
         />
       ) : (
-        <Card withBorder p={0} radius="md" style={{ overflow: 'hidden' }}>
-          <Table striped highlightOnHover verticalSpacing="sm" horizontalSpacing="md">
+        <Card withBorder p={0} radius="sm" style={{ overflow: 'hidden' }}>
+          <Table striped highlightOnHover verticalSpacing={3} horizontalSpacing={6}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Descrição / Nome da Rodada</Table.Th>
-                <Table.Th style={{ width: 130 }}>Status</Table.Th>
-                <Table.Th style={{ width: 120 }}>Criada em</Table.Th>
-                <Table.Th style={{ width: 130, textAlign: 'center' }}>Produtos</Table.Th>
-                <Table.Th style={{ width: 130, textAlign: 'center' }}>Cotações</Table.Th>
-                <Table.Th style={{ width: 160, textAlign: 'right' }}>Total Alocado</Table.Th>
-                <Table.Th style={{ width: 220, textAlign: 'center' }}>Ações</Table.Th>
+                <Table.Th style={{ width: 110 }}>Status</Table.Th>
+                <Table.Th style={{ width: 100 }}>Criada em</Table.Th>
+                <Table.Th style={{ width: 100, textAlign: 'center' }}>Produtos</Table.Th>
+                <Table.Th style={{ width: 100, textAlign: 'center' }}>Cotações</Table.Th>
+                <Table.Th style={{ width: 130, textAlign: 'right' }}>Total Alocado</Table.Th>
+                <Table.Th style={{ width: 190, textAlign: 'center' }}>Ações</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -495,7 +495,7 @@ export function RodadasView({
                   <Table.Tr key={r.id} style={isAtiva ? { fontWeight: 600 } : undefined}>
                     <Table.Td>
                       <Group gap="xs">
-                        <Text size="sm" fw={isAtiva ? 700 : 500} c={isCancelada ? 'dimmed' : undefined}>
+                        <Text size="xs" fw={isAtiva ? 700 : 500} c={isCancelada ? 'dimmed' : undefined}>
                           {r.descricao}
                         </Text>
                         {isAtiva && (
@@ -508,12 +508,12 @@ export function RodadasView({
 
                     <Table.Td>
                       {isAberta && (
-                        <Badge color="green" variant="light" size="sm" leftSection={<IconLockOpen size={12} />}>
+                        <Badge color="green" variant="light" size="xs" leftSection={<IconLockOpen size={11} />}>
                           Aberta
                         </Badge>
                       )}
                       {r.status === 'fechada' && (
-                        <Badge color="gray" variant="outline" size="sm" leftSection={<IconLock size={12} />}>
+                        <Badge color="gray" variant="outline" size="xs" leftSection={<IconLock size={11} />}>
                           Fechada
                         </Badge>
                       )}

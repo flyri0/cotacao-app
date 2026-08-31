@@ -52,6 +52,16 @@ pessoa/equipe de compras.
   na hora de calcular quanto efetivamente comprar (não dá pra comprar meia
   caixa) — a diferença entre o necessário e o comprado deve ficar visível
   na UI, não escondida.
+- **Configurações & Acessibilidade**: tela de Configurações permite ajustar
+  a identidade visual (nome, subtítulo, ícone, tema claro/escuro, cor de destaque)
+  e a experiência de exibição:
+  - `app_densidade`: `'compacto'` (padrão desktop de alta densidade, reduzindo
+    paddings de tabela e cards) ou `'confortavel'` (mais espaçamento).
+  - `app_tamanho_fonte`: `'pequeno'` (12px), `'medio'` (13.5px padrão) ou `'grande'`
+    (15px para acessibilidade de idosos/baixa visão).
+  - Todas as preferências são persistidas no SQLite (tabela `configuracoes`)
+    e aplicadas instantaneamente no frontend via atributos `data-density` e
+    `data-font-size` no elemento raiz `:root`.
 
 ## Regras de negócio que a UI precisa expor
 1. **Comparação**: preço unitário normalizado de cada fornecedor por
@@ -65,6 +75,8 @@ pessoa/equipe de compras.
    sinalizar "Falta cobrir" / "Excedente" / "Ok".
 5. **Pedido**: gerar texto por fornecedor, agrupando as linhas de
    Alocação daquele fornecedor na rodada ativa, com botão de copiar.
+6. **Configurações**: gerenciar backup/restauração/formatação do SQLite
+   e preferências visuais/acessibilidade com live preview em tempo real.
 
 ## Convenções de código
 - Python: type hints em funções públicas, `black` pra formatação.
@@ -72,8 +84,8 @@ pessoa/equipe de compras.
   linguagem do domínio acima (não traduzir pra inglês).
 - React: componentes funcionais, hooks. Um componente por tela
   (Cadastros, Necessidades, Cotações, Comparação, Alocação, Resumo,
-  Pedido). Estado vem de cada componente via `window.pywebview.api`, sem
-  estado global desnecessário.
+  Pedido, Estatísticas, Rodadas, Configurações). Estado vem de cada
+  componente via `window.pywebview.api`, sem estado global desnecessário.
 - Toda função exposta em `js_api` retorna dict/lista serializável — nunca
   objetos Python customizados.
 - Sem `localStorage`/`sessionStorage` no frontend — o estado que importa

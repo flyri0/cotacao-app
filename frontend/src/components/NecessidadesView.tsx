@@ -359,6 +359,7 @@ export function NecessidadesView({
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
+    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,
@@ -366,23 +367,23 @@ export function NecessidadesView({
     },
     mantinePaperProps: {
       withBorder: true,
-      radius: 'md',
+      radius: 'sm',
       shadow: 'none',
     },
   })
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       <PageHeader
         icon={IconChecklist}
         iconColor="indigo"
         title="Produtos em Falta (Necessidades)"
-        subtitle="Selecione no autocomplete ou tecle Enter para adicionar itens rapidamente em sequência"
+        subtitle="Selecione no autocomplete ou tecle Enter"
         rightSection={
-          <Group gap="sm">
+          <Group gap="xs">
             {isFechada && (
-              <Badge variant="filled" color="red" size="md">
-                Rodada Fechada - Somente Leitura
+              <Badge variant="filled" color="red" size="xs">
+                Rodada Fechada
               </Badge>
             )}
             <RoundHeaderSelector
@@ -402,15 +403,16 @@ export function NecessidadesView({
       {/* Formulário Ultrarrápido de Inclusão por Teclado */}
       <SectionCard
         title="Adicionar Produto à Rodada"
-        subtitle="Pressione Enter ou clique na sugestão para incluir imediatamente"
+        subtitle="Pressione Enter para incluir"
         kbdHint="Enter"
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <fieldset disabled={isFechada} style={{ border: 'none', padding: 0, margin: 0 }}>
-            <Group align="flex-start" gap="md">
+            <Group align="flex-end" gap="xs">
             <AppAutocomplete
               ref={produtoInputRef}
-              label="Produto (Digite para filtrar)"
+              label="Produto"
+              size="xs"
               placeholder="Digite o nome do produto..."
               data={nomesProdutosDisponiveis}
               required
@@ -433,16 +435,16 @@ export function NecessidadesView({
 
             <Button
               type="submit"
-              leftSection={<IconPlus size={18} />}
+              size="xs"
+              leftSection={<IconPlus size={15} />}
               loading={submitting}
-              mt={25}
             >
-              Adicionar <Kbd ml={6} size="xs">Enter</Kbd>
+              Adicionar <Kbd ml={4} size="xs">Enter</Kbd>
             </Button>
           </Group>
 
           {produtoSelecionado && produtoSelecionado.categoria && (
-            <Group mt="xs" gap="xs">
+            <Group mt={4} gap="xs">
               <Badge variant="dot" color="teal" size="sm">
                 {produtoSelecionado.categoria}
               </Badge>

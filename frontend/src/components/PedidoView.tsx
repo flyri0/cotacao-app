@@ -350,14 +350,14 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
   }
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       {/* Cabeçalho Superior (Oculto na Impressão) */}
       <div className="no-print">
         <PageHeader
           icon={IconFileText}
           iconColor="blue"
           title="Geração de Pedidos de Compra"
-          subtitle="Gere ordens de compra formatadas por fornecedor com embalagens fechadas e envie por WhatsApp ou E-mail"
+          subtitle="Ordens de compra formatadas por fornecedor"
           rightSection={
             <RoundHeaderSelector
               rodadas={rodadas}
@@ -374,39 +374,41 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
 
       {/* Barra de Ações Globais (Oculta na Impressão) */}
       {pedidosAgrupados.length > 0 && (
-        <Paper withBorder p="md" radius="md" className="no-print">
+        <Paper withBorder p="xs" radius="sm" className="no-print">
           <Group justify="space-between" align="center">
             <div>
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-                Resumo da Rodada Ativa
+              <Text size="11px" fw={700} c="dimmed" tt="uppercase">
+                Resumo da Rodada
               </Text>
               <Group gap="xs" align="baseline">
-                <Title order={3} c="teal.7">
+                <Title order={4} c="teal.7" style={{ fontSize: '1.2rem' }}>
                   {formatMoney(valorTotalGeral)}
                 </Title>
-                <Text size="sm" c="dimmed">
-                  distribuídos em <b>{pedidosAgrupados.length}</b> fornecedores
+                <Text size="xs" c="dimmed">
+                  em <b>{pedidosAgrupados.length}</b> fornecedor(es)
                 </Text>
               </Group>
             </div>
 
-            <Group gap="sm">
+            <Group gap="xs">
               <Button
                 variant="outline"
                 color="gray"
-                leftSection={<IconPrinter size={16} />}
+                size="xs"
+                leftSection={<IconPrinter size={14} />}
                 onClick={handleImprimirTodos}
               >
-                Imprimir Todos os Pedidos
+                Imprimir Todos
               </Button>
 
               <Button
                 variant="filled"
                 color="teal"
-                leftSection={<IconClipboardCopy size={16} />}
+                size="xs"
+                leftSection={<IconClipboardCopy size={14} />}
                 onClick={handleCopiarTodos}
               >
-                Copiar Todos os Pedidos
+                Copiar Todos
               </Button>
             </Group>
           </Group>
@@ -423,7 +425,7 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
           description="Vá para a aba Alocação (Ctrl+6) para definir quais fornecedores receberão cada compra antes de gerar os pedidos."
         />
       ) : (
-        <Stack gap="xl">
+        <Stack gap="sm">
           {pedidosAgrupados.map((pedido) => {
             const estaOculto =
               fornecedorIdImprimir !== null &&
@@ -433,9 +435,9 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
               <Card
                 key={pedido.fornecedor.id}
                 withBorder
-                shadow="sm"
-                radius="md"
-                p="lg"
+                shadow="none"
+                radius="sm"
+                p="xs"
                 className={`pedido-ordem-compra ${estaOculto ? 'oculto-na-impressao' : ''}`}
               >
                 {/* CABEÇALHO FORMAL DE ORDEM DE COMPRA (VISÍVEL SOMENTE NA IMPRESSÃO) */}
@@ -505,56 +507,55 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                 </div>
 
                 {/* Cabeçalho do Card de Fornecedor na Tela (Oculto na Impressão) */}
-                <Group justify="space-between" align="flex-start" mb="md" className="no-print">
-                  <div>
-                    <Group gap="xs" align="center">
-                      <ThemeIcon color="teal" variant="light" size="lg" radius="md">
-                        <IconTruck size={22} />
-                      </ThemeIcon>
-                      <div>
-                        <Title order={3}>{pedido.fornecedor.nome}</Title>
-                        <Group gap="md" mt={2}>
-                          {pedido.fornecedor.contato && (
-                            <Text size="xs" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <IconUser size={13} /> {pedido.fornecedor.contato}
-                            </Text>
-                          )}
-                          {pedido.fornecedor.telefone && (
-                            <Text size="xs" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <IconPhone size={13} /> {pedido.fornecedor.telefone}
-                            </Text>
-                          )}
-                          {pedido.fornecedor.email && (
-                            <Text size="xs" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <IconMail size={13} /> {pedido.fornecedor.email}
-                            </Text>
-                          )}
-                        </Group>
-                      </div>
-                    </Group>
-                  </div>
+                <Group justify="space-between" align="center" mb={6} className="no-print">
+                  <Group gap="xs" align="center">
+                    <ThemeIcon color="teal" variant="light" size={26} radius="sm">
+                      <IconTruck size={16} />
+                    </ThemeIcon>
+                    <div>
+                      <Title order={4} style={{ fontSize: '0.95rem' }}>{pedido.fornecedor.nome}</Title>
+                      <Group gap="xs">
+                        {pedido.fornecedor.contato && (
+                          <Text size="11px" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <IconUser size={12} /> {pedido.fornecedor.contato}
+                          </Text>
+                        )}
+                        {pedido.fornecedor.telefone && (
+                          <Text size="11px" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <IconPhone size={12} /> {pedido.fornecedor.telefone}
+                          </Text>
+                        )}
+                        {pedido.fornecedor.email && (
+                          <Text size="11px" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <IconMail size={12} /> {pedido.fornecedor.email}
+                          </Text>
+                        )}
+                      </Group>
+                    </div>
+                  </Group>
 
-                  <Group align="center">
+                  <Group gap="xs" align="center">
                     {pedido.status_minimo === 'ok' && (
-                      <Badge color="teal" variant="filled" size="lg">
-                        ✓ Bateu Mínimo (+{formatMoney(pedido.diferenca_minimo)})
+                      <Badge color="teal" variant="filled" size="xs">
+                        ✓ Mínimo Ok (+{formatMoney(pedido.diferenca_minimo)})
                       </Badge>
                     )}
                     {pedido.status_minimo === 'abaixo' && (
-                      <Badge color="red" variant="filled" size="lg">
-                        ⚠️ Abaixo do Mínimo (Falta {formatMoney(pedido.diferenca_minimo)})
+                      <Badge color="red" variant="filled" size="xs">
+                        ⚠️ Abaixo Mínimo (-{formatMoney(pedido.diferenca_minimo)})
                       </Badge>
                     )}
                     {pedido.status_minimo === 'sem_minimo' && (
-                      <Badge color="gray" variant="light" size="md">
-                        Sem Pedido Mínimo
+                      <Badge color="gray" variant="light" size="xs">
+                        Sem Mínimo
                       </Badge>
                     )}
 
                     <Button
                       variant="light"
                       color="gray"
-                      leftSection={<IconPrinter size={16} />}
+                      size="xs"
+                      leftSection={<IconPrinter size={14} />}
                       onClick={() => handleImprimirIndividual(pedido.fornecedor.id)}
                     >
                       Imprimir
@@ -563,7 +564,8 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                     <Button
                       variant="light"
                       color="teal"
-                      leftSection={<IconCopy size={16} />}
+                      size="xs"
+                      leftSection={<IconCopy size={14} />}
                       onClick={() =>
                         handleCopiarPedido(
                           pedido.texto_formatado,
@@ -571,76 +573,76 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                         )
                       }
                     >
-                      Copiar Pedido
+                      Copiar
                     </Button>
                   </Group>
                 </Group>
 
                 {/* Tabela dos Itens do Pedido */}
-                <Table withTableBorder striped highlightOnHover mb="md">
+                <Table withTableBorder striped highlightOnHover mb="xs" verticalSpacing={2} horizontalSpacing={6}>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Produto / Item</Table.Th>
-                      <Table.Th>Embalagem Cotada</Table.Th>
+                      <Table.Th>Embalagem</Table.Th>
                       <Table.Th style={{ textAlign: 'right' }}>Qtd Solicitada</Table.Th>
-                      <Table.Th style={{ textAlign: 'center' }}>Embalagens a Comprar</Table.Th>
+                      <Table.Th style={{ textAlign: 'center' }}>Comprar</Table.Th>
                       <Table.Th style={{ textAlign: 'right' }}>Qtd Total</Table.Th>
                       <Table.Th style={{ textAlign: 'right' }}>Preço Emb.</Table.Th>
                       <Table.Th style={{ textAlign: 'right' }}>Preço Unit.</Table.Th>
-                      <Table.Th style={{ textAlign: 'right' }}>Subtotal (R$)</Table.Th>
+                      <Table.Th style={{ textAlign: 'right' }}>Subtotal</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     {pedido.itens.map((item) => (
                       <Table.Tr key={item.id_produto}>
                         <Table.Td>
-                          <Text fw={600} size="sm">
+                          <Text fw={600} size="xs">
                             {item.produto_nome}
                           </Text>
                           {item.observacao &&
                             !item.observacao.toLowerCase().includes('sugerido menor') &&
                             !item.observacao.toLowerCase().includes('menor preco') &&
                             !item.observacao.toLowerCase().includes('menor preço') && (
-                              <Text size="11px" c="dimmed">
+                              <Text size="10px" c="dimmed">
                                 Obs: {item.observacao}
                               </Text>
                             )}
                         </Table.Td>
                         <Table.Td>
-                          <Badge variant="light" color="cyan" size="sm">
+                          <Badge variant="light" color="cyan" size="xs">
                             {item.marca ? `[${item.marca}] ` : ''}{item.embalagem}
                           </Badge>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="sm">
+                          <Text size="xs">
                             {item.quantidade_solicitada} {item.unidade}
                           </Text>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'center' }}>
-                          <Badge color="indigo" variant="filled">
+                          <Badge color="indigo" variant="filled" size="xs">
                             {item.embalagens_comprar} cx/emb
                           </Badge>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="sm" fw={600}>
+                          <Text size="xs" fw={600}>
                             {item.quantidade_efetiva} {item.unidade}
                           </Text>
                           {item.sobra > 0 && (
-                            <Text size="11px" c="blue">
+                            <Text size="10px" c="blue">
                               (+{item.sobra} sobra)
                             </Text>
                           )}
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="sm">{formatMoney(item.preco_embalagem, 2)}</Text>
+                          <Text size="xs">{formatMoney(item.preco_embalagem)}</Text>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="sm" c="teal.8" fw={500}>
-                            {formatMoney(item.preco_unitario)}
+                          <Text size="xs" c="dimmed">
+                            {formatMoney(item.preco_unitario)} / {item.unidade}
                           </Text>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="sm" fw={700} c="teal.8">
+                          <Text fw={700} size="xs" c="teal.7">
                             {formatMoney(item.subtotal)}
                           </Text>
                         </Table.Td>
@@ -648,12 +650,12 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                     ))}
                     <Table.Tr>
                       <Table.Td colSpan={7}>
-                        <Text fw={700} size="sm" ta="right">
+                        <Text fw={700} size="xs" ta="right">
                           VALOR TOTAL DO PEDIDO:
                         </Text>
                       </Table.Td>
                       <Table.Td style={{ textAlign: 'right' }}>
-                        <Text fw={800} size="md" c="teal.7">
+                        <Text fw={800} size="sm" c="teal.7">
                           {formatMoney(pedido.total_pedido)}
                         </Text>
                       </Table.Td>

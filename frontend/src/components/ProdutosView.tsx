@@ -517,6 +517,7 @@ export function ProdutosView() {
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
+    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,
@@ -524,28 +525,29 @@ export function ProdutosView() {
     },
     mantinePaperProps: {
       withBorder: true,
-      radius: 'md',
+      radius: 'sm',
       shadow: 'none',
     },
   })
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       <PageHeader
         icon={IconPackage}
         iconColor="blue"
         title="Cadastro de Produtos"
-        subtitle="Cadastre rapidamente itens digitando e usando Enter para avançar entre os campos"
+        subtitle="Cadastre itens digitando e usando Enter"
         badge={{
           label: `${produtos.length} ${produtos.length === 1 ? 'produto' : 'produtos'}`,
           color: 'blue',
         }}
         rightSection={
-          <Group gap="sm">
+          <Group gap="xs">
             <Button
               variant="light"
               color="blue"
-              leftSection={<IconDownload size={16} />}
+              size="xs"
+              leftSection={<IconDownload size={14} />}
               loading={exportandoExcel}
               onClick={handleExportarExcel}
             >
@@ -554,7 +556,8 @@ export function ProdutosView() {
             <Button
               variant="outline"
               color="blue"
-              leftSection={<IconUpload size={16} />}
+              size="xs"
+              leftSection={<IconUpload size={14} />}
               onClick={openModalImportar}
             >
               Importar Excel
@@ -566,14 +569,15 @@ export function ProdutosView() {
       {/* Formulário de Cadastro com Fluxo Rápido por Teclado */}
       <SectionCard
         title="Novo Produto"
-        subtitle="Preencha os dados e tecle Enter para salvar imediatamente"
+        subtitle="Preencha e tecle Enter para salvar"
         kbdHint="Enter"
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Group align="flex-start" gap="md">
+          <Group align="flex-end" gap="xs">
             <TextInput
               ref={nomeRef}
               label="Nome do Produto"
+              size="xs"
               placeholder="Ex: Detergente Neutro 500ml"
               required
               style={{ flex: 2 }}
@@ -589,7 +593,8 @@ export function ProdutosView() {
             />
             <AppAutocomplete
               ref={categoriaRef}
-              label="Categoria (Autocomplete)"
+              label="Categoria"
+              size="xs"
               placeholder="Ex: Limpeza, Descartáveis"
               data={categoriasSugeridas}
               style={{ flex: 1.5 }}
@@ -603,11 +608,11 @@ export function ProdutosView() {
             />
             <Button
               type="submit"
-              leftSection={<IconPlus size={18} />}
+              size="xs"
+              leftSection={<IconPlus size={15} />}
               loading={submitting}
-              mt={25}
             >
-              Adicionar <Kbd ml={6} size="xs">Enter</Kbd>
+              Adicionar <Kbd ml={4} size="xs">Enter</Kbd>
             </Button>
           </Group>
         </form>

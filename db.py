@@ -189,6 +189,8 @@ def seed_configuracoes(conn: sqlite3.Connection) -> None:
         ("app_icone", "Scale"),
         ("app_theme_color", "blue"),
         ("app_color_scheme", "light"),
+        ("app_densidade", "compacto"),
+        ("app_tamanho_fonte", "medio"),
         ("sistema_inicializado", "0"),
     ]
     for chave, valor in configs_padrao:

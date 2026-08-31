@@ -24,36 +24,35 @@ export function StatCard({
   badge,
 }: StatCardProps) {
   return (
-    <Paper withBorder p="md" radius="md" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-      <div>
-        <Group justify="space-between" align="center">
-          <Text size="xs" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: '0.5px' }}>
-            {label}
-          </Text>
-          {Icon && (
-            <ThemeIcon color={color} variant="light" size="md" radius="md">
-              <Icon size={18} />
-            </ThemeIcon>
-          )}
-        </Group>
-
-        <Group justify="space-between" align="baseline" mt="xs">
-          <Title order={2} fw={700} c={valueColor || (color === 'teal' ? 'teal.7' : undefined)}>
+    <Paper withBorder p="xs" radius="sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <Group justify="space-between" align="center" gap="xs">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Group gap={6} align="center">
+            <Text size="11px" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: '0.3px', lineHeight: 1.1 }}>
+              {label}
+            </Text>
+            {badge && (
+              <Badge variant="light" color={badge.color || color} size="xs">
+                {badge.label}
+              </Badge>
+            )}
+          </Group>
+          <Title order={3} fw={700} c={valueColor || (color === 'teal' ? 'teal.7' : undefined)} style={{ fontSize: '1.2rem', lineHeight: 1.2, marginTop: 2 }}>
             {value}
           </Title>
-          {badge && (
-            <Badge variant="light" color={badge.color || color} size="sm">
-              {badge.label}
-            </Badge>
+          {subtitle && (
+            <Text size="10px" c="dimmed" lineClamp={1}>
+              {subtitle}
+            </Text>
           )}
-        </Group>
-      </div>
+        </div>
 
-      {subtitle && (
-        <Text size="xs" c="dimmed" mt={6}>
-          {subtitle}
-        </Text>
-      )}
+        {Icon && (
+          <ThemeIcon color={color} variant="light" size={28} radius="sm">
+            <Icon size={16} />
+          </ThemeIcon>
+        )}
+      </Group>
     </Paper>
   )
 }

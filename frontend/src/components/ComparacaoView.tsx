@@ -127,13 +127,12 @@ export function ComparacaoView({
   }, [necessidades, rankingsPorProduto])
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
-      {/* Cabeçalho */}
+    <Stack gap="xs" style={{ width: '100%' }}>
       <PageHeader
         icon={IconScale}
-        iconColor="cyan"
+        iconColor="orange"
         title="Mapa Comparativo de Cotações"
-        subtitle="Comparativo matricial de preços unitários normalizados por fornecedor com destaque inteligente para menores valores"
+        subtitle="Normalização por unidade de medida"
         rightSection={
           <RoundHeaderSelector
             rodadas={rodadas}
@@ -148,37 +147,37 @@ export function ComparacaoView({
       />
 
       {/* Barra de Resumo e Legenda de Cores */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-        <Paper withBorder p="md" radius="md">
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+        <Paper withBorder p="xs" radius="sm">
           <Group justify="space-between">
-            <Text size="xs" c="dimmed" fw={700} tt="uppercase">
+            <Text size="11px" c="dimmed" fw={700} tt="uppercase">
               Itens na Rodada
             </Text>
-            <Badge color="blue" size="md" variant="light">
+            <Badge color="blue" size="xs" variant="light">
               {stats.totalComCotacao}/{stats.totalItens} Cotados
             </Badge>
           </Group>
         </Paper>
 
-        <Paper withBorder p="md" radius="md">
+        <Paper withBorder p="xs" radius="sm">
           <Group justify="space-between">
-            <Text size="xs" c="dimmed" fw={700} tt="uppercase">
+            <Text size="11px" c="dimmed" fw={700} tt="uppercase">
               Fornecedores na Matriz
             </Text>
-            <Badge color="cyan" size="md" variant="light" leftSection={<IconTruck size={13} />}>
+            <Badge color="cyan" size="xs" variant="light" leftSection={<IconTruck size={12} />}>
               {fornecedoresNaTabela.length} Participantes
             </Badge>
           </Group>
         </Paper>
 
-        <Paper withBorder p="md" radius="md">
+        <Paper withBorder p="xs" radius="sm">
           <Group justify="space-between" align="center">
-            <Text size="xs" c="dimmed" fw={700} tt="uppercase">
-              Ranking de Preço:
+            <Text size="11px" c="dimmed" fw={700} tt="uppercase">
+              Ranking:
             </Text>
-            <Group gap={6}>
+            <Group gap={4}>
               <Badge
-                size="sm"
+                size="xs"
                 variant="filled"
                 styles={{
                   root: {
@@ -190,7 +189,7 @@ export function ComparacaoView({
                 1º Menor
               </Badge>
               <Badge
-                size="sm"
+                size="xs"
                 variant="filled"
                 styles={{
                   root: {
@@ -202,7 +201,7 @@ export function ComparacaoView({
                 2º Lugar
               </Badge>
               <Badge
-                size="sm"
+                size="xs"
                 variant="filled"
                 styles={{
                   root: {
@@ -229,20 +228,20 @@ export function ComparacaoView({
           description="Adicione produtos na aba Necessidades para visualizar o comparativo de preços."
         />
       ) : (
-        <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+        <Paper withBorder radius="sm" style={{ overflow: 'hidden' }}>
           <Table.ScrollContainer minWidth={850}>
             <Table
               withTableBorder
               withColumnBorders
               striped
               highlightOnHover
-              verticalSpacing="xs"
-              horizontalSpacing="xs"
-              style={{ fontSize: 13, borderCollapse: 'collapse' }}
+              verticalSpacing={3}
+              horizontalSpacing={6}
+              style={{ fontSize: 'var(--app-font-base, 13px)', borderCollapse: 'collapse' }}
             >
               <Table.Thead style={{ backgroundColor: isDark ? 'var(--mantine-color-dark-6)' : '#f1f3f5' }}>
                 <Table.Tr>
-                  <Table.Th style={{ width: 280, padding: '8px 10px' }}>
+                  <Table.Th style={{ width: 280, padding: '5px 8px' }}>
                     <Text fw={700} size="xs" tt="uppercase" c="dimmed">
                       Produto
                     </Text>

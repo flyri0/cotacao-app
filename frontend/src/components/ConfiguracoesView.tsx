@@ -9,8 +9,10 @@ import {
   Group,
   Modal,
   Paper,
+  SegmentedControl,
   SimpleGrid,
   Stack,
+  Table,
   Text,
   TextInput,
   ThemeIcon,
@@ -33,6 +35,7 @@ import {
   IconDatabaseImport,
   IconDeviceDesktop,
   IconDeviceFloppy,
+  IconDimensions,
   IconFileDatabase,
   IconFolder,
   IconMoon,
@@ -45,6 +48,7 @@ import {
   IconSun,
   IconTrash,
   IconTrendingUp,
+  IconTypography,
   IconX,
 } from '@tabler/icons-react'
 import { PageHeader } from './common/PageHeader'
@@ -119,6 +123,8 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       app_icone: configuracoes?.app_icone || 'Scale',
       app_theme_color: configuracoes?.app_theme_color || 'blue',
       app_color_scheme: (configuracoes?.app_color_scheme || colorScheme || 'light') as 'light' | 'dark' | 'auto',
+      app_densidade: (configuracoes?.app_densidade || 'compacto') as 'compacto' | 'confortavel',
+      app_tamanho_fonte: (configuracoes?.app_tamanho_fonte || 'medio') as 'pequeno' | 'medio' | 'grande',
     },
   })
 
@@ -132,6 +138,8 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
         app_icone: configuracoes.app_icone || 'Scale',
         app_theme_color: configuracoes.app_theme_color || 'blue',
         app_color_scheme: scheme,
+        app_densidade: (configuracoes.app_densidade || 'compacto') as 'compacto' | 'confortavel',
+        app_tamanho_fonte: (configuracoes.app_tamanho_fonte || 'medio') as 'pequeno' | 'medio' | 'grande',
       })
     }
   }, [configuracoes, colorScheme])
@@ -197,17 +205,59 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
     }
   }
 
-  // Salvar Identidade Visual
+  // Alteração imediata de densidade com aplicação instantânea
+  const handleMudarDensidade = async (val: string) => {
+    const densidade = (val === 'confortavel' ? 'confortavel' : 'compacto') as 'compacto' | 'confortavel'
+    form.setFieldValue('app_densidade', densidade)
+    document.documentElement.setAttribute('data-density', densidade)
+    const atualizadas: ConfiguracoesApp = {
+      ...form.values,
+      app_densidade: densidade,
+    }
+    onConfiguracoesAlteradas?.(atualizadas)
+    try {
+      const api = await getApi()
+      await api.salvar_configuracoes(atualizadas)
+    } catch (err) {
+      console.error('Erro ao salvar preferência de densidade:', err)
+    }
+  }
+
+  // Alteração imediata de tamanho de fonte com aplicação instantânea
+  const handleMudarTamanhoFonte = async (val: string) => {
+    const tamanho = (val === 'pequeno' || val === 'grande' ? val : 'medio') as 'pequeno' | 'medio' | 'grande'
+    form.setFieldValue('app_tamanho_fonte', tamanho)
+    document.documentElement.setAttribute('data-font-size', tamanho)
+    const atualizadas: ConfiguracoesApp = {
+      ...form.values,
+      app_tamanho_fonte: tamanho,
+    }
+    onConfiguracoesAlteradas?.(atualizadas)
+    try {
+      const api = await getApi()
+      await api.salvar_configuracoes(atualizadas)
+    } catch (err) {
+      console.error('Erro ao salvar preferência de tamanho de fonte:', err)
+    }
+  }
+
+  // Salvar Identidade Visual e Preferências
   const handleSubmitConfigs = async (values: typeof form.values) => {
     try {
       setSalvandoConfig(true)
       const api = await getApi()
       const atualizadas = await api.salvar_configuracoes(values)
       setColorScheme(values.app_color_scheme)
+      if (values.app_densidade) {
+        document.documentElement.setAttribute('data-density', values.app_densidade)
+      }
+      if (values.app_tamanho_fonte) {
+        document.documentElement.setAttribute('data-font-size', values.app_tamanho_fonte)
+      }
 
       notifications.show({
         title: 'Configurações Salvas',
-        message: 'A identidade visual e preferências foram atualizadas com sucesso.',
+        message: 'A identidade visual, densidade e preferências foram salvas com sucesso no banco de dados.',
         color: 'green',
         icon: <IconCheck size={16} />,
       })
@@ -409,30 +459,126 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
   }
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="sm" style={{ width: '100%' }}>
       {/* Cabeçalho */}
       <PageHeader
         icon={IconSettings}
         iconColor="gray"
         title="Configurações do Aplicativo"
-        subtitle="Personalize tema, identidade visual e gerencie o banco de dados SQLite local com backup seguro"
+        subtitle="Personalize densidade, tamanho de fonte, tema visual e gerencie o banco de dados SQLite local"
       />
 
-      {/* SEÇÃO 1: Identidade Visual e Tema Claro/Escuro */}
-      <Card withBorder radius="md" p="lg">
-        <Title order={3} mb="xs" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <IconPalette size={22} />
+      {/* SEÇÃO 1: Densidade da Interface & Tamanho do Texto (Acessibilidade & Compactação) */}
+      <Card withBorder radius="sm" p="sm">
+        <Title order={4} mb={2} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <IconDimensions size={18} />
+          Densidade & Acessibilidade Tipográfica
+        </Title>
+        <Text size="xs" c="dimmed" mb="sm">
+          Ajuste a densidade de linhas e o tamanho da fonte para o seu estilo de uso. A aplicação atualiza instantaneamente.
+        </Text>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          {/* Opção 1: Densidade */}
+          <Paper withBorder p="xs" radius="sm">
+            <Group gap={6} mb={4} align="center">
+              <ThemeIcon size={22} radius="xs" variant="light" color="blue">
+                <IconDimensions size={14} />
+              </ThemeIcon>
+              <Text fw={700} size="xs">
+                Densidade da Interface
+              </Text>
+            </Group>
+            <Text size="11px" c="dimmed" mb="xs">
+              Reduz paddings de tabelas, cards e cabeçalhos para exibir mais dados na tela.
+            </Text>
+            <SegmentedControl
+              fullWidth
+              size="xs"
+              value={form.values.app_densidade}
+              onChange={handleMudarDensidade}
+              data={[
+                { label: 'Compacto (Padrão - Mais Dados)', value: 'compacto' },
+                { label: 'Confortável (Mais Espaço)', value: 'confortavel' },
+              ]}
+            />
+          </Paper>
+
+          {/* Opção 2: Tamanho da Fonte */}
+          <Paper withBorder p="xs" radius="sm">
+            <Group gap={6} mb={4} align="center">
+              <ThemeIcon size={22} radius="xs" variant="light" color="indigo">
+                <IconTypography size={14} />
+              </ThemeIcon>
+              <Text fw={700} size="xs">
+                Tamanho da Fonte (Escala do Texto)
+              </Text>
+            </Group>
+            <Text size="11px" c="dimmed" mb="xs">
+              Altere o tamanho geral das fontes para facilitar a leitura sem distorcer o layout.
+            </Text>
+            <SegmentedControl
+              fullWidth
+              size="xs"
+              value={form.values.app_tamanho_fonte}
+              onChange={handleMudarTamanhoFonte}
+              data={[
+                { label: 'Pequeno (12px)', value: 'pequeno' },
+                { label: 'Médio (13.5px)', value: 'medio' },
+                { label: 'Grande (15px - Idosos)', value: 'grande' },
+              ]}
+            />
+          </Paper>
+        </SimpleGrid>
+
+        {/* Demonstração / Preview em Tempo Real */}
+        <Paper withBorder p={8} radius="xs" mt="xs" bg={computedColorScheme === 'dark' ? 'dark.7' : 'gray.0'}>
+          <Text size="10px" fw={700} c="dimmed" tt="uppercase" mb={4}>
+            Demonstração ao Vivo da Densidade e Fonte:
+          </Text>
+          <Table withTableBorder withColumnBorders striped style={{ backgroundColor: computedColorScheme === 'dark' ? '#1a1b1e' : '#ffffff' }}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th style={{ width: '40%' }}>Produto Demonstrativo</Table.Th>
+                <Table.Th style={{ width: '30%' }}>Fornecedor</Table.Th>
+                <Table.Th style={{ width: '18%', textAlign: 'right' }}>Preço Unitário</Table.Th>
+                <Table.Th style={{ width: '12%', textAlign: 'center' }}>Status</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              <Table.Tr>
+                <Table.Td fw={600}>Café Torrado Superior 500g</Table.Td>
+                <Table.Td>Distribuidora Aliança</Table.Td>
+                <Table.Td style={{ textAlign: 'right' }} c="teal.7" fw={700}>R$ 18,90 / UN</Table.Td>
+                <Table.Td style={{ textAlign: 'center' }}><Badge size="xs" color="teal" variant="light">Menor Preço</Badge></Table.Td>
+              </Table.Tr>
+              <Table.Tr>
+                <Table.Td fw={600}>Detergente Neutro 5L</Table.Td>
+                <Table.Td>Comercial Limpeza Total</Table.Td>
+                <Table.Td style={{ textAlign: 'right' }} fw={700}>R$ 4,50 / L</Table.Td>
+                <Table.Td style={{ textAlign: 'center' }}><Badge size="xs" color="blue" variant="light">Alocado</Badge></Table.Td>
+              </Table.Tr>
+            </Table.Tbody>
+          </Table>
+        </Paper>
+      </Card>
+
+      {/* SEÇÃO 2: Identidade Visual e Tema Claro/Escuro */}
+      <Card withBorder radius="sm" p="sm">
+        <Title order={4} mb={2} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <IconPalette size={18} />
           Identidade Visual & Tema
         </Title>
-        <Text size="xs" c="dimmed" mb="lg">
+        <Text size="xs" c="dimmed" mb="sm">
           O modo de exibição (claro/escuro), nome, subtítulo, ícone e paleta de cores ficam salvos no banco SQLite
         </Text>
 
         <form onSubmit={form.onSubmit(handleSubmitConfigs)}>
-          <Stack gap="md">
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+          <Stack gap="xs">
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               <TextInput
-                label="Nome do Aplicativo (Título do Cabeçalho)"
+                label="Nome do Aplicativo"
+                size="xs"
                 placeholder="Ex: Mapa de Cotações"
                 required
                 {...form.getInputProps('app_nome')}
@@ -440,13 +586,15 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
 
               <TextInput
                 label="Subtítulo do Cabeçalho"
+                size="xs"
                 placeholder="Ex: Comparativo e Alocação Inteligente"
                 required
                 {...form.getInputProps('app_subtitulo')}
               />
 
               <AppSelect
-                label="Modo de Exibição (Tema Claro / Escuro)"
+                label="Modo de Exibição"
+                size="xs"
                 data={OPCOES_ESQUEMA_COR.map((op) => ({
                   value: op.value,
                   label: op.label,
@@ -457,9 +605,10 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
               />
             </SimpleGrid>
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <AppSelect
                 label="Ícone do Cabeçalho"
+                size="xs"
                 data={OPCOES_ICONES.map((op) => ({
                   value: op.value,
                   label: op.label,
@@ -470,6 +619,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
 
               <AppSelect
                 label="Cor de Destaque do Tema"
+                size="xs"
                 data={OPCOES_CORES.map((op) => ({
                   value: op.value,
                   label: op.label,
@@ -480,46 +630,47 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
             </SimpleGrid>
 
             {/* Preview da Barra */}
-            <Paper withBorder p="sm" radius="md" mt="xs">
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={4}>
+            <Paper withBorder p={8} radius="xs" mt={4}>
+              <Text size="10px" fw={700} c="dimmed" tt="uppercase" mb={2}>
                 Pré-visualização do Cabeçalho:
               </Text>
               <Group justify="space-between" align="center">
-                <Group>
+                <Group gap="xs">
                   <ThemeIcon
-                    size="lg"
-                    radius="md"
+                    size={28}
+                    radius="sm"
                     variant="filled"
                     color={form.values.app_theme_color || 'blue'}
                   >
                     {OPCOES_ICONES.find((i) => i.value === form.values.app_icone)?.icon || (
-                      <IconScale size={22} />
+                      <IconScale size={18} />
                     )}
                   </ThemeIcon>
                   <div>
-                    <Title order={4} style={{ lineHeight: 1.1 }}>
+                    <Title order={5} style={{ lineHeight: 1.1, fontSize: '0.9rem' }}>
                       {form.values.app_nome || 'Mapa de Cotações'}
                     </Title>
-                    <Text size="xs" c="dimmed">
+                    <Text size="10px" c="dimmed">
                       {form.values.app_subtitulo || 'Comparativo e Alocação Inteligente'}
                     </Text>
                   </div>
                 </Group>
-                <Group gap="xs">
-                  <Badge variant="light" color={form.values.app_theme_color || 'blue'}>
-                    {computedColorScheme === 'dark' ? 'Modo Escuro Ativo' : 'Modo Claro Ativo'}
+                <Group gap={6}>
+                  <Badge variant="light" size="xs" color={form.values.app_theme_color || 'blue'}>
+                    {computedColorScheme === 'dark' ? 'Modo Escuro' : 'Modo Claro'}
                   </Badge>
-                  <Badge variant="outline" color={form.values.app_theme_color || 'blue'}>
-                    Versão Desktop
+                  <Badge variant="outline" size="xs" color={form.values.app_theme_color || 'blue'}>
+                    Desktop
                   </Badge>
                 </Group>
               </Group>
             </Paper>
 
-            <Group justify="flex-end" mt="md">
+            <Group justify="flex-end" mt="xs">
               <Button
                 type="submit"
-                leftSection={<IconDeviceFloppy size={18} />}
+                size="xs"
+                leftSection={<IconDeviceFloppy size={14} />}
                 loading={salvandoConfig}
                 color={form.values.app_theme_color || 'blue'}
               >
@@ -530,8 +681,8 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
         </form>
       </Card>
 
-      {/* SEÇÃO 2: Gerenciamento Seguro do Banco de Dados SQLite */}
-      <Card withBorder shadow="sm" radius="md" p="lg">
+      {/* SEÇÃO 3: Gerenciamento Seguro do Banco de Dados SQLite */}
+      <Card withBorder shadow="none" radius="sm" p="sm">
         <Title order={3} mb="xs" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <IconDatabase size={22} />
           Gerenciamento do Banco de Dados (SQLite Local)

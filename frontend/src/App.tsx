@@ -87,8 +87,18 @@ export default function App() {
     app_icone: 'Scale',
     app_theme_color: 'blue',
     app_color_scheme: 'light',
+    app_densidade: 'compacto',
+    app_tamanho_fonte: 'medio',
   })
   const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false)
+
+  // Sincroniza densidade e tamanho de fonte com o documento HTML
+  useEffect(() => {
+    const density = configuracoes.app_densidade || 'compacto'
+    const fontSize = configuracoes.app_tamanho_fonte || 'medio'
+    document.documentElement.setAttribute('data-density', density)
+    document.documentElement.setAttribute('data-font-size', fontSize)
+  }, [configuracoes.app_densidade, configuracoes.app_tamanho_fonte])
 
   // Verifica se o banco já passou pelo setup inicial e carrega preferências
   const inicializarAplicativo = async () => {
@@ -106,6 +116,10 @@ export default function App() {
         if (dados.app_color_scheme) {
           setColorScheme(dados.app_color_scheme as 'light' | 'dark' | 'auto')
         }
+        const density = dados.app_densidade || 'compacto'
+        const fontSize = dados.app_tamanho_fonte || 'medio'
+        document.documentElement.setAttribute('data-density', density)
+        document.documentElement.setAttribute('data-font-size', fontSize)
       }
     } catch (error) {
       console.error('Erro ao inicializar aplicativo:', error)
@@ -136,22 +150,22 @@ export default function App() {
     const iconName = configuracoes.app_icone || 'Scale'
     switch (iconName) {
       case 'ShoppingCart':
-        return <IconShoppingCart size={22} />
+        return <IconShoppingCart size={18} />
       case 'BuildingStore':
-        return <IconBuildingStore size={22} />
+        return <IconBuildingStore size={18} />
       case 'Package':
-        return <IconPackage size={22} />
+        return <IconPackage size={18} />
       case 'TrendingUp':
-        return <IconTrendingUp size={22} />
+        return <IconTrendingUp size={18} />
       case 'Coins':
-        return <IconCoins size={22} />
+        return <IconCoins size={18} />
       case 'Briefcase':
-        return <IconBriefcase size={22} />
+        return <IconBriefcase size={18} />
       case 'Receipt':
-        return <IconReceipt size={22} />
+        return <IconReceipt size={18} />
       case 'Scale':
       default:
-        return <IconScale size={22} />
+        return <IconScale size={18} />
     }
   }, [configuracoes.app_icone])
 
@@ -314,45 +328,45 @@ export default function App() {
 
   return (
     <AppShell
-      header={{ height: 60 }}
-      navbar={{ width: navbarCollapsed ? 64 : 250, breakpoint: 'sm' }}
-      padding="md"
+      header={{ height: 48 }}
+      navbar={{ width: navbarCollapsed ? 54 : 215, breakpoint: 'sm' }}
+      padding="xs"
     >
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group gap="sm">
+        <Group h="100%" px="sm" justify="space-between">
+          <Group gap="xs">
             <Tooltip
               label={navbarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
             >
               <ActionIcon
                 variant="subtle"
                 color="gray"
-                size="lg"
+                size="md"
                 onClick={() => setNavbarCollapsed(!navbarCollapsed)}
               >
                 {navbarCollapsed ? (
-                  <IconLayoutSidebarLeftExpand size={20} />
+                  <IconLayoutSidebarLeftExpand size={18} />
                 ) : (
-                  <IconLayoutSidebarLeftCollapse size={20} />
+                  <IconLayoutSidebarLeftCollapse size={18} />
                 )}
               </ActionIcon>
             </Tooltip>
 
-            <ThemeIcon size="lg" radius="md" variant="filled" color={themeColor}>
+            <ThemeIcon size={28} radius="sm" variant="filled" color={themeColor}>
               {iconeCabecalho}
             </ThemeIcon>
 
             <div>
-              <Title order={3} style={{ lineHeight: 1.1 }}>
+              <Title order={4} style={{ lineHeight: 1.1, fontSize: '0.95rem' }}>
                 {configuracoes.app_nome || 'Mapa de Cotações'}
               </Title>
-              <Text size="xs" c="dimmed">
+              <Text size="11px" c="dimmed">
                 {configuracoes.app_subtitulo || 'Comparativo e Alocação Inteligente'}
               </Text>
             </div>
           </Group>
 
-          <Group gap="xs">
+          <Group gap={6}>
             <Tooltip
               label={`Alternar Modo Claro/Escuro (Ativo: ${
                 computedColorScheme === 'dark' ? 'Escuro' : 'Claro'
@@ -361,66 +375,66 @@ export default function App() {
               <ActionIcon
                 variant="light"
                 color={themeColor}
-                size="lg"
+                size="md"
                 onClick={handleToggleTheme}
               >
-                {computedColorScheme === 'dark' ? <IconSun size={20} /> : <IconMoon size={20} />}
+                {computedColorScheme === 'dark' ? <IconSun size={16} /> : <IconMoon size={16} />}
               </ActionIcon>
             </Tooltip>
 
             <Tooltip label="Guia de Atalhos do Teclado (F1 ou Ctrl+K)">
-              <ActionIcon variant="light" color={themeColor} size="lg" onClick={openHelp}>
-                <IconKeyboard size={20} />
+              <ActionIcon variant="light" color={themeColor} size="md" onClick={openHelp}>
+                <IconKeyboard size={16} />
               </ActionIcon>
             </Tooltip>
 
-            <Badge variant="outline" color={themeColor}>
-              Versão Desktop
+            <Badge variant="outline" color={themeColor} size="xs">
+              Desktop
             </Badge>
           </Group>
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="xs" style={{ display: 'flex', flexDirection: 'column' }}>
+      <AppShell.Navbar p={6} style={{ display: 'flex', flexDirection: 'column' }}>
         <AppShell.Section grow>
           {navbarCollapsed ? (
-            <Divider my="xs" />
+            <Divider my={4} />
           ) : (
-            <Text size="xs" fw={700} c="dimmed" px="xs" py={4} tt="uppercase">
+            <Text size="10px" fw={700} c="dimmed" px={8} py={2} tt="uppercase">
               Cadastros
             </Text>
           )}
-          {renderNavItem('produtos', 'Produtos', <IconPackage size={18} />, 'Ctrl+1')}
-          {renderNavItem('fornecedores', 'Fornecedores', <IconTruck size={18} />, 'Ctrl+2')}
+          {renderNavItem('produtos', 'Produtos', <IconPackage size={16} />, 'Ctrl+1')}
+          {renderNavItem('fornecedores', 'Fornecedores', <IconTruck size={16} />, 'Ctrl+2')}
 
           {navbarCollapsed ? (
-            <Divider my="xs" />
+            <Divider my={4} />
           ) : (
-            <Text size="xs" fw={700} c="dimmed" px="xs" pt="md" pb={4} tt="uppercase">
+            <Text size="10px" fw={700} c="dimmed" px={8} pt={8} pb={2} tt="uppercase">
               Rodada de Cotação
             </Text>
           )}
-          {renderNavItem('rodadas', 'Rodadas', <IconRotate size={18} />)}
-          {renderNavItem('necessidades', 'Necessidades', <IconChecklist size={18} />, 'Ctrl+3')}
-          {renderNavItem('cotacoes', 'Cotações', <IconReceipt size={18} />, 'Ctrl+4')}
-          {renderNavItem('comparacao', 'Comparação', <IconScale size={18} />, 'Ctrl+5')}
-          {renderNavItem('alocacao', 'Alocação', <IconListCheck size={18} />, 'Ctrl+6')}
-          {renderNavItem('resumo', 'Resumo por Fornecedor', <IconChartBar size={18} />, 'Ctrl+7')}
-          {renderNavItem('pedido', 'Gerar Pedido', <IconFileText size={18} />, 'Ctrl+8')}
+          {renderNavItem('rodadas', 'Rodadas', <IconRotate size={16} />)}
+          {renderNavItem('necessidades', 'Necessidades', <IconChecklist size={16} />, 'Ctrl+3')}
+          {renderNavItem('cotacoes', 'Cotações', <IconReceipt size={16} />, 'Ctrl+4')}
+          {renderNavItem('comparacao', 'Comparação', <IconScale size={16} />, 'Ctrl+5')}
+          {renderNavItem('alocacao', 'Alocação', <IconListCheck size={16} />, 'Ctrl+6')}
+          {renderNavItem('resumo', 'Resumo por Fornecedor', <IconChartBar size={16} />, 'Ctrl+7')}
+          {renderNavItem('pedido', 'Gerar Pedido', <IconFileText size={16} />, 'Ctrl+8')}
 
           {navbarCollapsed ? (
-            <Divider my="xs" />
+            <Divider my={4} />
           ) : (
-            <Text size="xs" fw={700} c="dimmed" px="xs" pt="md" pb={4} tt="uppercase">
+            <Text size="10px" fw={700} c="dimmed" px={8} pt={8} pb={2} tt="uppercase">
               Inteligência & Sistema
             </Text>
           )}
-          {renderNavItem('estatisticas', 'Estatísticas & Histórico', <IconHistory size={18} />, 'Ctrl+9')}
-          {renderNavItem('configuracoes', 'Configurações', <IconSettings size={18} />, 'Ctrl+0')}
+          {renderNavItem('estatisticas', 'Estatísticas & Histórico', <IconHistory size={16} />, 'Ctrl+9')}
+          {renderNavItem('configuracoes', 'Configurações', <IconSettings size={16} />, 'Ctrl+0')}
         </AppShell.Section>
 
-        <AppShell.Section pt="xs">
-          <Divider mb="xs" />
+        <AppShell.Section pt={4}>
+          <Divider mb={4} />
           <Tooltip
             label={navbarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
             position="right"
@@ -431,18 +445,18 @@ export default function App() {
               label={navbarCollapsed ? undefined : 'Recolher menu'}
               leftSection={
                 navbarCollapsed ? (
-                  <IconChevronsRight size={18} />
+                  <IconChevronsRight size={16} />
                 ) : (
-                  <IconChevronsLeft size={18} />
+                  <IconChevronsLeft size={16} />
                 )
               }
               onClick={() => setNavbarCollapsed(!navbarCollapsed)}
               variant="subtle"
               style={{
-                borderRadius: 6,
+                borderRadius: 4,
                 justifyContent: navbarCollapsed ? 'center' : 'flex-start',
-                paddingLeft: navbarCollapsed ? 12 : undefined,
-                paddingRight: navbarCollapsed ? 12 : undefined,
+                paddingLeft: navbarCollapsed ? 8 : undefined,
+                paddingRight: navbarCollapsed ? 8 : undefined,
               }}
             />
           </Tooltip>
@@ -450,7 +464,7 @@ export default function App() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <Container fluid px="md" style={{ width: '100%', maxWidth: '100%' }}>
+        <Container fluid px={4} style={{ width: '100%', maxWidth: '100%' }}>
           {activeTab === 'produtos' && <ProdutosView />}
           {activeTab === 'fornecedores' && <FornecedoresView />}
           {activeTab === 'rodadas' && (

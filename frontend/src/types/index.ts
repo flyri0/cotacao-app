@@ -77,6 +77,8 @@ export interface ConfiguracoesApp {
   app_icone?: string
   app_theme_color?: string
   app_color_scheme?: 'light' | 'dark' | 'auto'
+  app_densidade?: 'compacto' | 'confortavel'
+  app_tamanho_fonte?: 'pequeno' | 'medio' | 'grande'
   [key: string]: string | undefined
 }
 

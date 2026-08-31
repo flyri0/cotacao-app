@@ -17,22 +17,22 @@ export function SectionCard({
   children,
 }: SectionCardProps) {
   return (
-    <Card withBorder radius="md" p="md" style={{ width: '100%' }}>
-      <Group justify="space-between" align="center" mb="sm">
-        <div>
-          <Title order={4} fw={600}>
+    <Card withBorder radius="sm" p="xs" style={{ width: '100%' }}>
+      <Group justify="space-between" align="center" mb={6}>
+        <Group gap="xs" align="center">
+          <Title order={5} fw={600} style={{ fontSize: '0.88rem' }}>
             {title}
           </Title>
           {subtitle && (
-            <Text size="xs" c="dimmed" mt={2}>
-              {subtitle}
+            <Text size="xs" c="dimmed">
+              • {subtitle}
             </Text>
           )}
-        </div>
+        </Group>
 
         <Group gap="xs">
           {kbdHint && (
-            <Text size="xs" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Text size="11px" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               Pressione <Kbd size="xs">{kbdHint}</Kbd> para avançar
             </Text>
           )}

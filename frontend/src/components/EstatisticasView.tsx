@@ -24,6 +24,7 @@ import {
   IconReceipt,
   IconScale,
   IconSearch,
+  IconTrendingUp,
   IconTrophy,
   IconTruck,
 } from '@tabler/icons-react'
@@ -333,7 +334,9 @@ export function EstatisticasView() {
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
+    initialState: { density: 'xs', pagination: { pageSize: 10, pageIndex: 0 } },
     mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
+    mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
 
   const tableRankingProd = useMantineReactTable({
@@ -344,7 +347,9 @@ export function EstatisticasView() {
     enablePagination: false,
     enableBottomToolbar: false,
     enableTopToolbar: false,
+    initialState: { density: 'xs' },
     mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
+    mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
 
   // =========================================================================
@@ -408,7 +413,9 @@ export function EstatisticasView() {
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
+    initialState: { density: 'xs', pagination: { pageSize: 10, pageIndex: 0 } },
     mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
+    mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
 
   // =========================================================================
@@ -531,9 +538,11 @@ export function EstatisticasView() {
     localization: MRT_Localization_PT_BR,
     enableRowActions: false,
     enablePagination: true,
+    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
+    mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
     mantinePaperProps: {
       withBorder: true,
-      radius: 'md',
+      radius: 'sm',
       shadow: 'none',
     },
   })
@@ -639,52 +648,51 @@ export function EstatisticasView() {
         entry.total_comprados += 1
       }
     })
-
-    return Array.from(map.values())
+return Array.from(map.values())
   }, [dadosFiltradosGlobal])
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       {/* Cabeçalho */}
       <PageHeader
         icon={IconHistory}
-        iconColor="violet"
-        title="Central de Estatísticas & Histórico"
-        subtitle="Análise multidimensional de preços históricos, compras por fornecedor e filtros avançados"
+        iconColor="indigo"
+        title="Estatísticas & Histórico Comercial"
+        subtitle="Inteligência de compras, evolução temporal e comparativos"
       />
 
-      {/* Tabs Principais */}
-      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
+      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm">
         <Tabs.List>
-          <Tabs.Tab value="produto" leftSection={<IconPackage size={16} />}>
-            Estatísticas por Produto
+          <Tabs.Tab value="produto" leftSection={<IconPackage size={15} />}>
+            Por Produto
           </Tabs.Tab>
-          <Tabs.Tab value="fornecedor" leftSection={<IconTruck size={16} />}>
-            Estatísticas por Fornecedor
+          <Tabs.Tab value="fornecedor" leftSection={<IconTruck size={15} />}>
+            Por Fornecedor
           </Tabs.Tab>
-          <Tabs.Tab value="global" leftSection={<IconFilter size={16} />}>
-            Histórico Global de Compras & Filtros
+          <Tabs.Tab value="global" leftSection={<IconTrendingUp size={15} />}>
+            Visão Geral
           </Tabs.Tab>
         </Tabs.List>
 
         {/* ================================================================= */}
-        {/* ABA 1: ESTATÍSTICAS POR PRODUTO */}
+        {/* ABA 1: ANÁLISE POR PRODUTO                                        */}
         {/* ================================================================= */}
-        <Tabs.Panel value="produto" pt="lg">
-          <Stack gap="lg">
+        <Tabs.Panel value="produto" pt="xs">
+          <Stack gap="xs">
             <Group justify="space-between" align="center">
-              <Text size="sm" fw={600}>
+              <Text size="xs" fw={600}>
                 Pesquise e selecione um produto para auditar seu histórico:
               </Text>
               <AppAutocomplete
                 placeholder="Digite o nome do produto..."
+                size="xs"
                 data={nomesProdutos}
                 value={produtoBusca}
                 onChange={setProdutoBusca}
                 onOptionSubmit={handleSelectProdutoNome}
-                style={{ width: 340 }}
+                style={{ width: 300 }}
                 limit={8}
-                leftSection={<IconSearch size={16} />}
+                leftSection={<IconSearch size={14} />}
               />
             </Group>
 
@@ -693,98 +701,98 @@ export function EstatisticasView() {
                 <Loader size="lg" />
               </Center>
             ) : estatisticasProduto ? (
-              <Stack gap="lg">
-                <Paper withBorder p="md" radius="md">
+              <Stack gap="xs">
+                <Paper withBorder p="xs" radius="sm">
                   <Group justify="space-between" align="center">
-                    <Group>
-                      <ThemeIcon size="xl" radius="md" color="indigo" variant="light">
-                        <IconPackage size={26} />
+                    <Group gap="xs">
+                      <ThemeIcon size={28} radius="sm" color="indigo" variant="light">
+                        <IconPackage size={16} />
                       </ThemeIcon>
                       <div>
-                        <Title order={3}>{estatisticasProduto.produto.nome}</Title>
-                        <Group gap="xs" mt={2}>
+                        <Title order={4} style={{ fontSize: '0.95rem' }}>{estatisticasProduto.produto.nome}</Title>
+                        <Group gap={4} mt={2}>
                           {estatisticasProduto.produto.categoria ? (
-                            <Badge color="teal" variant="dot">
+                            <Badge color="teal" variant="dot" size="xs">
                               {estatisticasProduto.produto.categoria}
                             </Badge>
                           ) : (
-                            <Badge color="gray" variant="light">
+                            <Badge color="gray" variant="light" size="xs">
                               Geral
                             </Badge>
                           )}
                         </Group>
                       </div>
                     </Group>
-                    <Badge size="lg" color="blue" variant="light">
+                    <Badge size="xs" color="blue" variant="light">
                       {estatisticasProduto.total_cotacoes} cotações em{' '}
                       {estatisticasProduto.total_rodadas} rodadas
                     </Badge>
                   </Group>
                 </Paper>
 
-                <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
-                  <Paper withBorder p="md" radius="md">
+                <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="xs">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                      <Text size="10px" c="dimmed" tt="uppercase" fw={700}>
                         Menor Preço Histórico
                       </Text>
-                      <ThemeIcon color="teal" variant="light" size="md">
-                        <IconTrophy size={18} />
+                      <ThemeIcon color="teal" variant="light" size={24} radius="sm">
+                        <IconTrophy size={14} />
                       </ThemeIcon>
                     </Group>
-                    <Title order={2} c="teal.8" mt="xs">
+                    <Title order={3} c="teal.8" style={{ fontSize: '1.2rem', marginTop: 2 }}>
                       {estatisticasProduto.menor_preco > 0
                         ? formatMoney(estatisticasProduto.menor_preco)
                         : 'R$ 0,00'}
                     </Title>
-                    <Text size="xs" c="dimmed" mt={4} lineClamp={1}>
+                    <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
                       {estatisticasProduto.melhor_fornecedor
-                        ? `Fornecido por ${estatisticasProduto.melhor_fornecedor}`
+                        ? `Por ${estatisticasProduto.melhor_fornecedor}`
                         : 'Sem cotações'}
                     </Text>
                   </Paper>
 
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                      <Text size="10px" c="dimmed" tt="uppercase" fw={700}>
                         Preço Médio Histórico
                       </Text>
-                      <ThemeIcon color="blue" variant="light" size="md">
-                        <IconScale size={18} />
+                      <ThemeIcon color="blue" variant="light" size={24} radius="sm">
+                        <IconScale size={14} />
                       </ThemeIcon>
                     </Group>
-                    <Title order={2} c="blue.8" mt="xs">
+                    <Title order={3} c="blue.8" style={{ fontSize: '1.2rem', marginTop: 2 }}>
                       {estatisticasProduto.preco_medio > 0
                         ? formatMoney(estatisticasProduto.preco_medio)
                         : 'R$ 0,00'}
                     </Title>
-                    <Text size="xs" c="dimmed" mt={4}>
-                      Média geral de cotações
+                    <Text size="10px" c="dimmed" mt={2}>
+                      Média geral
                     </Text>
                   </Paper>
 
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                      <Text size="10px" c="dimmed" tt="uppercase" fw={700}>
                         Maior Preço Registrado
                       </Text>
-                      <ThemeIcon color="red" variant="light" size="md">
-                        <IconReceipt size={18} />
+                      <ThemeIcon color="red" variant="light" size={24} radius="sm">
+                        <IconReceipt size={14} />
                       </ThemeIcon>
                     </Group>
-                    <Title order={2} c="red.8" mt="xs">
+                    <Title order={3} c="red.8" style={{ fontSize: '1.2rem', marginTop: 2 }}>
                       {estatisticasProduto.maior_preco > 0
                         ? formatMoney(estatisticasProduto.maior_preco)
                         : 'R$ 0,00'}
                     </Title>
-                    <Text size="xs" c="dimmed" mt={4}>
+                    <Text size="10px" c="dimmed" mt={2}>
                       Teto máximo
                     </Text>
                   </Paper>
 
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                      <Text size="10px" c="dimmed" tt="uppercase" fw={700}>
                         Variação Cronológica
                       </Text>
                       <ThemeIcon
@@ -794,28 +802,29 @@ export function EstatisticasView() {
                             : 'orange'
                         }
                         variant="light"
-                        size="md"
+                        size={24}
+                        radius="sm"
                       >
                         {estatisticasProduto.variacao_percentual <= 0 ? (
-                          <IconArrowDownRight size={18} />
+                          <IconArrowDownRight size={14} />
                         ) : (
-                          <IconArrowUpRight size={18} />
+                          <IconArrowUpRight size={14} />
                         )}
                       </ThemeIcon>
                     </Group>
                     <Title
-                      order={2}
+                      order={3}
                       c={
                         estatisticasProduto.variacao_percentual <= 0
                           ? 'teal.8'
                           : 'orange.8'
                       }
-                      mt="xs"
+                      style={{ fontSize: '1.2rem', marginTop: 2 }}
                     >
                       {estatisticasProduto.variacao_percentual > 0 ? '+' : ''}
                       {estatisticasProduto.variacao_percentual.toFixed(1)}%
                     </Title>
-                    <Text size="xs" c="dimmed" mt={4}>
+                    <Text size="10px" c="dimmed" mt={2}>
                       Evolução de preço
                     </Text>
                   </Paper>
@@ -918,21 +927,22 @@ export function EstatisticasView() {
         {/* ================================================================= */}
         {/* ABA 2: ESTATÍSTICAS POR FORNECEDOR */}
         {/* ================================================================= */}
-        <Tabs.Panel value="fornecedor" pt="lg">
-          <Stack gap="lg">
+        <Tabs.Panel value="fornecedor" pt="xs">
+          <Stack gap="xs">
             <Group justify="space-between" align="center">
-              <Text size="sm" fw={600}>
+              <Text size="xs" fw={600}>
                 Selecione o fornecedor para auditar histórico comercial:
               </Text>
               <AppSelect
                 placeholder="Selecione o fornecedor"
+                size="xs"
                 data={fornecedores.map((f) => ({
                   value: f.id.toString(),
                   label: f.nome,
                 }))}
                 value={fornecedorSelecionadoId ? fornecedorSelecionadoId.toString() : null}
                 onChange={handleSelectFornecedor}
-                style={{ width: 320 }}
+                style={{ width: 280 }}
                 allowDeselect={false}
               />
             </Group>
@@ -942,42 +952,42 @@ export function EstatisticasView() {
                 <Loader size="lg" />
               </Center>
             ) : estatisticasFornecedor ? (
-              <Stack gap="lg">
-                <Paper withBorder p="md" radius="md">
+              <Stack gap="xs">
+                <Paper withBorder p="xs" radius="sm">
                   <Group justify="space-between" align="center">
-                    <Group>
-                      <ThemeIcon size="xl" radius="md" color="teal" variant="light">
-                        <IconTruck size={26} />
+                    <Group gap="xs">
+                      <ThemeIcon size={28} radius="sm" color="teal" variant="light">
+                        <IconTruck size={16} />
                       </ThemeIcon>
                       <div>
-                        <Title order={3}>{estatisticasFornecedor.fornecedor.nome}</Title>
-                        <Text size="xs" c="dimmed">
+                        <Title order={4} style={{ fontSize: '0.95rem' }}>{estatisticasFornecedor.fornecedor.nome}</Title>
+                        <Text size="11px" c="dimmed">
                           Pedido Mínimo:{' '}
                           <b>{formatMoney(estatisticasFornecedor.fornecedor.pedido_minimo)}</b>
                         </Text>
                       </div>
                     </Group>
-                    <Badge size="lg" color="teal" variant="light">
+                    <Badge size="xs" color="teal" variant="light">
                       {estatisticasFornecedor.total_cotacoes} cotações enviadas
                     </Badge>
                   </Group>
                 </Paper>
 
-                <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
-                  <Paper withBorder p="md" radius="md">
+                <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="xs">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                      <Text size="10px" c="dimmed" tt="uppercase" fw={700}>
                         Volume Comprado (R$)
                       </Text>
-                      <ThemeIcon color="teal" variant="light" size="md">
-                        <IconCoins size={18} />
+                      <ThemeIcon color="teal" variant="light" size={24} radius="sm">
+                        <IconCoins size={14} />
                       </ThemeIcon>
                     </Group>
-                    <Title order={2} c="teal.8" mt="xs">
+                    <Title order={3} c="teal.8" style={{ fontSize: '1.2rem', marginTop: 2 }}>
                       {formatMoney(estatisticasFornecedor.volume_financeiro_alocado)}
                     </Title>
-                    <Text size="xs" c="dimmed" mt={4}>
-                      Total de compras efetivas
+                    <Text size="10px" c="dimmed" mt={2}>
+                      Total alocado
                     </Text>
                   </Paper>
 

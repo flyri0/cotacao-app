@@ -761,6 +761,7 @@ export function CotacoesView({
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
+    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,
@@ -768,30 +769,31 @@ export function CotacoesView({
     },
     mantinePaperProps: {
       withBorder: true,
-      radius: 'md',
+      radius: 'sm',
       shadow: 'none',
     },
   })
 
   return (
-    <Stack gap="md" style={{ width: '100%' }}>
+    <Stack gap="xs" style={{ width: '100%' }}>
       {/* Cabeçalho */}
       <PageHeader
         icon={IconReceipt}
         iconColor="teal"
         title="Cotações de Preços"
-        subtitle="Lançamento ágil de cotações com normalização automática de preço por unidade"
+        subtitle="Normalização automática de preço por unidade"
         rightSection={
-          <Group gap="sm">
+          <Group gap="xs">
             {isFechada && (
-              <Badge variant="filled" color="red" size="md">
-                Rodada Fechada - Somente Leitura
+              <Badge variant="filled" color="red" size="xs">
+                Rodada Fechada
               </Badge>
             )}
             <Button
               variant="light"
               color="teal"
-              leftSection={<IconDownload size={16} />}
+              size="xs"
+              leftSection={<IconDownload size={14} />}
               loading={exportandoExcel}
               onClick={handleExportarPlanilhaModelo}
             >
@@ -800,7 +802,8 @@ export function CotacoesView({
             <Button
               variant="outline"
               color="teal"
-              leftSection={<IconUpload size={16} />}
+              size="xs"
+              leftSection={<IconUpload size={14} />}
               onClick={openModalImportar}
               disabled={isFechada}
             >
@@ -822,16 +825,17 @@ export function CotacoesView({
       {/* Formulário Turbo de Cadastro de Cotação */}
       <SectionCard
         title="Nova Cotação de Fornecedor"
-        subtitle="O fornecedor fica fixo para lançamento em lote — novos produtos são cadastrados automaticamente"
+        subtitle="Fornecedor fixo para lançamento em lote"
         kbdHint="Enter"
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <fieldset disabled={isFechada} style={{ border: 'none', padding: 0, margin: 0 }}>
-            <Stack gap="md">
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+            <Stack gap="xs">
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
               <AppAutocomplete
                 ref={fornecedorRef}
-                label="Fornecedor (Fixo para Lote)"
+                label="Fornecedor (Fixo)"
+                size="xs"
                 placeholder="Selecione o fornecedor..."
                 data={nomesFornecedores}
                 required
@@ -840,9 +844,9 @@ export function CotacoesView({
                 onTabOrEnterNextRef={produtoRef}
               />
 
-              <Stack gap={4}>
+              <Stack gap={2}>
                 <Group justify="space-between" align="center">
-                  <Text size="sm" fw={500}>
+                  <Text size="xs" fw={500}>
                     Produto <Text span c="red">*</Text>
                   </Text>
                   {produtoSelecionado && (
@@ -850,15 +854,16 @@ export function CotacoesView({
                       variant="subtle"
                       color="blue"
                       size="compact-xs"
-                      leftSection={<IconEdit size={12} />}
+                      leftSection={<IconEdit size={11} />}
                       onClick={() => handleAbrirEdicaoProduto(produtoSelecionado)}
                     >
-                      Editar Produto
+                      Editar
                     </Button>
                   )}
                 </Group>
                 <AppAutocomplete
                   ref={produtoRef}
+                  size="xs"
                   placeholder="Digite ou selecione o produto..."
                   data={nomesTodosProdutos}
                   required
@@ -871,6 +876,7 @@ export function CotacoesView({
               <TextInput
                 ref={marcaRef}
                 label="Marca (Opcional)"
+                size="xs"
                 placeholder="Ex: Ypê, Bombril, 3M..."
                 {...form.getInputProps('marca')}
                 onKeyDown={(e) => {
@@ -882,11 +888,12 @@ export function CotacoesView({
               />
             </SimpleGrid>
 
-            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="xs">
               <AppAutocomplete
                 ref={embalagemRef}
-                label="Descrição da Embalagem"
-                placeholder="Ex: Caixa c/ 24 un, Fardo c/ 12 un, Unidade"
+                label="Embalagem"
+                size="xs"
+                placeholder="Ex: Caixa c/ 24 un, Fardo c/ 12 un"
                 data={SUGESTOES_EMBALAGEM}
                 required
                 {...form.getInputProps('embalagem')}
@@ -896,6 +903,7 @@ export function CotacoesView({
               <NumberInput
                 ref={qtdRef}
                 label="Qtd na Embalagem"
+                size="xs"
                 placeholder="Ex: 24"
                 min={0.001}
                 decimalScale={3}
@@ -912,6 +920,7 @@ export function CotacoesView({
               <AppAutocomplete
                 ref={unidadeRef}
                 label="Unidade Medida"
+                size="xs"
                 placeholder="Ex: UN, KG, L, PCT, CX"
                 data={SUGESTOES_UNIDADES}
                 required
@@ -921,7 +930,8 @@ export function CotacoesView({
 
               <NumberInput
                 ref={precoRef}
-                label="Preço da Embalagem (R$)"
+                label="Preço Embalagem (R$)"
+                size="xs"
                 placeholder="0,00"
                 min={0}
                 decimalScale={2}
@@ -942,18 +952,18 @@ export function CotacoesView({
 
             {/* Live Preview do Preço Unitário Normalizado + Inteligência de Tendência Histórica */}
             <Alert
-              icon={<IconCalculator size={22} />}
-              title="Normalização e Análise de Preço em Tempo Real"
+              icon={<IconCalculator size={18} />}
               color="teal"
               variant="light"
-              radius="md"
+              radius="sm"
+              p="xs"
             >
-              <Stack gap="xs">
+              <Stack gap={4}>
                 <Group justify="space-between" align="center">
                   <div>
-                    <Text size="sm" fw={600}>
+                    <Text size="xs" fw={600}>
                       {form.values.produtoNome
-                        ? `Item: ${form.values.produtoNome} (Unidade: ${form.values.unidade || 'UN'})`
+                        ? `Item: ${form.values.produtoNome} (Un: ${form.values.unidade || 'UN'})`
                         : 'Preencha os dados do item para visualizar o preço normalizado.'}
                       {fornecedorSelecionado &&
                         ` • Fornecedor: ${fornecedorSelecionado.nome}`}
@@ -961,7 +971,7 @@ export function CotacoesView({
                         ` • Marca: ${form.values.marca}`}
                     </Text>
                   </div>
-                  <Badge size="xl" color="teal" variant="filled">
+                  <Badge size="sm" color="teal" variant="filled">
                     {precoUnitarioPreview > 0
                       ? `${formatMoney(precoUnitarioPreview)} / ${
                           form.values.unidade || 'UN'
@@ -972,17 +982,17 @@ export function CotacoesView({
 
                 {/* Painel Inteligente de Comparação Histórica */}
                 {produtoSelecionado && statsProduto && statsProduto.total_cotacoes > 0 && (
-                  <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-body)">
+                  <Paper withBorder p={4} radius="xs" bg="var(--mantine-color-body)">
                     <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                      <Group gap="md">
-                        <Text size="xs" c="dimmed">
-                          Histórico: <b>{statsProduto.total_cotacoes}</b> cotações
+                      <Group gap="xs">
+                        <Text size="10px" c="dimmed">
+                          Histórico: <b>{statsProduto.total_cotacoes}</b>
                         </Text>
-                        <Text size="xs" c="dimmed">
-                          Menor histórico: <b style={{ color: '#059669' }}>{formatMoney(statsProduto.menor_preco)}</b>
+                        <Text size="10px" c="dimmed">
+                          Menor: <b style={{ color: '#059669' }}>{formatMoney(statsProduto.menor_preco)}</b>
                           {statsProduto.melhor_fornecedor && ` (${statsProduto.melhor_fornecedor})`}
                         </Text>
-                        <Text size="xs" c="dimmed">
+                        <Text size="10px" c="dimmed">
                           Média: <b>{formatMoney(statsProduto.preco_medio)}</b>
                         </Text>
                       </Group>
@@ -991,20 +1001,20 @@ export function CotacoesView({
                       {precoUnitarioPreview > 0 && (
                         <Group gap="xs">
                           {precoUnitarioPreview < statsProduto.menor_preco ? (
-                            <Badge color="green" variant="filled" leftSection={<IconTrendingDown size={14} />}>
-                              🔥 NOVO RECORDE (-{(((statsProduto.menor_preco - precoUnitarioPreview) / statsProduto.menor_preco) * 100).toFixed(1)}% mais barato)
+                            <Badge color="green" size="xs" variant="filled" leftSection={<IconTrendingDown size={12} />}>
+                              🔥 NOVO RECORDE (-{(((statsProduto.menor_preco - precoUnitarioPreview) / statsProduto.menor_preco) * 100).toFixed(1)}%)
                             </Badge>
                           ) : precoUnitarioPreview <= statsProduto.preco_medio ? (
-                            <Badge color="teal" variant="light" leftSection={<IconTrendingDown size={14} />}>
-                              ✓ Abaixo da média (-{(((statsProduto.preco_medio - precoUnitarioPreview) / statsProduto.preco_medio) * 100).toFixed(1)}%)
+                            <Badge color="teal" size="xs" variant="light" leftSection={<IconTrendingDown size={12} />}>
+                              ✓ Abaixo média (-{(((statsProduto.preco_medio - precoUnitarioPreview) / statsProduto.preco_medio) * 100).toFixed(1)}%)
                             </Badge>
                           ) : precoUnitarioPreview > statsProduto.maior_preco ? (
-                            <Badge color="red" variant="filled" leftSection={<IconTrendingUp size={14} />}>
-                              🚨 MAIOR HISTÓRICO (+{(((precoUnitarioPreview - statsProduto.maior_preco) / statsProduto.maior_preco) * 100).toFixed(1)}%)
+                            <Badge color="red" size="xs" variant="filled" leftSection={<IconTrendingUp size={12} />}>
+                              🚨 MAIOR (+{(((precoUnitarioPreview - statsProduto.maior_preco) / statsProduto.maior_preco) * 100).toFixed(1)}%)
                             </Badge>
                           ) : (
-                            <Badge color="orange" variant="light" leftSection={<IconTrendingUp size={14} />}>
-                              ⚠️ +{(((precoUnitarioPreview - statsProduto.preco_medio) / statsProduto.preco_medio) * 100).toFixed(1)}% acima da média
+                            <Badge color="orange" size="xs" variant="light" leftSection={<IconTrendingUp size={12} />}>
+                              ⚠️ +{(((precoUnitarioPreview - statsProduto.preco_medio) / statsProduto.preco_medio) * 100).toFixed(1)}%
                             </Badge>
                           )}
                         </Group>
@@ -1018,10 +1028,11 @@ export function CotacoesView({
             <Group justify="flex-end">
               <Button
                 type="submit"
-                leftSection={<IconPlus size={18} />}
+                size="xs"
+                leftSection={<IconPlus size={15} />}
                 loading={submitting}
               >
-                Salvar Cotação <Kbd ml={6} size="xs">Enter</Kbd>
+                Salvar Cotação <Kbd ml={4} size="xs">Enter</Kbd>
               </Button>
             </Group>
           </Stack>

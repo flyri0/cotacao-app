@@ -3,6 +3,83 @@ html {
   overflow-y: scroll;
 }
 
+/* ==========================================================================
+   SISTEMA DE DENSIDADE E ESCALA TIPOGRÁFICA (Acessibilidade & Compactação)
+   ========================================================================== */
+
+/* Densidade: Compacto (Padrão) */
+:root,
+:root[data-density='compacto'] {
+  --app-spacing-xs: 4px;
+  --app-spacing-sm: 8px;
+  --app-spacing-md: 10px;
+  --app-spacing-lg: 14px;
+  --app-table-cell-py: 4px;
+  --app-table-cell-px: 8px;
+  --app-card-p: 8px 12px;
+  --app-statcard-p: 8px 10px;
+  --app-header-height: 48px;
+  --app-navbar-width: 215px;
+}
+
+/* Densidade: Confortável */
+:root[data-density='confortavel'] {
+  --app-spacing-xs: 6px;
+  --app-spacing-sm: 12px;
+  --app-spacing-md: 16px;
+  --app-spacing-lg: 20px;
+  --app-table-cell-py: 8px;
+  --app-table-cell-px: 12px;
+  --app-card-p: 14px 18px;
+  --app-statcard-p: 12px 14px;
+  --app-header-height: 54px;
+  --app-navbar-width: 240px;
+}
+
+/* Tamanho de Fonte: Pequeno (12px base) */
+:root[data-font-size='pequeno'] {
+  font-size: 12px;
+  --app-font-base: 12px;
+  --app-font-sm: 11px;
+  --app-font-xs: 10px;
+}
+
+/* Tamanho de Fonte: Médio (13.5px base - Padrão) */
+:root,
+:root[data-font-size='medio'] {
+  font-size: 13.5px;
+  --app-font-base: 13.5px;
+  --app-font-sm: 12px;
+  --app-font-xs: 11px;
+}
+
+/* Tamanho de Fonte: Grande (15px base - Acessibilidade para Idosos) */
+:root[data-font-size='grande'] {
+  font-size: 15px;
+  --app-font-base: 15px;
+  --app-font-sm: 13.5px;
+  --app-font-xs: 12px;
+}
+
+/* Aplicação de padding e compactação em tabelas */
+.mantine-Table-td,
+.mantine-Table-th {
+  padding-top: var(--app-table-cell-py, 4px) !important;
+  padding-bottom: var(--app-table-cell-py, 4px) !important;
+  padding-left: var(--app-table-cell-px, 8px) !important;
+  padding-right: var(--app-table-cell-px, 8px) !important;
+}
+
+/* MRT Table Rows compactos */
+.mrt-table-row {
+  min-height: 32px;
+}
+
+/* Inputs compactos */
+.mantine-Input-input {
+  min-height: unset;
+}
+
 html,
 body,
 #root {
@@ -12,6 +89,7 @@ body,
   padding: 0;
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: var(--app-font-base, 13.5px);
 }
 
 *,
