@@ -89,29 +89,32 @@ cd ..
 
 ### 🌐 Integração Contínua (GitHub Actions — Windows 10/11 & Windows 7)
 
-O repositório possui uma pipeline automatizada no GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)) que compila e disponibiliza automaticamente as duas versões do executável:
+O repositório possui uma pipeline automatizada no GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)) que compila e disponibiliza automaticamente as três versões do executável:
 
 1. **`MapaCotacoes-Win10-Win11.exe`**:
-   - Compilado com **Python 3.11** em `windows-latest`.
+   - Compilado com **Python 3.11 (64-bit)** em `windows-latest`.
    - Otimizado com suporte nativo ao WebView2 moderno e novos recursos do Windows 10/11.
-2. **`MapaCotacoes-Win7-Legacy.exe`**:
-   - Compilado com **Python 3.8.10** (última versão oficial do runtime Python com retrocompatibilidade para Windows 7 SP1 e Windows 8).
-   - Utiliza chamadas Win32 e bibliotecas linkadas para sistemas legados.
+2. **`MapaCotacoes-Win7-Legacy-x64.exe`**:
+   - Compilado com **Python 3.8.10 (64-bit)** (compatível com Windows 7 SP1 x64 e Windows 8 x64).
+   - Utiliza chamadas Win32 e bibliotecas linkadas para sistemas legados de 64-bit.
+3. **`MapaCotacoes-Win7-Legacy-x86.exe`**:
+   - Compilado com **Python 3.8.10 (32-bit / x86)** (compatível com Windows 7 SP1 32-bit e 64-bit).
+   - Ideal para computadores antigos ou instalações 32-bit do Windows 7.
 
-Ambos os artefatos são gerados automaticamente a cada `push`, `pull request` ou disparo manual na aba **Actions** do GitHub, e anexados automaticamente aos **Releases** do repositório quando criada uma tag `v*` (ex: `v1.0.0`).
+Todos os artefatos são gerados automaticamente a cada `push`, `pull request` ou disparo manual na aba **Actions** do GitHub, e anexados automaticamente aos **Releases** do repositório quando criada uma tag `v*` (ex: `v1.0.0`).
 
 ---
 
 ## 🪟 Guia de Execução no Windows 7
 
-Para executar o binário **`MapaCotacoes-Win7-Legacy.exe`** em computadores com **Windows 7**:
+Para executar os binários **`MapaCotacoes-Win7-Legacy-x64.exe`** ou **`MapaCotacoes-Win7-Legacy-x86.exe`** em computadores com **Windows 7**:
 
 1. **Service Pack 1 e Atualizações**:
    - O Windows 7 deve ter o **Service Pack 1** e as atualizações de segurança `KB3063858` / `KB2533623` instaladas.
 2. **WebView2 Runtime (Versão 109)**:
-   - Baixe e instale o instalador autônomo do [Microsoft Edge WebView2 Runtime v109 (versão legada)](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) no Windows 7.
+   - Baixe e instale o instalador autônomo do [Microsoft Edge WebView2 Runtime v109 (versão legada)](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) compatível com a arquitetura do seu Windows 7 (x86 ou x64).
 3. **Execução**:
-   - Execute o arquivo `MapaCotacoes-Win7-Legacy.exe`. O banco SQLite local `cotacao.db` será gerado automaticamente na mesma pasta.
+   - Execute o arquivo `MapaCotacoes-Win7-Legacy-x64.exe` (ou `MapaCotacoes-Win7-Legacy-x86.exe` se o Windows for 32-bit). O banco SQLite local `cotacao.db` será gerado automaticamente na mesma pasta.
 
 ---
 

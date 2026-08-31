@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Compilar para ${{ matrix.target.name }} (Python ${{ matrix.target.python-version }})
+    name: Compilar para ${{ matrix.target.name }} (${{ matrix.target.architecture }})
     runs-on: ${{ matrix.target.os }}
     strategy:
       fail-fast: false
@@ -18,17 +18,27 @@ jobs:
         target:
           - name: "Windows-10-11"
             python-version: "3.11"
+            architecture: "x64"
             os: "windows-latest"
             artifact-name: "MapaCotacoes-Win10-Win11"
             output-exe: "MapaCotacoes-Win10-Win11.exe"
             description: "Executável moderno otimizado para Windows 10 e Windows 11 (64-bit)"
 
-          - name: "Windows-7-Legacy"
+          - name: "Windows-7-Legacy-x64"
             python-version: "3.8"
+            architecture: "x64"
             os: "windows-latest"
-            artifact-name: "MapaCotacoes-Win7-Legacy"
-            output-exe: "MapaCotacoes-Win7-Legacy.exe"
-            description: "Executável retrocompatível para Windows 7 SP1 e Windows 8 (requer WebView2 v109)"
+            artifact-name: "MapaCotacoes-Win7-Legacy-x64"
+            output-exe: "MapaCotacoes-Win7-Legacy-x64.exe"
+            description: "Executável retrocompatível para Windows 7 SP1 e Windows 8 (64-bit, requer WebView2 v109)"
+
+          - name: "Windows-7-Legacy-x86"
+            python-version: "3.8"
+            architecture: "x86"
+            os: "windows-latest"
+            artifact-name: "MapaCotacoes-Win7-Legacy-x86"
+            output-exe: "MapaCotacoes-Win7-Legacy-x86.exe"
+            description: "Executável retrocompatível para Windows 7 SP1 e Windows 8 (32-bit / x86, requer WebView2 v109)"
 
     steps:
       - name: 📥 Clonar repositório
@@ -41,10 +51,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'frontend/package-lock.json'
 
-      - name: 🐍 Configurar Python ${{ matrix.target.python-version }}
+      - name: 🐍 Configurar Python ${{ matrix.target.python-version }} (${{ matrix.target.architecture }})
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.target.python-version }}
+          architecture: ${{ matrix.target.architecture }}
           cache: 'pip'
 
       - name: 📦 Instalar dependências do Frontend
@@ -96,7 +107,8 @@ jobs:
         with:
           files: |
             ./artifacts/MapaCotacoes-Win10-Win11/MapaCotacoes-Win10-Win11.exe
-            ./artifacts/MapaCotacoes-Win7-Legacy/MapaCotacoes-Win7-Legacy.exe
+            ./artifacts/MapaCotacoes-Win7-Legacy-x64/MapaCotacoes-Win7-Legacy-x64.exe
+            ./artifacts/MapaCotacoes-Win7-Legacy-x86/MapaCotacoes-Win7-Legacy-x86.exe
           draft: false
           prerelease: false
           generate_release_notes: true
