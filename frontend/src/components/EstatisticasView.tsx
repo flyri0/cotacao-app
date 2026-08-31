@@ -216,6 +216,23 @@ export function EstatisticasView() {
         ),
       },
       {
+        accessorKey: 'marca',
+        header: 'Marca',
+        size: 130,
+        Cell: ({ cell }) => {
+          const val = cell.getValue<string | null>()
+          return val ? (
+            <Badge variant="light" color="indigo">
+              {val}
+            </Badge>
+          ) : (
+            <Text size="sm" c="dimmed">
+              -
+            </Text>
+          )
+        },
+      },
+      {
         accessorKey: 'embalagem',
         header: 'Embalagem Cotada',
         size: 160,
@@ -224,10 +241,10 @@ export function EstatisticasView() {
         accessorKey: 'qtd_por_embalagem',
         header: 'Qtd / Emb.',
         size: 120,
-        Cell: ({ cell }) => (
+        Cell: ({ cell, row }) => (
           <Text size="sm">
             {cell.getValue<number>()}{' '}
-            {estatisticasProduto?.produto?.unidade_padrao || 'un'}
+            {row.original.unidade || 'UN'}
           </Text>
         ),
       },
@@ -245,15 +262,15 @@ export function EstatisticasView() {
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário Normalizado',
         size: 200,
-        Cell: ({ cell }) => (
+        Cell: ({ cell, row }) => (
           <Badge color="teal" variant="filled" size="md">
             {formatMoney(cell.getValue<number>())} /{' '}
-            {estatisticasProduto?.produto?.unidade_padrao || 'un'}
+            {row.original.unidade || 'UN'}
           </Badge>
         ),
       },
     ],
-    [estatisticasProduto],
+    [],
   )
 
   const columnsRankingProd = useMemo<MRT_ColumnDef<RankingFornecedorItem>[]>(
@@ -290,8 +307,7 @@ export function EstatisticasView() {
         size: 190,
         Cell: ({ cell }) => (
           <Badge variant="filled" color="teal" size="md">
-            {formatMoney(cell.getValue<number>())} /{' '}
-            {estatisticasProduto?.produto?.unidade_padrao || 'un'}
+            {formatMoney(cell.getValue<number>())}
           </Badge>
         ),
       },
@@ -301,13 +317,12 @@ export function EstatisticasView() {
         size: 190,
         Cell: ({ cell }) => (
           <Text fw={600} size="sm" c="dimmed">
-            {formatMoney(cell.getValue<number>())} /{' '}
-            {estatisticasProduto?.produto?.unidade_padrao || 'un'}
+            {formatMoney(cell.getValue<number>())}
           </Text>
         ),
       },
     ],
-    [estatisticasProduto],
+    [],
   )
 
   const tableHistoricoProd = useMantineReactTable({
@@ -377,7 +392,7 @@ export function EstatisticasView() {
         Cell: ({ cell, row }) => (
           <Badge color="teal" variant="filled" size="md">
             {formatMoney(cell.getValue<number>())} /{' '}
-            {row.original.produto_unidade_padrao || 'un'}
+            {row.original.unidade || 'UN'}
           </Badge>
         ),
       },
@@ -467,6 +482,11 @@ export function EstatisticasView() {
         accessorKey: 'embalagem',
         header: 'Embalagem',
         size: 150,
+        Cell: ({ row }) => (
+          <Text size="sm">
+            {row.original.marca ? `[${row.original.marca}] ` : ''}{row.original.embalagem}
+          </Text>
+        ),
       },
       {
         accessorKey: 'preco_embalagem',
@@ -480,7 +500,7 @@ export function EstatisticasView() {
         size: 160,
         Cell: ({ cell, row }) => (
           <Text fw={700} size="sm" c="teal.8">
-            {formatMoney(cell.getValue<number>())} / {row.original.produto_unidade_padrao}
+            {formatMoney(cell.getValue<number>())} / {row.original.unidade || 'UN'}
           </Text>
         ),
       },
@@ -683,12 +703,13 @@ export function EstatisticasView() {
                       <div>
                         <Title order={3}>{estatisticasProduto.produto.nome}</Title>
                         <Group gap="xs" mt={2}>
-                          <Badge color="indigo" variant="light">
-                            Unidade: {estatisticasProduto.produto.unidade_padrao}
-                          </Badge>
-                          {estatisticasProduto.produto.categoria && (
+                          {estatisticasProduto.produto.categoria ? (
                             <Badge color="teal" variant="dot">
                               {estatisticasProduto.produto.categoria}
+                            </Badge>
+                          ) : (
+                            <Badge color="gray" variant="light">
+                              Geral
                             </Badge>
                           )}
                         </Group>
@@ -738,7 +759,7 @@ export function EstatisticasView() {
                         : 'R$ 0,00'}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
-                      Média por {estatisticasProduto.produto.unidade_padrao}
+                      Média geral de cotações
                     </Text>
                   </Paper>
 

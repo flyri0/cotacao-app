@@ -45,7 +45,8 @@ function formatMoney(valor: number, maxDigits = 4): string {
 interface ItemPedidoLinha {
   id_produto: number
   produto_nome: string
-  produto_unidade_padrao: string
+  marca?: string | null
+  unidade: string
   quantidade_solicitada: number
   embalagem: string
   qtd_por_embalagem: number
@@ -205,7 +206,8 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
         itensLinha.push({
           id_produto: aloc.id_produto,
           produto_nome: aloc.produto_nome,
-          produto_unidade_padrao: aloc.produto_unidade_padrao,
+          marca: cot ? cot.marca : (aloc.marca || null),
+          unidade: cot ? cot.unidade : (aloc.unidade || 'UN'),
           quantidade_solicitada: aloc.quantidade,
           embalagem,
           qtd_por_embalagem: fator,
@@ -258,8 +260,8 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
       texto += `ITENS DO PEDIDO:\n`
 
       itensLinha.forEach((item, idx) => {
-        texto += `${idx + 1}. ${item.produto_nome}\n`
-        texto += `   - Quantidade: ${item.embalagens_comprar} ${item.embalagem} (${item.quantidade_efetiva} ${item.produto_unidade_padrao})\n`
+        texto += `${idx + 1}. ${item.produto_nome}${item.marca ? ` [Marca: ${item.marca}]` : ''}\n`
+        texto += `   - Quantidade: ${item.embalagens_comprar} ${item.embalagem} (${item.quantidade_efetiva} ${item.unidade})\n`
         texto += `   - Preço por Embalagem: ${formatMoney(item.preco_embalagem, 2)} | Preço Unitário: ${formatMoney(item.preco_unitario)}\n`
         texto += `   - Subtotal: ${formatMoney(item.subtotal)}\n`
         const obsVal = (item.observacao || '').trim()
@@ -606,12 +608,12 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                         </Table.Td>
                         <Table.Td>
                           <Badge variant="light" color="cyan" size="sm">
-                            {item.embalagem}
+                            {item.marca ? `[${item.marca}] ` : ''}{item.embalagem}
                           </Badge>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
                           <Text size="sm">
-                            {item.quantidade_solicitada} {item.produto_unidade_padrao}
+                            {item.quantidade_solicitada} {item.unidade}
                           </Text>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'center' }}>
@@ -621,7 +623,7 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
                           <Text size="sm" fw={600}>
-                            {item.quantidade_efetiva} {item.produto_unidade_padrao}
+                            {item.quantidade_efetiva} {item.unidade}
                           </Text>
                           {item.sobra > 0 && (
                             <Text size="11px" c="blue">

@@ -330,16 +330,6 @@ export function NecessidadesView({
         },
       },
       {
-        accessorKey: 'produto_unidade_padrao',
-        header: 'Unidade Padrão',
-        size: 160,
-        Cell: ({ cell }) => (
-          <Badge variant="light" color="indigo">
-            {cell.getValue<string>()}
-          </Badge>
-        ),
-      },
-      {
         id: 'acoes',
         header: 'Ações',
         size: 90,
@@ -451,16 +441,11 @@ export function NecessidadesView({
             </Button>
           </Group>
 
-          {produtoSelecionado && (
+          {produtoSelecionado && produtoSelecionado.categoria && (
             <Group mt="xs" gap="xs">
-              <Badge variant="light" color="indigo" size="sm">
-                Unidade Padrão: {produtoSelecionado.unidade_padrao}
+              <Badge variant="dot" color="teal" size="sm">
+                {produtoSelecionado.categoria}
               </Badge>
-              {produtoSelecionado.categoria && (
-                <Badge variant="dot" color="teal" size="sm">
-                  {produtoSelecionado.categoria}
-                </Badge>
-              )}
             </Group>
           )}
           </fieldset>

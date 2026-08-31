@@ -113,7 +113,6 @@ def create_schema(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL UNIQUE,
             categoria TEXT,
-            unidade_padrao TEXT NOT NULL DEFAULT 'UN',
             ativo INTEGER NOT NULL DEFAULT 1
         );
 
@@ -153,8 +152,10 @@ def create_schema(conn: sqlite3.Connection) -> None:
             id_rodada INTEGER NOT NULL,
             id_fornecedor INTEGER NOT NULL,
             id_produto INTEGER NOT NULL,
+            marca TEXT,
             embalagem TEXT NOT NULL,
             qtd_por_embalagem REAL NOT NULL,
+            unidade TEXT NOT NULL DEFAULT 'UN',
             preco_embalagem REAL NOT NULL,
             FOREIGN KEY (id_rodada) REFERENCES rodadas (id) ON DELETE CASCADE,
             FOREIGN KEY (id_fornecedor) REFERENCES fornecedores (id),
@@ -177,15 +178,6 @@ def create_schema(conn: sqlite3.Connection) -> None:
         """
     )
     conn.commit()
-
-    # 3. Transfere dados das tabelas antigas para as recém criadas e limpa o lixo
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='necessidades_old'")
-    if cursor.fetchone():
-        for table in ["necessidades", "cotacoes", "alocacoes"]:
-            cursor.execute(f"INSERT INTO {table} SELECT * FROM {table}_old")
-            cursor.execute(f"DROP TABLE {table}_old")
-        conn.commit()
-        conn.execute("PRAGMA foreign_keys = ON;")
 
 
 def seed_configuracoes(conn: sqlite3.Connection) -> None:
@@ -278,24 +270,24 @@ def popular_banco_demo_completo_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     # 1. 12 PRODUTOS EM 4 CATEGORIAS
     produtos = [
         # Limpeza
-        ("Detergente Líquido Neutro 500ml", "Limpeza", "UN"),
-        ("Desinfetante Lavanda 5L", "Limpeza", "GALAO"),
-        ("Álcool Líquido 70% 1L", "Limpeza", "FRASCO"),
-        ("Sabão em Pó 1kg", "Limpeza", "CX"),
+        ("Detergente Líquido Neutro 500ml", "Limpeza"),
+        ("Desinfetante Lavanda 5L", "Limpeza"),
+        ("Álcool Líquido 70% 1L", "Limpeza"),
+        ("Sabão em Pó 1kg", "Limpeza"),
         # Descartáveis
-        ("Papel Toalha Interfolha 2 Dobras", "Descartáveis", "PCT"),
-        ("Copo Descartável 200ml", "Descartáveis", "UN"),
-        ("Saco de Lixo Reforçado 100L", "Descartáveis", "PCT"),
-        ("Guardanapo de Papel 30x30", "Descartáveis", "PCT"),
+        ("Papel Toalha Interfolha 2 Dobras", "Descartáveis"),
+        ("Copo Descartável 200ml", "Descartáveis"),
+        ("Saco de Lixo Reforçado 100L", "Descartáveis"),
+        ("Guardanapo de Papel 30x30", "Descartáveis"),
         # Alimentos & Copa
-        ("Café Torrado e Moído 500g", "Alimentos & Copa", "PCT"),
-        ("Açúcar Refinado 1kg", "Alimentos & Copa", "PCT"),
+        ("Café Torrado e Moído 500g", "Alimentos & Copa"),
+        ("Açúcar Refinado 1kg", "Alimentos & Copa"),
         # Higiene & Papelaria
-        ("Sabonete Líquido Erva Doce 5L", "Higiene", "GALAO"),
-        ("Papel Higiênico Folha Dupla 30m", "Higiene", "FARDO"),
+        ("Sabonete Líquido Erva Doce 5L", "Higiene"),
+        ("Papel Higiênico Folha Dupla 30m", "Higiene"),
     ]
     cursor.executemany(
-        "INSERT INTO produtos (nome, categoria, unidade_padrao) VALUES (?, ?, ?)",
+        "INSERT INTO produtos (nome, categoria) VALUES (?, ?)",
         produtos,
     )
 
@@ -359,89 +351,89 @@ def popular_banco_demo_completo_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     # COTAÇÕES HISTÓRICAS (Evolução de preços para gráficos e estatísticas)
     cotacoes_seed = [
         # --- RODADA 1 (Janeiro 2026) ---
-        (r1, 1, 1, "Caixa c/ 24 un", 24.0, 57.60),  # 2.40/un
-        (r1, 2, 1, "Fardo c/ 12 un", 12.0, 27.60),  # 2.30/un
-        (r1, 3, 1, "Caixa c/ 24 un", 24.0, 58.80),  # 2.45/un
-        (r1, 1, 2, "Galão 5L", 1.0, 32.00),
-        (r1, 2, 2, "Galão 5L", 1.0, 29.90),
-        (r1, 4, 2, "Galão 5L", 1.0, 31.50),
-        (r1, 3, 5, "Fardo c/ 8 pct", 8.0, 128.00), # 16.00/pct
-        (r1, 5, 5, "Fardo c/ 10 pct", 10.0, 155.00), # 15.50/pct
-        (r1, 3, 6, "Caixa c/ 5000 un", 5000.0, 220.00), # 0.044/un
-        (r1, 5, 6, "Caixa c/ 2500 un", 2500.0, 115.00), # 0.046/un
-        (r1, 2, 9, "Pacote 500g", 1.0, 18.50),
-        (r1, 4, 9, "Fardo c/ 10 pct", 10.0, 179.00), # 17.90/pct
-        (r1, 1, 11, "Galão 5L", 1.0, 42.00),
-        (r1, 2, 11, "Galão 5L", 1.0, 39.50),
+        (r1, 1, 1, "Ypê", "Caixa c/ 24 un", 24.0, "UN", 57.60),  # 2.40/un
+        (r1, 2, 1, "Limpol", "Fardo c/ 12 un", 12.0, "UN", 27.60),  # 2.30/un
+        (r1, 3, 1, "Minuano", "Caixa c/ 24 un", 24.0, "UN", 58.80),  # 2.45/un
+        (r1, 1, 2, "Veja", "Galão 5L", 1.0, "GALAO", 32.00),
+        (r1, 2, 2, "Pinho Sol", "Galão 5L", 1.0, "GALAO", 29.90),
+        (r1, 4, 2, "Sancler", "Galão 5L", 1.0, "GALAO", 31.50),
+        (r1, 3, 5, "Sulleg", "Fardo c/ 8 pct", 8.0, "PCT", 128.00), # 16.00/pct
+        (r1, 5, 5, "Melhoramentos", "Fardo c/ 10 pct", 10.0, "PCT", 155.00), # 15.50/pct
+        (r1, 3, 6, "Copobras", "Caixa c/ 5000 un", 5000.0, "UN", 220.00), # 0.044/un
+        (r1, 5, 6, "Altacoppo", "Caixa c/ 2500 un", 2500.0, "UN", 115.00), # 0.046/un
+        (r1, 2, 9, "Pilão", "Pacote 500g", 1.0, "PCT", 18.50),
+        (r1, 4, 9, "Melitta", "Fardo c/ 10 pct", 10.0, "PCT", 179.00), # 17.90/pct
+        (r1, 1, 11, "Premisse", "Galão 5L", 1.0, "GALAO", 42.00),
+        (r1, 2, 11, "Trilha", "Galão 5L", 1.0, "GALAO", 39.50),
 
         # --- RODADA 2 (Fevereiro 2026) ---
-        (r2, 1, 1, "Caixa c/ 24 un", 24.0, 56.40),  # 2.35/un
-        (r2, 2, 1, "Fardo c/ 12 un", 12.0, 27.00),  # 2.25/un
-        (r2, 4, 1, "Caixa c/ 24 un", 24.0, 55.20),  # 2.30/un
-        (r2, 1, 2, "Galão 5L", 1.0, 31.00),
-        (r2, 3, 2, "Galão 5L", 1.0, 28.50),
-        (r2, 1, 3, "Caixa c/ 12 frascos", 12.0, 78.00), # 6.50/frasco
-        (r2, 2, 3, "Caixa c/ 6 frascos", 6.0, 40.20),   # 6.70/frasco
-        (r2, 3, 5, "Fardo c/ 8 pct", 8.0, 124.00),
-        (r2, 5, 5, "Fardo c/ 10 pct", 10.0, 150.00),
-        (r2, 3, 6, "Caixa c/ 5000 un", 5000.0, 215.00),
-        (r2, 5, 6, "Caixa c/ 5000 un", 5000.0, 210.00),
-        (r2, 3, 7, "Pacote c/ 100 un", 1.0, 48.00),
-        (r2, 5, 7, "Pacote c/ 100 un", 1.0, 45.00),
-        (r2, 2, 9, "Pacote 500g", 1.0, 17.90),
-        (r2, 4, 9, "Fardo c/ 10 pct", 10.0, 172.00),
-        (r2, 1, 12, "Fardo c/ 64 rolos", 64.0, 96.00),
+        (r2, 1, 1, "Ypê", "Caixa c/ 24 un", 24.0, "UN", 56.40),  # 2.35/un
+        (r2, 2, 1, "Limpol", "Fardo c/ 12 un", 12.0, "UN", 27.00),  # 2.25/un
+        (r2, 4, 1, "Minuano", "Caixa c/ 24 un", 24.0, "UN", 55.20),  # 2.30/un
+        (r2, 1, 2, "Veja", "Galão 5L", 1.0, "GALAO", 31.00),
+        (r2, 3, 2, "Pinho Sol", "Galão 5L", 1.0, "GALAO", 28.50),
+        (r2, 1, 3, "Zulu", "Caixa c/ 12 frascos", 12.0, "FRASCO", 78.00), # 6.50/frasco
+        (r2, 2, 3, "Itajá", "Caixa c/ 6 frascos", 6.0, "FRASCO", 40.20),   # 6.70/frasco
+        (r2, 3, 5, "Sulleg", "Fardo c/ 8 pct", 8.0, "PCT", 124.00),
+        (r2, 5, 5, "Melhoramentos", "Fardo c/ 10 pct", 10.0, "PCT", 150.00),
+        (r2, 3, 6, "Copobras", "Caixa c/ 5000 un", 5000.0, "UN", 215.00),
+        (r2, 5, 6, "Altacoppo", "Caixa c/ 5000 un", 5000.0, "UN", 210.00),
+        (r2, 3, 7, "Embalixo", "Pacote c/ 100 un", 1.0, "PCT", 48.00),
+        (r2, 5, 7, "Plastubos", "Pacote c/ 100 un", 1.0, "PCT", 45.00),
+        (r2, 2, 9, "Pilão", "Pacote 500g", 1.0, "PCT", 17.90),
+        (r2, 4, 9, "Melitta", "Fardo c/ 10 pct", 10.0, "PCT", 172.00),
+        (r2, 1, 12, "Neve", "Fardo c/ 64 rolos", 64.0, "ROLO", 96.00),
 
         # --- RODADA 3 (Março 2026) ---
-        (r3, 1, 1, "Caixa c/ 24 un", 24.0, 54.00),  # 2.25/un
-        (r3, 2, 1, "Fardo c/ 12 un", 12.0, 26.40),  # 2.20/un
-        (r3, 3, 1, "Caixa c/ 24 un", 24.0, 56.40),  # 2.35/un
-        (r3, 1, 2, "Galão 5L", 1.0, 29.90),
-        (r3, 2, 2, "Galão 5L", 1.0, 28.00),
-        (r3, 3, 2, "Galão 5L", 1.0, 27.50),
-        (r3, 1, 3, "Caixa c/ 12 frascos", 12.0, 75.60), # 6.30/frasco
-        (r3, 4, 3, "Caixa c/ 12 frascos", 12.0, 74.40), # 6.20/frasco
-        (r3, 1, 4, "Caixa c/ 24 cx", 24.0, 72.00),
-        (r3, 2, 4, "Caixa c/ 24 cx", 24.0, 69.60),
-        (r3, 3, 5, "Fardo c/ 8 pct", 8.0, 120.00), # 15.00/pct
-        (r3, 5, 5, "Fardo c/ 10 pct", 10.0, 142.00), # 14.20/pct
-        (r3, 3, 6, "Caixa c/ 5000 un", 5000.0, 205.00),
-        (r3, 5, 6, "Caixa c/ 5000 un", 5000.0, 200.00),
-        (r3, 2, 9, "Pacote 500g", 1.0, 17.50),
-        (r3, 4, 9, "Fardo c/ 10 pct", 10.0, 168.00),
-        (r3, 2, 10, "Fardo c/ 10 pct", 10.0, 42.00),
-        (r3, 4, 10, "Fardo c/ 10 pct", 10.0, 39.90),
-        (r3, 1, 11, "Galão 5L", 1.0, 38.00),
-        (r3, 2, 11, "Galão 5L", 1.0, 36.90),
+        (r3, 1, 1, "Ypê", "Caixa c/ 24 un", 24.0, "UN", 54.00),  # 2.25/un
+        (r3, 2, 1, "Limpol", "Fardo c/ 12 un", 12.0, "UN", 26.40),  # 2.20/un
+        (r3, 3, 1, "Minuano", "Caixa c/ 24 un", 24.0, "UN", 56.40),  # 2.35/un
+        (r3, 1, 2, "Veja", "Galão 5L", 1.0, "GALAO", 29.90),
+        (r3, 2, 2, "Pinho Sol", "Galão 5L", 1.0, "GALAO", 28.00),
+        (r3, 3, 2, "Sancler", "Galão 5L", 1.0, "GALAO", 27.50),
+        (r3, 1, 3, "Zulu", "Caixa c/ 12 frascos", 12.0, "FRASCO", 75.60), # 6.30/frasco
+        (r3, 4, 3, "Itajá", "Caixa c/ 12 frascos", 12.0, "FRASCO", 74.40), # 6.20/frasco
+        (r3, 1, 4, "Omo", "Caixa c/ 24 cx", 24.0, "CX", 72.00),
+        (r3, 2, 4, "Brilhante", "Caixa c/ 24 cx", 24.0, "CX", 69.60),
+        (r3, 3, 5, "Sulleg", "Fardo c/ 8 pct", 8.0, "PCT", 120.00), # 15.00/pct
+        (r3, 5, 5, "Melhoramentos", "Fardo c/ 10 pct", 10.0, "PCT", 142.00), # 14.20/pct
+        (r3, 3, 6, "Copobras", "Caixa c/ 5000 un", 5000.0, "UN", 205.00),
+        (r3, 5, 6, "Altacoppo", "Caixa c/ 5000 un", 5000.0, "UN", 200.00),
+        (r3, 2, 9, "Pilão", "Pacote 500g", 1.0, "PCT", 17.50),
+        (r3, 4, 9, "Melitta", "Fardo c/ 10 pct", 10.0, "PCT", 168.00),
+        (r3, 2, 10, "União", "Fardo c/ 10 pct", 10.0, "PCT", 42.00),
+        (r3, 4, 10, "Da Barra", "Fardo c/ 10 pct", 10.0, "PCT", 39.90),
+        (r3, 1, 11, "Premisse", "Galão 5L", 1.0, "GALAO", 38.00),
+        (r3, 2, 11, "Trilha", "Galão 5L", 1.0, "GALAO", 36.90),
 
         # --- RODADA 4 (Atual - Abril 2026) ---
-        (r4, 1, 1, "Caixa c/ 24 un", 24.0, 52.80),  # 2.20/un (menor)
-        (r4, 2, 1, "Fardo c/ 12 un", 12.0, 27.60),  # 2.30/un
-        (r4, 3, 1, "Caixa c/ 24 un", 24.0, 57.60),  # 2.40/un
-        (r4, 4, 1, "Caixa c/ 24 un", 24.0, 54.00),  # 2.25/un
-        (r4, 1, 2, "Galão 5L", 1.0, 29.00),
-        (r4, 2, 2, "Galão 5L", 1.0, 27.50),        # 27.50 (menor)
-        (r4, 3, 2, "Galão 5L", 1.0, 28.20),
-        (r4, 1, 3, "Caixa c/ 12 frascos", 12.0, 72.00), # 6.00/frasco
-        (r4, 2, 3, "Caixa c/ 6 frascos", 6.0, 37.20),   # 6.20/frasco
-        (r4, 4, 3, "Caixa c/ 12 frascos", 12.0, 70.80), # 5.90/frasco (menor)
-        (r4, 3, 5, "Fardo c/ 8 pct", 8.0, 116.00),      # 14.50/pct
-        (r4, 5, 5, "Fardo c/ 10 pct", 10.0, 140.00),    # 14.00/pct (menor)
-        (r4, 3, 6, "Caixa c/ 5000 un", 5000.0, 200.00), # 0.040/un (menor)
-        (r4, 5, 6, "Caixa c/ 2500 un", 2500.0, 105.00), # 0.042/un
-        (r4, 2, 9, "Pacote 500g", 1.0, 17.20),
-        (r4, 4, 9, "Fardo c/ 10 pct", 10.0, 165.00),    # 16.50/pct (menor)
-        (r4, 1, 11, "Galão 5L", 1.0, 37.00),
-        (r4, 2, 11, "Galão 5L", 1.0, 35.80),           # 35.80 (menor)
-        (r4, 1, 12, "Fardo c/ 64 rolos", 64.0, 92.80), # 1.45/un (menor)
-        (r4, 5, 12, "Fardo c/ 32 rolos", 32.0, 48.00), # 1.50/un
+        (r4, 1, 1, "Ypê", "Caixa c/ 24 un", 24.0, "UN", 52.80),  # 2.20/un (menor)
+        (r4, 2, 1, "Limpol", "Fardo c/ 12 un", 12.0, "UN", 27.60),  # 2.30/un
+        (r4, 3, 1, "Minuano", "Caixa c/ 24 un", 24.0, "UN", 57.60),  # 2.40/un
+        (r4, 4, 1, "Barra", "Caixa c/ 24 un", 24.0, "UN", 54.00),  # 2.25/un
+        (r4, 1, 2, "Veja", "Galão 5L", 1.0, "GALAO", 29.00),
+        (r4, 2, 2, "Pinho Sol", "Galão 5L", 1.0, "GALAO", 27.50),        # 27.50 (menor)
+        (r4, 3, 2, "Sancler", "Galão 5L", 1.0, "GALAO", 28.20),
+        (r4, 1, 3, "Zulu", "Caixa c/ 12 frascos", 12.0, "FRASCO", 72.00), # 6.00/frasco
+        (r4, 2, 3, "Itajá", "Caixa c/ 6 frascos", 6.0, "FRASCO", 37.20),   # 6.20/frasco
+        (r4, 4, 3, "Coperalcool", "Caixa c/ 12 frascos", 12.0, "FRASCO", 70.80), # 5.90/frasco (menor)
+        (r4, 3, 5, "Sulleg", "Fardo c/ 8 pct", 8.0, "PCT", 116.00),      # 14.50/pct
+        (r4, 5, 5, "Melhoramentos", "Fardo c/ 10 pct", 10.0, "PCT", 140.00),    # 14.00/pct (menor)
+        (r4, 3, 6, "Copobras", "Caixa c/ 5000 un", 5000.0, "UN", 200.00), # 0.040/un (menor)
+        (r4, 5, 6, "Altacoppo", "Caixa c/ 2500 un", 2500.0, "UN", 105.00), # 0.042/un
+        (r4, 2, 9, "Pilão", "Pacote 500g", 1.0, "PCT", 17.20),
+        (r4, 4, 9, "Melitta", "Fardo c/ 10 pct", 10.0, "PCT", 165.00),    # 16.50/pct (menor)
+        (r4, 1, 11, "Premisse", "Galão 5L", 1.0, "GALAO", 37.00),
+        (r4, 2, 11, "Trilha", "Galão 5L", 1.0, "GALAO", 35.80),           # 35.80 (menor)
+        (r4, 1, 12, "Neve", "Fardo c/ 64 rolos", 64.0, "ROLO", 92.80), # 1.45/un (menor)
+        (r4, 5, 12, "Personal", "Fardo c/ 32 rolos", 32.0, "ROLO", 48.00), # 1.50/un
     ]
     cursor.executemany(
         """
         INSERT INTO cotacoes (
             id_rodada, id_fornecedor, id_produto,
-            embalagem, qtd_por_embalagem, preco_embalagem
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            marca, embalagem, qtd_por_embalagem, unidade, preco_embalagem
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         cotacoes_seed,
     )
@@ -583,8 +575,10 @@ def obter_estatisticas_produto_db(conn: sqlite3.Connection, id_produto: int) -> 
             r.data_criacao AS rodada_data,
             c.id_fornecedor,
             f.nome AS fornecedor_nome,
+            c.marca,
             c.embalagem,
             c.qtd_por_embalagem,
+            c.unidade,
             c.preco_embalagem,
             (c.preco_embalagem / c.qtd_por_embalagem) AS preco_unitario
         FROM cotacoes c
@@ -695,9 +689,10 @@ def obter_estatisticas_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: in
             c.id_produto,
             p.nome AS produto_nome,
             p.categoria AS produto_categoria,
-            p.unidade_padrao AS produto_unidade_padrao,
+            c.marca,
             c.embalagem,
             c.qtd_por_embalagem,
+            c.unidade,
             c.preco_embalagem,
             (c.preco_embalagem / c.qtd_por_embalagem) AS preco_unitario
         FROM cotacoes c
@@ -720,10 +715,11 @@ def obter_estatisticas_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: in
             r.data_criacao AS rodada_data,
             a.id_produto,
             p.nome AS produto_nome,
-            p.unidade_padrao AS produto_unidade_padrao,
             a.quantidade,
+            c.marca,
             c.embalagem,
             c.qtd_por_embalagem,
+            c.unidade,
             c.preco_embalagem,
             (c.preco_embalagem / c.qtd_por_embalagem) AS preco_unitario
         FROM alocacoes a
@@ -795,9 +791,10 @@ def obter_historico_global_cotacoes_db(conn: sqlite3.Connection) -> List[Dict[st
             c.id_produto,
             p.nome AS produto_nome,
             p.categoria AS produto_categoria,
-            p.unidade_padrao AS produto_unidade_padrao,
+            c.marca,
             c.embalagem,
             c.qtd_por_embalagem,
+            c.unidade,
             c.preco_embalagem,
             (c.preco_embalagem / c.qtd_por_embalagem) AS preco_unitario,
             EXISTS(
@@ -936,14 +933,12 @@ def atualizar_produto_db(
     id_produto: int,
     nome: str,
     categoria: Optional[str] = None,
-    unidade_padrao: str = "UN",
 ) -> Dict[str, Any]:
     """Atualiza os dados de um produto existente, validando campos obrigatórios e unicidade do nome."""
     nome = nome.strip()
     if not nome:
         raise ValueError("O nome do produto não pode ser vazio.")
 
-    unidade_padrao = (unidade_padrao or "UN").strip().upper()
     categoria = categoria.strip() if categoria and categoria.strip() else None
 
     cursor = conn.cursor()
@@ -964,15 +959,15 @@ def atualizar_produto_db(
     cursor.execute(
         """
         UPDATE produtos
-        SET nome = ?, categoria = ?, unidade_padrao = ?
+        SET nome = ?, categoria = ?
         WHERE id = ?
         """,
-        (nome, categoria, unidade_padrao, id_produto),
+        (nome, categoria, id_produto),
     )
     conn.commit()
 
     cursor.execute(
-        "SELECT id, nome, categoria, unidade_padrao FROM produtos WHERE id = ?",
+        "SELECT id, nome, categoria, ativo FROM produtos WHERE id = ?",
         (id_produto,),
     )
     return dict(cursor.fetchone())

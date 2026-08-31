@@ -60,7 +60,6 @@ export interface LinhaAlocacao {
   id?: number
   id_produto: number
   produto_nome: string
-  produto_unidade_padrao: string
   quantidade_necessaria: number
   id_fornecedor: number
   quantidade_alocada: number
@@ -149,7 +148,6 @@ export function AlocacaoView({
               id: a.id,
               id_produto: Number(a.id_produto),
               produto_nome: a.produto_nome,
-              produto_unidade_padrao: a.produto_unidade_padrao,
               quantidade_necessaria: necMap.get(Number(a.id_produto)) || 0,
               id_fornecedor: Number(a.id_fornecedor),
               quantidade_alocada: Number(a.quantidade) || 0,
@@ -170,7 +168,6 @@ export function AlocacaoView({
                 key: `init-${n.id_produto}-${idx}`,
                 id_produto: Number(n.id_produto),
                 produto_nome: n.produto_nome,
-                produto_unidade_padrao: n.produto_unidade_padrao,
                 quantidade_necessaria: Number(n.quantidade) || 0,
                 id_fornecedor: melhorFornId,
                 quantidade_alocada: 0,
@@ -260,7 +257,6 @@ export function AlocacaoView({
       id: undefined,
       id_produto: Number(linhaBase.id_produto),
       produto_nome: linhaBase.produto_nome,
-      produto_unidade_padrao: linhaBase.produto_unidade_padrao,
       quantidade_necessaria: Number(linhaBase.quantidade_necessaria),
       id_fornecedor: 0, // zerado
       quantidade_alocada: 0, // zerada para digitação
@@ -315,7 +311,6 @@ export function AlocacaoView({
         key: `sug-${n.id_produto}-${idx}`,
         id_produto: Number(n.id_produto),
         produto_nome: n.produto_nome,
-        produto_unidade_padrao: n.produto_unidade_padrao,
         quantidade_necessaria: Number(n.quantidade) || 0,
         id_fornecedor: melhorFornId,
         quantidade_alocada: qtdAtual,
@@ -450,11 +445,8 @@ export function AlocacaoView({
                 {item.produto_nome}
               </Text>
               <Group gap={6}>
-                <Badge size="xs" variant="light" color="indigo">
-                  Unidade: {item.produto_unidade_padrao}
-                </Badge>
                 <Text size="xs" c="dimmed">
-                  Necessidade: <b>{item.quantidade_necessaria}</b> {item.produto_unidade_padrao}
+                  Necessidade: <b>{item.quantidade_necessaria}</b>
                 </Text>
               </Group>
             </Stack>
@@ -475,18 +467,10 @@ export function AlocacaoView({
               min={0}
               decimalScale={2}
               size="xs"
-              rightSectionWidth={75}
-              rightSectionPointerEvents="none"
-              rightSection={
-                <Text size="xs" fw={700} c="dimmed" mr={8}>
-                  {item.produto_unidade_padrao}
-                </Text>
-              }
               styles={{
                 input: {
                   fontWeight: 600,
                   textAlign: 'right',
-                  paddingRight: 80,
                 },
               }}
             />
@@ -508,7 +492,7 @@ export function AlocacaoView({
             const isMenor = menorPreco !== undefined && c.preco_unitario <= menorPreco
             return {
               value: c.id_fornecedor.toString(),
-              label: `${c.fornecedor_nome}${isMenor ? ' ⭐ (Melhor Preço)' : ''}`,
+              label: `${c.fornecedor_nome}${c.marca ? ` [${c.marca}]` : ''}${isMenor ? ' ⭐ (Melhor Preço)' : ''}`,
             }
           })
 
@@ -561,7 +545,7 @@ export function AlocacaoView({
           return (
             <Stack gap={2}>
               <Text fw={700} size="sm" c={isMenor ? 'teal.7' : undefined}>
-                {formatMoney(cot.preco_unitario)} / {item.produto_unidade_padrao}
+                {formatMoney(cot.preco_unitario)} / {cot.unidade || 'UN'}
               </Text>
               {isMenor ? (
                 <Badge
@@ -604,10 +588,10 @@ export function AlocacaoView({
           return (
             <Stack gap={2}>
               <Badge color="indigo" variant="outline" size="sm">
-                {cot.embalagem}
+                {cot.marca ? `[${cot.marca}] ` : ''}{cot.embalagem}
               </Badge>
               <Text size="xs" c="dimmed">
-                {formatMoney(cot.preco_embalagem)} ({cot.qtd_por_embalagem} {item.produto_unidade_padrao})
+                {formatMoney(cot.preco_embalagem)} ({cot.qtd_por_embalagem} {cot.unidade || 'UN'})
               </Text>
             </Stack>
           )
@@ -645,7 +629,7 @@ export function AlocacaoView({
                 {embComprar} {embComprar === 1 ? 'embalagem' : 'embalagens'}
               </Badge>
               <Text size="xs" c="dimmed">
-                Total: <b>{totalEfetivo}</b> {item.produto_unidade_padrao}
+                Total: <b>{totalEfetivo}</b> {cot.unidade || 'UN'}
                 {diferenca > 0 && (
                   <Text span c="blue" fw={600}>
                     {' '}

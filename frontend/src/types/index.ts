@@ -2,7 +2,6 @@ export interface Produto {
   id: number
   nome: string
   categoria?: string | null
-  unidade_padrao: string
   ativo?: number
 }
 
@@ -36,7 +35,6 @@ export interface Necessidade {
   id_produto: number
   produto_nome: string
   produto_categoria?: string | null
-  produto_unidade_padrao: string
   quantidade: number
 }
 
@@ -47,11 +45,13 @@ export interface Cotacao {
   fornecedor_nome: string
   id_produto: number
   produto_nome: string
-  produto_unidade_padrao: string
+  marca?: string | null
   embalagem: string
   qtd_por_embalagem: number
+  unidade: string
   preco_embalagem: number
   preco_unitario: number
+  produto_novo?: boolean
 }
 
 export interface Alocacao {
@@ -59,13 +59,14 @@ export interface Alocacao {
   id_rodada: number
   id_produto: number
   produto_nome: string
-  produto_unidade_padrao: string
   id_fornecedor: number
   fornecedor_nome?: string
   quantidade: number
   observacao?: string | null
+  marca?: string | null
   embalagem?: string
   qtd_por_embalagem?: number
+  unidade?: string
   preco_embalagem?: number
   preco_unitario?: number
 }
@@ -89,9 +90,10 @@ export interface CotacaoHistoricoItem {
   id_produto?: number
   produto_nome?: string
   produto_categoria?: string | null
-  produto_unidade_padrao?: string
+  marca?: string | null
   embalagem: string
   qtd_por_embalagem: number
+  unidade: string
   preco_embalagem: number
   preco_unitario: number
 }
@@ -138,9 +140,10 @@ export interface HistoricoGlobalCotacaoItem {
   id_produto: number
   produto_nome: string
   produto_categoria: string | null
-  produto_unidade_padrao: string
+  marca?: string | null
   embalagem: string
   qtd_por_embalagem: number
+  unidade: string
   preco_embalagem: number
   preco_unitario: number
   foi_alocado: boolean | number
@@ -181,13 +184,11 @@ export interface PywebviewApi {
   criar_produto: (
     nome: string,
     categoria?: string | null,
-    unidade_padrao?: string,
   ) => Promise<Produto>
   atualizar_produto: (
     id_produto: number,
     nome: string,
     categoria?: string | null,
-    unidade_padrao?: string,
   ) => Promise<Produto>
   remover_produto: (id_produto: number) => Promise<{ sucesso: boolean; id: number; mensagem: string }>
   obter_estatisticas_produto: (id_produto: number) => Promise<EstatisticasProduto>
@@ -243,10 +244,13 @@ export interface PywebviewApi {
   criar_cotacao: (
     id_rodada: number,
     id_fornecedor: number,
-    id_produto: number,
-    embalagem: string,
-    qtd_por_embalagem: number,
-    preco_embalagem: number,
+    id_produto?: number | null,
+    produto_nome?: string | null,
+    marca?: string | null,
+    embalagem?: string,
+    qtd_por_embalagem?: number,
+    unidade?: string,
+    preco_embalagem?: number,
   ) => Promise<Cotacao>
   remover_cotacao: (id_cotacao: number) => Promise<{ sucesso: boolean; id: number }>
 

@@ -29,7 +29,7 @@ import {
   IconDownload,
   IconEdit,
   IconFileSpreadsheet,
-  IconInfoCircle,
+  IconPackage,
   IconPlus,
   IconReceipt,
   IconTrash,
@@ -108,6 +108,21 @@ const SUGESTOES_EMBALAGEM = [
   'Unidade',
 ]
 
+const SUGESTOES_UNIDADES = [
+  'UN',
+  'KG',
+  'L',
+  'PCT',
+  'CX',
+  'FARDO',
+  'FRASCO',
+  'GALAO',
+  'ROLO',
+  'PAR',
+  'LATA',
+  'M',
+]
+
 interface CotacoesViewProps {
   rodadaAtivaId?: number
   onRodadaChange?: (id: number) => void
@@ -153,29 +168,30 @@ export function CotacoesView({
     initialValues: {
       nome: '',
       categoria: '',
-      unidade_padrao: 'UN',
     },
     validate: {
       nome: (value) =>
         value.trim().length === 0 ? 'O nome do produto é obrigatório' : null,
-      unidade_padrao: (value) =>
-        value.trim().length === 0 ? 'Informe a unidade de medida padrão' : null,
     },
   })
 
   // Referências para navegação ultrarrápida por teclado
   const fornecedorRef = useRef<HTMLInputElement>(null)
   const produtoRef = useRef<HTMLInputElement>(null)
+  const marcaRef = useRef<HTMLInputElement>(null)
   const embalagemRef = useRef<HTMLInputElement>(null)
   const qtdRef = useRef<HTMLInputElement>(null)
+  const unidadeRef = useRef<HTMLInputElement>(null)
   const precoRef = useRef<HTMLInputElement>(null)
 
   const form = useForm({
     initialValues: {
-      produtoNome: '',
       fornecedorNome: '',
+      produtoNome: '',
+      marca: '',
       embalagem: 'Unidade',
       qtd_por_embalagem: 1,
+      unidade: 'UN',
       preco_embalagem: 0,
     },
     validate: {
@@ -185,6 +201,8 @@ export function CotacoesView({
         value.trim().length === 0 ? 'Informe o produto' : null,
       embalagem: (value) =>
         value.trim().length === 0 ? 'Informe a embalagem' : null,
+      unidade: (value) =>
+        value.trim().length === 0 ? 'Informe a unidade de medida' : null,
       qtd_por_embalagem: (value) =>
         value <= 0 ? 'Quantidade por embalagem deve ser maior que zero' : null,
       preco_embalagem: (value) =>
@@ -249,7 +267,7 @@ export function CotacoesView({
       const api = await getApi()
       const [listaRodadas, listaProdutos, listaFornecedores] = await Promise.all([
         api.listar_rodadas(),
-        api.listar_produtos(true),
+        api.listar_produtos(false),
         api.listar_fornecedores(true),
       ])
 
@@ -257,31 +275,22 @@ export function CotacoesView({
       setProdutos(listaProdutos)
       setFornecedores(listaFornecedores)
 
-      let rodadaId = selectedRodadaId
-      if (!rodadaId && listaRodadas.length > 0) {
-        rodadaId = listaRodadas[0].id
-        setSelectedRodadaId(rodadaId)
-        onRodadaChange?.(rodadaId)
-      }
-
-      if (rodadaId) {
-        const [cots, necs] = await Promise.all([
-          api.listar_cotacoes(rodadaId),
-          api.listar_necessidades(rodadaId),
-        ])
-        setCotacoes(cots)
-        setNecessidades(necs)
-
-        // Se houver fornecedores e nenhum selecionado, pré-seleciona o primeiro
-        if (listaFornecedores.length > 0 && !form.values.fornecedorNome) {
-          form.setFieldValue('fornecedorNome', listaFornecedores[0].nome)
-        }
+      // Se houver uma rodada ativa definida externamente ou seleciona a mais recente
+      if (rodadaAtivaId) {
+        setSelectedRodadaId(rodadaAtivaId)
+        await carregarCotacoesENecessidades(rodadaAtivaId)
+      } else if (listaRodadas.length > 0) {
+        const primeiraAberta =
+          listaRodadas.find((r) => r.status === 'aberta') || listaRodadas[0]
+        setSelectedRodadaId(primeiraAberta.id)
+        onRodadaChange?.(primeiraAberta.id)
+        await carregarCotacoesENecessidades(primeiraAberta.id)
       }
     } catch (error) {
-      console.error('Erro ao carregar dados de cotações:', error)
+      console.error('Erro ao carregar dados iniciais de cotações:', error)
       notifications.show({
-        title: 'Erro de comunicação',
-        message: 'Não foi possível carregar as cotações da rodada.',
+        title: 'Erro ao carregar dados',
+        message: 'Não foi possível carregar as informações da base.',
         color: 'red',
         icon: <IconX size={16} />,
       })
@@ -290,16 +299,16 @@ export function CotacoesView({
     }
   }
 
-  const carregarCotacoesENecessidades = async (rodadaId: number) => {
+  const carregarCotacoesENecessidades = async (idRodada: number) => {
     try {
       setLoading(true)
       const api = await getApi()
-      const [cots, necs] = await Promise.all([
-        api.listar_cotacoes(rodadaId),
-        api.listar_necessidades(rodadaId),
+      const [listaCotacoes, listaNecessidades] = await Promise.all([
+        api.listar_cotacoes(idRodada),
+        api.listar_necessidades(idRodada),
       ])
-      setCotacoes(cots)
-      setNecessidades(necs)
+      setCotacoes(listaCotacoes)
+      setNecessidades(listaNecessidades)
     } catch (error) {
       console.error('Erro ao carregar cotações:', error)
     } finally {
@@ -312,7 +321,6 @@ export function CotacoesView({
     formEdicaoProduto.setValues({
       nome: produto.nome,
       categoria: produto.categoria || '',
-      unidade_padrao: produto.unidade_padrao || 'UN',
     })
     openModalEditarProduto()
   }
@@ -326,7 +334,6 @@ export function CotacoesView({
         produtoParaEditar.id,
         values.nome,
         values.categoria || null,
-        values.unidade_padrao,
       )
 
       notifications.show({
@@ -369,37 +376,6 @@ export function CotacoesView({
       return
     }
 
-    const prod = produtos.find(
-      (p) => p.nome.trim().toLowerCase() === values.produtoNome.trim().toLowerCase(),
-    )
-    if (!prod) {
-      form.setFieldError('produtoNome', 'Produto não encontrado no cadastro.')
-      notifications.show({
-        title: 'Produto inexistente',
-        message: `O produto "${values.produtoNome}" não foi encontrado no cadastro.`,
-        color: 'red',
-        icon: <IconAlertCircle size={16} />,
-      })
-      produtoRef.current?.focus()
-      return
-    }
-
-    const estaNaRodada = necessidades.some((n) => n.id_produto === prod.id)
-    if (!estaNaRodada) {
-      form.setFieldError(
-        'produtoNome',
-        'Este produto não está na lista de necessidades desta rodada.',
-      )
-      notifications.show({
-        title: 'Produto não solicitado na rodada',
-        message: `"${values.produtoNome}" não faz parte das necessidades desta rodada. Adicione-o na aba Necessidades se desejar cotá-lo.`,
-        color: 'orange',
-        icon: <IconAlertCircle size={16} />,
-      })
-      produtoRef.current?.focus()
-      return
-    }
-
     const forn = fornecedores.find(
       (f) =>
         f.nome.trim().toLowerCase() === values.fornecedorNome.trim().toLowerCase(),
@@ -407,8 +383,8 @@ export function CotacoesView({
     if (!forn) {
       form.setFieldError('fornecedorNome', 'Fornecedor não encontrado no cadastro.')
       notifications.show({
-        title: 'Fornecedor inexistente',
-        message: `O fornecedor "${values.fornecedorNome}" não foi encontrado.`,
+        title: 'Fornecedor não cadastrado',
+        message: `O fornecedor "${values.fornecedorNome}" não foi encontrado. Cadastre-o na aba Fornecedores antes de cotar.`,
         color: 'red',
         icon: <IconAlertCircle size={16} />,
       })
@@ -422,37 +398,49 @@ export function CotacoesView({
       const salva = await api.criar_cotacao(
         selectedRodadaId,
         forn.id,
-        prod.id,
+        null,
+        values.produtoNome,
+        values.marca || null,
         values.embalagem,
         values.qtd_por_embalagem,
+        values.unidade,
         values.preco_embalagem,
       )
+
+      if (salva.produto_novo) {
+        notifications.show({
+          title: 'Novo Produto Cadastrado',
+          message: `"${salva.produto_nome}" foi cadastrado no catálogo e incluído nas necessidades desta rodada.`,
+          color: 'teal',
+          icon: <IconPackage size={16} />,
+          autoClose: 3500,
+        })
+        await carregarDadosIniciais()
+      }
 
       notifications.show({
         title: 'Cotação Registrada',
         message: `"${salva.produto_nome}" (${salva.fornecedor_nome}): ${formatMoney(
           salva.preco_unitario,
-        )} / ${salva.produto_unidade_padrao}`,
+        )} / ${salva.unidade}${salva.marca ? ` [${salva.marca}]` : ''}`,
         color: 'green',
         icon: <IconCheck size={16} />,
-        autoClose: 1800,
+        autoClose: 2000,
       })
 
-      // Mantém o fornecedor ativo para lançamento contínuo em lote!
+      // Mantém o fornecedor e unidade ativos para lançamento contínuo em lote!
       form.setValues({
         produtoNome: '',
+        marca: '',
         fornecedorNome: values.fornecedorNome,
         embalagem: 'Unidade',
         qtd_por_embalagem: 1,
+        unidade: values.unidade || 'UN',
         preco_embalagem: 0,
       })
 
       await carregarCotacoesENecessidades(selectedRodadaId)
-
-      // Refoca instantaneamente no campo de produto para o próximo item
-      setTimeout(() => {
-        produtoRef.current?.focus()
-      }, 50)
+      setTimeout(() => produtoRef.current?.focus(), 50)
     } catch (error: any) {
       console.error('Erro ao salvar cotação:', error)
       notifications.show({
@@ -639,10 +627,12 @@ export function CotacoesView({
     }
   }
 
-  // Autocomplete lista apenas produtos da lista de necessidades da rodada
-  const nomesProdutosNecessarios = useMemo(() => {
-    return necessidades.map((n) => n.produto_nome)
-  }, [necessidades])
+  const nomesTodosProdutos = useMemo(() => {
+    const set = new Set<string>()
+    necessidades.forEach((n) => set.add(n.produto_nome))
+    produtos.forEach((p) => set.add(p.nome))
+    return Array.from(set)
+  }, [necessidades, produtos])
 
   const nomesFornecedores = useMemo(
     () => fornecedores.map((f) => f.nome),
@@ -655,6 +645,23 @@ export function CotacoesView({
         accessorKey: 'produto_nome',
         header: 'Produto',
         Cell: ({ cell }) => <Text fw={600}>{cell.getValue<string>()}</Text>,
+      },
+      {
+        accessorKey: 'marca',
+        header: 'Marca',
+        size: 130,
+        Cell: ({ cell }) => {
+          const val = cell.getValue<string | null>()
+          return val ? (
+            <Badge variant="light" color="indigo">
+              {val}
+            </Badge>
+          ) : (
+            <Text size="sm" c="dimmed">
+              -
+            </Text>
+          )
+        },
       },
       {
         accessorKey: 'fornecedor_nome',
@@ -676,7 +683,7 @@ export function CotacoesView({
         size: 130,
         Cell: ({ row }) => (
           <Text size="sm" style={{ textAlign: 'right' }}>
-            {row.original.qtd_por_embalagem} {row.original.produto_unidade_padrao}
+            {row.original.qtd_por_embalagem} {row.original.unidade || 'UN'}
           </Text>
         ),
       },
@@ -697,7 +704,7 @@ export function CotacoesView({
         Cell: ({ row }) => (
           <Badge variant="filled" color="teal" size="md">
             {formatMoney(row.original.preco_unitario)} /{' '}
-            {row.original.produto_unidade_padrao}
+            {row.original.unidade || 'UN'}
           </Badge>
         ),
       },
@@ -812,24 +819,16 @@ export function CotacoesView({
         }
       />
 
-      {/* Dica se não houver necessidades cadastradas */}
-      {necessidades.length === 0 && !loading && (
-        <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light" radius="md">
-          Esta rodada ainda não possui produtos na lista de necessidades. Adicione produtos na aba{' '}
-          <b>Necessidades</b> para poder cotá-los aqui.
-        </Alert>
-      )}
-
       {/* Formulário Turbo de Cadastro de Cotação */}
       <SectionCard
         title="Nova Cotação de Fornecedor"
-        subtitle="O fornecedor fica fixo para lançamento em lote"
+        subtitle="O fornecedor fica fixo para lançamento em lote — novos produtos são cadastrados automaticamente"
         kbdHint="Enter"
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <fieldset disabled={isFechada} style={{ border: 'none', padding: 0, margin: 0 }}>
             <Stack gap="md">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
               <AppAutocomplete
                 ref={fornecedorRef}
                 label="Fornecedor (Fixo para Lote)"
@@ -844,7 +843,7 @@ export function CotacoesView({
               <Stack gap={4}>
                 <Group justify="space-between" align="center">
                   <Text size="sm" fw={500}>
-                    Produto em Necessidade <Text span c="red">*</Text>
+                    Produto <Text span c="red">*</Text>
                   </Text>
                   {produtoSelecionado && (
                     <Button
@@ -860,21 +859,30 @@ export function CotacoesView({
                 </Group>
                 <AppAutocomplete
                   ref={produtoRef}
-                  placeholder={
-                    nomesProdutosNecessarios.length > 0
-                      ? 'Selecione o produto em necessidade...'
-                      : 'Nenhum produto em necessidade nesta rodada'
-                  }
-                  data={nomesProdutosNecessarios}
+                  placeholder="Digite ou selecione o produto..."
+                  data={nomesTodosProdutos}
                   required
-                  limit={8}
+                  limit={10}
                   {...form.getInputProps('produtoNome')}
-                  onTabOrEnterNextRef={embalagemRef}
+                  onTabOrEnterNextRef={marcaRef}
                 />
               </Stack>
+
+              <TextInput
+                ref={marcaRef}
+                label="Marca (Opcional)"
+                placeholder="Ex: Ypê, Bombril, 3M..."
+                {...form.getInputProps('marca')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    embalagemRef.current?.focus()
+                  }
+                }}
+              />
             </SimpleGrid>
 
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="md">
               <AppAutocomplete
                 ref={embalagemRef}
                 label="Descrição da Embalagem"
@@ -887,11 +895,7 @@ export function CotacoesView({
 
               <NumberInput
                 ref={qtdRef}
-                label={
-                  produtoSelecionado
-                    ? `Qtd na Embalagem (${produtoSelecionado.unidade_padrao})`
-                    : 'Qtd na Embalagem'
-                }
+                label="Qtd na Embalagem"
                 placeholder="Ex: 24"
                 min={0.001}
                 decimalScale={3}
@@ -900,9 +904,19 @@ export function CotacoesView({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
-                    precoRef.current?.focus()
+                    unidadeRef.current?.focus()
                   }
                 }}
+              />
+
+              <AppAutocomplete
+                ref={unidadeRef}
+                label="Unidade Medida"
+                placeholder="Ex: UN, KG, L, PCT, CX"
+                data={SUGESTOES_UNIDADES}
+                required
+                {...form.getInputProps('unidade')}
+                onTabOrEnterNextRef={precoRef}
               />
 
               <NumberInput
@@ -938,17 +952,19 @@ export function CotacoesView({
                 <Group justify="space-between" align="center">
                   <div>
                     <Text size="sm" fw={600}>
-                      {produtoSelecionado
-                        ? `Item: ${produtoSelecionado.nome} (Unidade: ${produtoSelecionado.unidade_padrao})`
-                        : 'Selecione um produto para visualizar o preço normalizado.'}
+                      {form.values.produtoNome
+                        ? `Item: ${form.values.produtoNome} (Unidade: ${form.values.unidade || 'UN'})`
+                        : 'Preencha os dados do item para visualizar o preço normalizado.'}
                       {fornecedorSelecionado &&
                         ` • Fornecedor: ${fornecedorSelecionado.nome}`}
+                      {form.values.marca &&
+                        ` • Marca: ${form.values.marca}`}
                     </Text>
                   </div>
                   <Badge size="xl" color="teal" variant="filled">
                     {precoUnitarioPreview > 0
                       ? `${formatMoney(precoUnitarioPreview)} / ${
-                          produtoSelecionado?.unidade_padrao || 'un'
+                          form.values.unidade || 'UN'
                         }`
                       : 'R$ 0,00'}
                   </Badge>
@@ -1038,7 +1054,7 @@ export function CotacoesView({
       >
         <Stack gap="md">
           <Text size="sm" c="dimmed">
-            Selecione o fornecedor que enviou os preços e faça o upload da planilha modelo preenchida.
+            Selecione o fornecedor que enviou os preços e faça o upload da planilha modelo preenchida. Novos produtos serão cadastrados automaticamente.
           </Text>
 
           <AppSelect
@@ -1104,14 +1120,6 @@ export function CotacoesView({
               label="Categoria"
               placeholder="Ex: Alimentos, Limpeza, Embalagens..."
               {...formEdicaoProduto.getInputProps('categoria')}
-            />
-
-            <AppSelect
-              label="Unidade Padrão"
-              placeholder="Selecione a unidade..."
-              data={['UN', 'KG', 'L', 'CX', 'PCT', 'FARDO', 'M', 'PAR', 'ROLO']}
-              required
-              {...formEdicaoProduto.getInputProps('unidade_padrao')}
             />
 
             <Group justify="flex-end" mt="md">

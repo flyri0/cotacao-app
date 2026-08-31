@@ -58,7 +58,6 @@ def gerar_planilha_modelo_cotacao_db(
             n.id_produto,
             p.nome AS produto_nome,
             p.categoria AS produto_categoria,
-            p.unidade_padrao AS produto_unidade_padrao,
             n.quantidade AS quantidade_solicitada
         FROM necessidades n
         JOIN produtos p ON p.id = n.id_produto
@@ -74,7 +73,7 @@ def gerar_planilha_modelo_cotacao_db(
     if id_fornecedor:
         cursor.execute(
             """
-            SELECT id_produto, embalagem, qtd_por_embalagem, preco_embalagem
+            SELECT id_produto, marca, embalagem, qtd_por_embalagem, unidade, preco_embalagem
             FROM cotacoes
             WHERE id_rodada = ? AND id_fornecedor = ?
             """,
@@ -89,7 +88,7 @@ def gerar_planilha_modelo_cotacao_db(
     ws.views.sheetView[0].showGridLines = True
 
     # 1. Título e Cabeçalho do Documento
-    ws.merge_cells("A1:H1")
+    ws.merge_cells("A1:I1")
     ws["A1"] = f"PLANILHA DE COTAÇÃO DE PREÇOS — {rodada['descricao'].upper()}"
     ws["A1"].font = TITLE_FONT
     ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
@@ -99,9 +98,9 @@ def gerar_planilha_modelo_cotacao_db(
     subtitulo = f"Rodada #{rodada['id']} | Data: {rodada['data_criacao']}"
     if fornecedor_nome:
         subtitulo += f" | Fornecedor: {fornecedor_nome}"
-    subtitulo += " | Preencha as colunas destacadas (Embalagem, Qtd e Preço)"
+    subtitulo += " | Preencha as colunas destacadas (Marca, Embalagem, Qtd, Unidade e Preço)"
 
-    ws.merge_cells("A2:H2")
+    ws.merge_cells("A2:I2")
     ws["A2"] = subtitulo
     ws["A2"].font = SUBTITLE_FONT
     ws["A2"].alignment = Alignment(horizontal="center", vertical="center")
@@ -112,10 +111,11 @@ def gerar_planilha_modelo_cotacao_db(
         ("ID", 8),
         ("Produto / Item", 35),
         ("Categoria", 18),
-        ("Unidade Base", 14),
         ("Qtd Necessária", 15),
-        ("Descrição da Embalagem Cotada", 30),
+        ("Marca Ofertada", 22),
+        ("Descrição da Embalagem", 28),
         ("Qtd na Embalagem", 18),
+        ("Unidade Medida", 16),
         ("Preço da Embalagem (R$)", 22),
     ]
 
@@ -136,8 +136,10 @@ def gerar_planilha_modelo_cotacao_db(
         id_prod = nec["id_produto"]
         cot = cotacoes_existentes.get(id_prod, {})
 
-        embalagem_val = cot.get("embalagem", f"Unidade ({nec['produto_unidade_padrao']})")
+        marca_val = cot.get("marca", "")
+        embalagem_val = cot.get("embalagem", "Unidade")
         qtd_emb_val = cot.get("qtd_por_embalagem", 1.0)
+        unidade_val = cot.get("unidade", "UN")
         preco_emb_val = cot.get("preco_embalagem", None)
 
         fill = ROW_EVEN_FILL if idx % 2 == 0 else ROW_ODD_FILL
@@ -155,14 +157,14 @@ def gerar_planilha_modelo_cotacao_db(
         c_cat = ws.cell(row=current_row, column=3, value=nec["produto_categoria"] or "-")
         c_cat.alignment = Alignment(horizontal="center", vertical="center")
 
-        # Coluna D: Unidade Padrão
-        c_un = ws.cell(row=current_row, column=4, value=nec["produto_unidade_padrao"])
-        c_un.alignment = Alignment(horizontal="center", vertical="center")
-
-        # Coluna E: Quantidade Solicitada
-        c_qtd = ws.cell(row=current_row, column=5, value=nec["quantidade_solicitada"])
+        # Coluna D: Quantidade Solicitada
+        c_qtd = ws.cell(row=current_row, column=4, value=nec["quantidade_solicitada"])
         c_qtd.alignment = Alignment(horizontal="right", vertical="center")
         c_qtd.number_format = "#,##0.00"
+
+        # Coluna E: Marca Ofertada (Preenchimento)
+        c_marca = ws.cell(row=current_row, column=5, value=marca_val)
+        c_marca.alignment = Alignment(horizontal="left", vertical="center")
 
         # Coluna F: Descrição da Embalagem (Preenchimento)
         c_emb = ws.cell(row=current_row, column=6, value=embalagem_val)
@@ -173,16 +175,20 @@ def gerar_planilha_modelo_cotacao_db(
         c_qtd_emb.alignment = Alignment(horizontal="right", vertical="center")
         c_qtd_emb.number_format = "#,##0.00"
 
-        # Coluna H: Preço da Embalagem (Preenchimento)
-        c_preco = ws.cell(row=current_row, column=8, value=preco_emb_val if preco_emb_val is not None else "")
+        # Coluna H: Unidade de Medida (Preenchimento)
+        c_un = ws.cell(row=current_row, column=8, value=unidade_val)
+        c_un.alignment = Alignment(horizontal="center", vertical="center")
+
+        # Coluna I: Preço da Embalagem (Preenchimento)
+        c_preco = ws.cell(row=current_row, column=9, value=preco_emb_val if preco_emb_val is not None else "")
         c_preco.alignment = Alignment(horizontal="right", vertical="center")
         c_preco.number_format = "R$ #,##0.00"
 
         # Aplica bordas e cores
-        for col_i in range(1, 9):
+        for col_i in range(1, 10):
             cell = ws.cell(row=current_row, column=col_i)
             cell.border = BORDER_THIN
-            if col_i in (6, 7, 8):
+            if col_i in (5, 6, 7, 8, 9):
                 # Destaca suavemente colunas editáveis
                 cell.fill = PatternFill(start_color="EFF6FF", end_color="EFF6FF", fill_type="solid")
             else:
@@ -219,8 +225,8 @@ def processar_planilha_cotacao_db(
     conteudo_base64: str,
 ) -> Dict[str, Any]:
     """
-    Processa um arquivo Excel (.xlsx) enviado via base64, lê as colunas de cotação
-    e insere/atualiza os registros na tabela cotacoes.
+    Processa um arquivo Excel (.xlsx) enviado via base64, lê as colunas de cotação,
+    auto-cadastra novos produtos caso não existam e insere/atualiza os registros em cotacoes.
     """
     raw_data = base64.b64decode(conteudo_base64)
     buffer = io.BytesIO(raw_data)
@@ -246,6 +252,7 @@ def processar_planilha_cotacao_db(
 
     importados = 0
     ignorados = 0
+    produtos_criados = 0
     erros: List[str] = []
 
     # Procura a linha de cabeçalho
@@ -261,33 +268,26 @@ def processar_planilha_cotacao_db(
     for row_idx in range(header_row_idx + 1, ws.max_row + 1):
         id_prod_val = ws.cell(row=row_idx, column=1).value
         nome_prod_val = ws.cell(row=row_idx, column=2).value
-        embalagem_val = ws.cell(row=row_idx, column=6).value
-        qtd_emb_val = ws.cell(row=row_idx, column=7).value
-        preco_emb_val = ws.cell(row=row_idx, column=8).value
+
+        # Pode ser modelo novo (9 colunas: Marca na col 5, Embalagem na 6, Qtd na 7, Unidade na 8, Preço na 9)
+        # ou modelo anterior (8 colunas)
+        if ws.max_column >= 9:
+            marca_val = ws.cell(row=row_idx, column=5).value
+            embalagem_val = ws.cell(row=row_idx, column=6).value
+            qtd_emb_val = ws.cell(row=row_idx, column=7).value
+            unidade_val = ws.cell(row=row_idx, column=8).value
+            preco_emb_val = ws.cell(row=row_idx, column=9).value
+        else:
+            marca_val = None
+            embalagem_val = ws.cell(row=row_idx, column=6).value
+            qtd_emb_val = ws.cell(row=row_idx, column=7).value
+            unidade_val = "UN"
+            preco_emb_val = ws.cell(row=row_idx, column=8).value
 
         if not id_prod_val and not nome_prod_val:
             continue
 
-        # Identifica produto
-        id_produto = None
-        if id_prod_val:
-            try:
-                id_tentativa = int(id_prod_val)
-                if id_tentativa in produtos_por_id:
-                    id_produto = id_tentativa
-            except (ValueError, TypeError):
-                pass
-
-        if not id_produto and nome_prod_val:
-            nome_norm = str(nome_prod_val).strip().lower()
-            id_produto = produtos_por_nome.get(nome_norm)
-
-        if not id_produto:
-            erros.append(f"Linha {row_idx}: Produto '{nome_prod_val or id_prod_val}' não localizado no catálogo.")
-            ignorados += 1
-            continue
-
-        # Valida se há preço preenchido
+        # Valida se há preço preenchido antes de qualquer ação
         if preco_emb_val is None or str(preco_emb_val).strip() == "":
             ignorados += 1
             continue
@@ -303,6 +303,47 @@ def processar_planilha_cotacao_db(
             ignorados += 1
             continue
 
+        # Identifica produto existente por ID ou nome
+        id_produto = None
+        if id_prod_val:
+            try:
+                id_tentativa = int(id_prod_val)
+                if id_tentativa in produtos_por_id:
+                    id_produto = id_tentativa
+            except (ValueError, TypeError):
+                pass
+
+        if not id_produto and nome_prod_val:
+            nome_norm = str(nome_prod_val).strip().lower()
+            id_produto = produtos_por_nome.get(nome_norm)
+
+        # Auto-cadastro de produto caso não exista e haja preço cotado
+        if not id_produto and nome_prod_val and str(nome_prod_val).strip():
+            nome_novo = str(nome_prod_val).strip()
+            cursor.execute(
+                "INSERT INTO produtos (nome, categoria, ativo) VALUES (?, NULL, 1)",
+                (nome_novo,),
+            )
+            id_produto = cursor.lastrowid
+            produtos_por_id[id_produto] = nome_novo
+            produtos_por_nome[nome_novo.lower()] = id_produto
+            produtos_criados += 1
+
+        if not id_produto:
+            erros.append(f"Linha {row_idx}: Nome do produto não informado.")
+            ignorados += 1
+            continue
+
+        # Garante que o produto conste nas necessidades da rodada
+        cursor.execute(
+            """
+            INSERT INTO necessidades (id_rodada, id_produto, quantidade)
+            VALUES (?, ?, 0.0)
+            ON CONFLICT(id_rodada, id_produto) DO NOTHING
+            """,
+            (id_rodada, id_produto),
+        )
+
         # Valida quantidade por embalagem
         try:
             qtd_emb = float(qtd_emb_val) if qtd_emb_val else 1.0
@@ -311,21 +352,25 @@ def processar_planilha_cotacao_db(
         except (ValueError, TypeError):
             qtd_emb = 1.0
 
+        marca_desc = str(marca_val).strip() if marca_val and str(marca_val).strip() else None
         embalagem_desc = str(embalagem_val).strip() if embalagem_val else "Unidade"
+        unidade_desc = str(unidade_val).strip().upper() if unidade_val else "UN"
 
         # Insere ou atualiza na tabela de cotações
         cursor.execute(
             """
             INSERT INTO cotacoes (
                 id_rodada, id_fornecedor, id_produto,
-                embalagem, qtd_por_embalagem, preco_embalagem
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                marca, embalagem, qtd_por_embalagem, unidade, preco_embalagem
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id_rodada, id_fornecedor, id_produto) DO UPDATE SET
+                marca = excluded.marca,
                 embalagem = excluded.embalagem,
                 qtd_por_embalagem = excluded.qtd_por_embalagem,
+                unidade = excluded.unidade,
                 preco_embalagem = excluded.preco_embalagem
             """,
-            (id_rodada, id_fornecedor, id_produto, embalagem_desc, qtd_emb, preco_emb),
+            (id_rodada, id_fornecedor, id_produto, marca_desc, embalagem_desc, qtd_emb, unidade_desc, preco_emb),
         )
         importados += 1
 
@@ -334,6 +379,7 @@ def processar_planilha_cotacao_db(
     return {
         "sucesso": True,
         "importados": importados,
+        "produtos_criados": produtos_criados,
         "ignorados": ignorados,
         "erros": erros,
         "fornecedor_nome": forn_row["nome"],
@@ -343,7 +389,7 @@ def processar_planilha_cotacao_db(
 def exportar_produtos_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     """Exporta o catálogo mestre completo de produtos para Excel."""
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome, categoria, unidade_padrao FROM produtos ORDER BY categoria ASC, nome ASC")
+    cursor.execute("SELECT id, nome, categoria FROM produtos ORDER BY categoria ASC, nome ASC")
     produtos = [dict(r) for r in cursor.fetchall()]
 
     wb = openpyxl.Workbook()
@@ -351,7 +397,7 @@ def exportar_produtos_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     ws.title = "Produtos"
     ws.views.sheetView[0].showGridLines = True
 
-    headers = [("ID", 8), ("Nome do Produto", 40), ("Categoria", 22), ("Unidade Padrão", 16)]
+    headers = [("ID", 8), ("Nome do Produto", 40), ("Categoria", 25)]
     ws.row_dimensions[1].height = 24
 
     for col_i, (h_text, width) in enumerate(headers, 1):
@@ -366,8 +412,7 @@ def exportar_produtos_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
         ws.cell(row=row_i, column=1, value=p["id"]).alignment = Alignment(horizontal="center")
         ws.cell(row=row_i, column=2, value=p["nome"]).alignment = Alignment(horizontal="left")
         ws.cell(row=row_i, column=3, value=p["categoria"] or "-").alignment = Alignment(horizontal="center")
-        ws.cell(row=row_i, column=4, value=p["unidade_padrao"]).alignment = Alignment(horizontal="center")
-        for c in range(1, 5):
+        for c in range(1, 4):
             ws.cell(row=row_i, column=c).border = BORDER_THIN
 
     buffer = io.BytesIO()
@@ -395,29 +440,25 @@ def importar_produtos_excel_db(conn: sqlite3.Connection, conteudo_base64: str) -
         if not nome_val:
             nome_val = ws.cell(row=row_idx, column=1).value
             cat_val = ws.cell(row=row_idx, column=2).value
-            un_val = ws.cell(row=row_idx, column=3).value
         else:
             cat_val = ws.cell(row=row_idx, column=3).value
-            un_val = ws.cell(row=row_idx, column=4).value
 
         if not nome_val or str(nome_val).strip() == "":
             continue
 
         nome = str(nome_val).strip()
         cat = str(cat_val).strip() if cat_val and str(cat_val).strip() != "-" else None
-        un = str(un_val).strip().upper() if un_val else "UN"
 
         try:
             cursor.execute(
                 """
-                INSERT INTO produtos (nome, categoria, unidade_padrao, ativo)
-                VALUES (?, ?, ?, 1)
+                INSERT INTO produtos (nome, categoria, ativo)
+                VALUES (?, ?, 1)
                 ON CONFLICT(nome) DO UPDATE SET
                     categoria = excluded.categoria,
-                    unidade_padrao = excluded.unidade_padrao,
                     ativo = 1
                 """,
-                (nome, cat, un),
+                (nome, cat),
             )
             importados += 1
         except Exception as e:

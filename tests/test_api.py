@@ -148,15 +148,15 @@ class TestApi(unittest.TestCase):
         self.assertEqual(len(produtos), 12)
         self.assertTrue(all(isinstance(p, dict) for p in produtos))
         self.assertIn("nome", produtos[0])
-        self.assertIn("unidade_padrao", produtos[0])
+        self.assertIn("ativo", produtos[0])
 
     def test_criar_e_remover_produto(self) -> None:
         novo = self.api.criar_produto(
-            nome="Luva Nitrílica Descartável Tam M", categoria="Higiene", unidade_padrao="CX"
+            nome="Luva Nitrílica Descartável Tam M", categoria="Higiene"
         )
         self.assertIsNotNone(novo.get("id"))
         self.assertEqual(novo["nome"], "Luva Nitrílica Descartável Tam M")
-        self.assertEqual(novo["unidade_padrao"], "CX")
+        self.assertEqual(novo["categoria"], "Higiene")
 
         # Verifica se aparece na listagem
         produtos = self.api.listar_produtos()
@@ -178,12 +178,10 @@ class TestApi(unittest.TestCase):
             id_produto=prod["id"],
             nome="Produto Teste Atualizado",
             categoria="Nova Categoria",
-            unidade_padrao="GALAO",
         )
         self.assertEqual(atualizado["id"], prod["id"])
         self.assertEqual(atualizado["nome"], "Produto Teste Atualizado")
         self.assertEqual(atualizado["categoria"], "Nova Categoria")
-        self.assertEqual(atualizado["unidade_padrao"], "GALAO")
 
         # Não deve permitir nome em branco
         with self.assertRaises(ValueError):
@@ -388,7 +386,7 @@ class TestApi(unittest.TestCase):
 
     def test_criar_e_remover_necessidade(self) -> None:
         # Cadastra produto avulso
-        prod = self.api.criar_produto(nome="Pano Multiuso Rolo", unidade_padrao="ROLO")
+        prod = self.api.criar_produto(nome="Pano Multiuso Rolo")
 
         # Adiciona necessidade na rodada 4 (sem quantidade obrigatória)
         nec = self.api.criar_necessidade(id_rodada=4, id_produto=prod["id"])
@@ -408,6 +406,7 @@ class TestApi(unittest.TestCase):
         # Verifica se o preço unitário está presente e calculado
         for c in cotacoes:
             self.assertIn("preco_unitario", c)
+            self.assertIn("unidade", c)
             self.assertAlmostEqual(
                 c["preco_unitario"],
                 c["preco_embalagem"] / c["qtd_por_embalagem"],
@@ -420,16 +419,60 @@ class TestApi(unittest.TestCase):
             id_rodada=4,
             id_fornecedor=1,
             id_produto=1,
+            marca="Marca Top",
             embalagem="Caixa Especial c/ 50",
             qtd_por_embalagem=50.0,
+            unidade="UN",
             preco_embalagem=100.0,
         )
+        self.assertEqual(cotacao["marca"], "Marca Top")
         self.assertEqual(cotacao["embalagem"], "Caixa Especial c/ 50")
+        self.assertEqual(cotacao["unidade"], "UN")
         self.assertEqual(cotacao["preco_unitario"], 2.00)
 
         # Remove cotação
         res = self.api.remover_cotacao(cotacao["id"])
         self.assertTrue(res["sucesso"])
+
+    def test_auto_cadastro_produto_na_cotacao(self) -> None:
+        # Cotação com produto que ainda não existe no catálogo
+        novo_prod_nome = "Desinfetante Lavanda 5L Inédito"
+        cotacao = self.api.criar_cotacao(
+            id_rodada=4,
+            id_fornecedor=1,
+            produto_nome=novo_prod_nome,
+            marca="Brilho Max",
+            embalagem="Galão 5L",
+            qtd_por_embalagem=5.0,
+            unidade="L",
+            preco_embalagem=35.0,
+        )
+        self.assertTrue(cotacao.get("produto_novo"))
+        self.assertEqual(cotacao["produto_nome"], novo_prod_nome)
+        self.assertEqual(cotacao["marca"], "Brilho Max")
+        self.assertEqual(cotacao["unidade"], "L")
+        self.assertAlmostEqual(cotacao["preco_unitario"], 7.0, places=2)
+
+        # Verifica se o produto agora existe no catálogo
+        produtos = self.api.listar_produtos()
+        cadastrado = next((p for p in produtos if p["nome"] == novo_prod_nome), None)
+        self.assertIsNotNone(cadastrado)
+
+        # Verifica se foi inserido nas necessidades da rodada 4
+        necessidades = self.api.listar_necessidades(id_rodada=4)
+        nec = next((n for n in necessidades if n["produto_nome"] == novo_prod_nome), None)
+        self.assertIsNotNone(nec)
+
+        # Fornecedor inexistente deve falhar
+        with self.assertRaises(ValueError):
+            self.api.criar_cotacao(
+                id_rodada=4,
+                id_fornecedor=99999,
+                produto_nome="Outro Produto",
+                embalagem="UN",
+                qtd_por_embalagem=1,
+                preco_embalagem=10,
+            )
 
     # -------------------------------------------------------------------------
     # Testes de Alocações

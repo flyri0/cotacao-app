@@ -147,9 +147,9 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
         itensDetalhes.push({
           produto_nome: aloc.produto_nome,
           quantidade: aloc.quantidade,
-          unidade: aloc.produto_unidade_padrao,
+          unidade: cot ? cot.unidade : (aloc.unidade || 'UN'),
           embalagens: embComprar,
-          embalagem_desc: cot ? cot.embalagem : 'Unidade',
+          embalagem_desc: cot ? `${cot.marca ? `[${cot.marca}] ` : ''}${cot.embalagem}` : 'Unidade',
           subtotal,
         })
       })

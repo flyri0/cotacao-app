@@ -43,13 +43,26 @@ class TestExcelService(unittest.TestCase):
         ws = wb.active
 
         # Preenche preços na linha 5 e 6
+        ws.cell(row=5, column=5, value="Marca Alpha") # Marca
         ws.cell(row=5, column=6, value="Caixa c/ 10")  # Embalagem
         ws.cell(row=5, column=7, value=10)             # Qtd
-        ws.cell(row=5, column=8, value=50.0)           # Preço da embalagem (R$ 5.00 unitário)
+        ws.cell(row=5, column=8, value="CX")           # Unidade
+        ws.cell(row=5, column=9, value=50.0)           # Preço da embalagem (R$ 5.00 unitário)
 
+        ws.cell(row=6, column=5, value="Marca Beta")
         ws.cell(row=6, column=6, value="Fardo c/ 20")
         ws.cell(row=6, column=7, value=20)
-        ws.cell(row=6, column=8, value=160.0)
+        ws.cell(row=6, column=8, value="PCT")
+        ws.cell(row=6, column=9, value=160.0)
+
+        # Adiciona uma nova linha com produto inédito na planilha para testar auto-cadastro
+        ws.cell(row=7, column=1, value="")
+        ws.cell(row=7, column=2, value="Produto Importado Automaticamente")
+        ws.cell(row=7, column=5, value="Marca Gamma")
+        ws.cell(row=7, column=6, value="Galão 5L")
+        ws.cell(row=7, column=7, value=5)
+        ws.cell(row=7, column=8, value="L")
+        ws.cell(row=7, column=9, value=45.0)
 
         out_buf = io.BytesIO()
         wb.save(out_buf)
@@ -61,7 +74,8 @@ class TestExcelService(unittest.TestCase):
             id_rodada=1, id_fornecedor=1, conteudo_base64=filled_b64
         )
         self.assertTrue(import_res["sucesso"])
-        self.assertGreaterEqual(import_res["importados"], 2)
+        self.assertGreaterEqual(import_res["importados"], 3)
+        self.assertEqual(import_res.get("produtos_criados"), 1)
 
     def test_exportar_e_importar_produtos_excel(self) -> None:
         exp = self.api.exportar_produtos_excel()
@@ -71,8 +85,8 @@ class TestExcelService(unittest.TestCase):
         # Cria uma planilha com novo produto
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.append(["ID", "Nome do Produto", "Categoria", "Unidade Padrão"])
-        ws.append(["", "Produto Teste Excel Novo", "Testes", "PCT"])
+        ws.append(["ID", "Nome do Produto", "Categoria"])
+        ws.append(["", "Produto Teste Excel Novo", "Testes"])
 
         buf = io.BytesIO()
         wb.save(buf)

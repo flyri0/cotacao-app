@@ -242,14 +242,9 @@ export function ComparacaoView({
             >
               <Table.Thead style={{ backgroundColor: isDark ? 'var(--mantine-color-dark-6)' : '#f1f3f5' }}>
                 <Table.Tr>
-                  <Table.Th style={{ width: 240, padding: '8px 10px' }}>
+                  <Table.Th style={{ width: 280, padding: '8px 10px' }}>
                     <Text fw={700} size="xs" tt="uppercase" c="dimmed">
                       Produto
-                    </Text>
-                  </Table.Th>
-                  <Table.Th style={{ width: 80, textAlign: 'center', padding: '8px 6px' }}>
-                    <Text fw={700} size="xs" tt="uppercase" c="dimmed">
-                      Unidade
                     </Text>
                   </Table.Th>
 
@@ -309,13 +304,6 @@ export function ComparacaoView({
                         )}
                       </Table.Td>
 
-                      {/* Coluna 2: Unidade Padrão */}
-                      <Table.Td style={{ textAlign: 'center', verticalAlign: 'middle', padding: '6px' }}>
-                        <Badge size="xs" variant="light" color="gray">
-                          {nec.produto_unidade_padrao}
-                        </Badge>
-                      </Table.Td>
-
                       {/* Colunas dos Fornecedores (Células Compactas com Background de Ranking) */}
                       {fornecedoresNaTabela.map((forn) => {
                         const cot = cotacoes.find(
@@ -370,10 +358,10 @@ export function ComparacaoView({
                             }}
                           >
                             <Text fw={700} size="xs" c={textPrecoColor} style={{ lineHeight: 1.2 }}>
-                              {formatMoney(cot.preco_unitario)} / {cot.produto_unidade_padrao}
+                              {formatMoney(cot.preco_unitario)} / {cot.unidade || 'UN'}
                             </Text>
                             <Text size="10px" c="dimmed" style={{ lineHeight: 1.1, marginTop: 2 }}>
-                              {cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
+                              {cot.marca ? `[${cot.marca}] ` : ''}{cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
                             </Text>
                           </Table.Td>
                         )

@@ -20,19 +20,26 @@ pessoa/equipe de compras.
   simular autocomplete — aqui isso já vem pronto, não reinvente.
 
 ## Modelo de domínio — leia antes de mexer no schema
-- **Produto**: cadastro mestre. Nome único.
+- **Produto**: cadastro mestre com `nome` (único), `categoria` e `ativo` (não guarda unidade fixa).
 - **Fornecedor**: cadastro mestre, tem `pedido_minimo`.
 - **Rodada**: um ciclo de cotação. Necessidades/Cotações/Alocações sempre
   se referem a uma rodada (`id_rodada`).
 - **Necessidade**: quanto de um produto é preciso numa rodada — é a
   "lista de produtos em falta" do processo original que este app substitui.
 - **Cotação**: um preço recebido de um fornecedor pra um produto numa
-  rodada. Guarda `embalagem`, `qtd_por_embalagem` e `preco_embalagem`
-  separados. **O preço unitário é sempre calculado**
+  rodada. Guarda `marca` (marca ofertada pelo fornecedor), `embalagem`
+  (descrição da embalagem comercial), `qtd_por_embalagem`, `unidade` (unidade
+  de medida do conteúdo — ex: UN, KG, L) e `preco_embalagem` separados.
+  **O preço unitário é sempre calculado**
   (`preco_embalagem / qtd_por_embalagem`), nunca guardado nem digitado
   direto. Isso existe porque fornecedores diferentes vendem o mesmo
   produto em embalagens diferentes (ex: caixa de 6 vs. unidade) — comparar
   preço bruto sem normalizar dá resultado errado.
+- **Auto-cadastro de Produto na Cotação**: qualquer produto digitado ou
+  importado na tela de Cotações que não exista ainda no cadastro de
+  Produtos é cadastrado automaticamente no banco e adicionado às necessidades
+  da rodada ativa. Essa regra de auto-cadastro se aplica exclusivamente a
+  Produtos — Fornecedores continuam exigindo correspondência prévia no cadastro.
 - **Alocação**: a decisão real de compra. **Pode (e deve poder) haver
   múltiplas linhas de Alocação pro mesmo produto na mesma rodada**, cada
   uma com fornecedor e quantidade diferentes. Isso é proposital — é o

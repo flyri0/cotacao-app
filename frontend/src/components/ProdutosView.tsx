@@ -62,23 +62,7 @@ function downloadBase64File(
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  URL.revokeObjectURL(url)
 }
-
-const SUGESTOES_UNIDADES = [
-  'UN',
-  'PCT',
-  'CX',
-  'FARDO',
-  'KG',
-  'L',
-  'FRASCO',
-  'GALAO',
-  'ROLO',
-  'PAR',
-  'LATA',
-  'M',
-]
 
 export function ProdutosView() {
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -93,19 +77,15 @@ export function ProdutosView() {
 
   const nomeRef = useRef<HTMLInputElement>(null)
   const categoriaRef = useRef<HTMLInputElement>(null)
-  const unidadeRef = useRef<HTMLInputElement>(null)
 
   const form = useForm({
     initialValues: {
       nome: '',
       categoria: '',
-      unidade_padrao: 'UN',
     },
     validate: {
       nome: (value) =>
         value.trim().length === 0 ? 'O nome do produto é obrigatório' : null,
-      unidade_padrao: (value) =>
-        value.trim().length === 0 ? 'Informe a unidade de medida padrão' : null,
     },
   })
 
@@ -113,13 +93,10 @@ export function ProdutosView() {
     initialValues: {
       nome: '',
       categoria: '',
-      unidade_padrao: 'UN',
     },
     validate: {
       nome: (value) =>
         value.trim().length === 0 ? 'O nome do produto é obrigatório' : null,
-      unidade_padrao: (value) =>
-        value.trim().length === 0 ? 'Informe a unidade de medida padrão' : null,
     },
   })
 
@@ -164,7 +141,6 @@ export function ProdutosView() {
       const novoProduto = await api.criar_produto(
         values.nome,
         values.categoria || null,
-        values.unidade_padrao,
       )
 
       notifications.show({
@@ -175,7 +151,6 @@ export function ProdutosView() {
       })
 
       form.reset()
-      form.setFieldValue('unidade_padrao', 'UN')
       await carregarProdutos()
 
       setTimeout(() => {
@@ -200,7 +175,6 @@ export function ProdutosView() {
     formEdicao.setValues({
       nome: p.nome,
       categoria: p.categoria || '',
-      unidade_padrao: p.unidade_padrao || 'UN',
     })
     openModalEditar()
   }
@@ -214,7 +188,6 @@ export function ProdutosView() {
         produtoEmEdicao.id,
         values.nome,
         values.categoria || null,
-        values.unidade_padrao,
       )
 
       notifications.show({
@@ -475,16 +448,6 @@ export function ProdutosView() {
         },
       },
       {
-        accessorKey: 'unidade_padrao',
-        header: 'Unidade Padrão',
-        size: 140,
-        Cell: ({ cell }) => (
-          <Badge variant="light" color="indigo">
-            {cell.getValue<string>()}
-          </Badge>
-        ),
-      },
-      {
         accessorKey: 'ativo',
         header: 'Status',
         size: 120,
@@ -631,16 +594,6 @@ export function ProdutosView() {
               data={categoriasSugeridas}
               style={{ flex: 1.5 }}
               {...form.getInputProps('categoria')}
-              onTabOrEnterNextRef={unidadeRef}
-            />
-            <AppAutocomplete
-              ref={unidadeRef}
-              label="Unidade Padrão"
-              placeholder="Ex: UN, PCT, GALAO"
-              data={SUGESTOES_UNIDADES}
-              required
-              style={{ width: 180 }}
-              {...form.getInputProps('unidade_padrao')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -699,14 +652,6 @@ export function ProdutosView() {
               placeholder="Ex: Limpeza, Descartáveis"
               data={categoriasSugeridas}
               {...formEdicao.getInputProps('categoria')}
-            />
-
-            <AppAutocomplete
-              label="Unidade de Medida Padrão"
-              placeholder="Ex: UN, PCT, GALAO"
-              data={SUGESTOES_UNIDADES}
-              required
-              {...formEdicao.getInputProps('unidade_padrao')}
             />
 
             <Group justify="flex-end" mt="md">

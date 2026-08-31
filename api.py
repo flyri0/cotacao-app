@@ -297,7 +297,7 @@ class Api:
         """Retorna produtos ordenados por nome, opcionalmente filtrando apenas ativos."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            query = "SELECT id, nome, categoria, unidade_padrao, ativo FROM produtos"
+            query = "SELECT id, nome, categoria, ativo FROM produtos"
             if apenas_ativos:
                 query += " WHERE ativo = 1"
             query += " ORDER BY nome ASC"
@@ -311,7 +311,7 @@ class Api:
             sucesso = alternar_status_produto_db(conn, id_produto, val)
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, nome, categoria, unidade_padrao, ativo FROM produtos WHERE id = ?",
+                "SELECT id, nome, categoria, ativo FROM produtos WHERE id = ?",
                 (id_produto,),
             )
             row = cursor.fetchone()
@@ -321,30 +321,28 @@ class Api:
         self,
         nome: str,
         categoria: Optional[str] = None,
-        unidade_padrao: str = "UN",
     ) -> Dict[str, Any]:
-        """Cadastra um novo produto no catálogo com unidade padrão livre."""
+        """Cadastra um novo produto no catálogo (nome único e categoria opcional)."""
         nome = nome.strip()
         if not nome:
             raise ValueError("O nome do produto não pode ser vazio.")
 
-        unidade_padrao = (unidade_padrao or "UN").strip().upper()
         categoria = categoria.strip() if categoria else None
 
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO produtos (nome, categoria, unidade_padrao, ativo)
-                VALUES (?, ?, ?, 1)
+                INSERT INTO produtos (nome, categoria, ativo)
+                VALUES (?, ?, 1)
                 """,
-                (nome, categoria, unidade_padrao),
+                (nome, categoria),
             )
             id_produto = cursor.lastrowid
             conn.commit()
 
             cursor.execute(
-                "SELECT id, nome, categoria, unidade_padrao, ativo FROM produtos WHERE id = ?",
+                "SELECT id, nome, categoria, ativo FROM produtos WHERE id = ?",
                 (id_produto,),
             )
             return dict(cursor.fetchone())
@@ -354,11 +352,10 @@ class Api:
         id_produto: int,
         nome: str,
         categoria: Optional[str] = None,
-        unidade_padrao: str = "UN",
     ) -> Dict[str, Any]:
-        """Atualiza os dados de um produto existente (nome, categoria, unidade padrão)."""
+        """Atualiza os dados de um produto existente (nome e categoria)."""
         with self._get_connection() as conn:
-            return atualizar_produto_db(conn, id_produto, nome, categoria, unidade_padrao)
+            return atualizar_produto_db(conn, id_produto, nome, categoria)
 
     def remover_produto(self, id_produto: int) -> Dict[str, Any]:
         """Remove um produto fisicamente se não possuir nenhum histórico, senão bloqueia com mensagem explicativa."""
@@ -649,7 +646,6 @@ class Api:
                     n.id_produto,
                     p.nome AS produto_nome,
                     p.categoria AS produto_categoria,
-                    p.unidade_padrao AS produto_unidade_padrao,
                     n.quantidade
                 FROM necessidades n
                 JOIN produtos p ON p.id = n.id_produto
@@ -691,7 +687,6 @@ class Api:
                     n.id_produto,
                     p.nome AS produto_nome,
                     p.categoria AS produto_categoria,
-                    p.unidade_padrao AS produto_unidade_padrao,
                     n.quantidade
                 FROM necessidades n
                 JOIN produtos p ON p.id = n.id_produto
@@ -726,9 +721,10 @@ class Api:
                     f.nome AS fornecedor_nome,
                     c.id_produto,
                     p.nome AS produto_nome,
-                    p.unidade_padrao AS produto_unidade_padrao,
+                    c.marca,
                     c.embalagem,
                     c.qtd_por_embalagem,
+                    c.unidade,
                     c.preco_embalagem,
                     (c.preco_embalagem / c.qtd_por_embalagem) AS preco_unitario
                 FROM cotacoes c
@@ -745,18 +741,25 @@ class Api:
         self,
         id_rodada: int,
         id_fornecedor: int,
-        id_produto: int,
-        embalagem: str,
-        qtd_por_embalagem: float,
-        preco_embalagem: float,
+        id_produto: Optional[int] = None,
+        produto_nome: Optional[str] = None,
+        marca: Optional[str] = None,
+        embalagem: str = "Unidade",
+        qtd_por_embalagem: float = 1.0,
+        unidade: str = "UN",
+        preco_embalagem: float = 0.0,
     ) -> Dict[str, Any]:
-        """Cadastra ou atualiza uma cotação (UPSERT) e retorna os dados com preço unitário calculado."""
-        embalagem = embalagem.strip()
+        """Cadastra ou atualiza uma cotação (UPSERT). Auto-cadastra produto caso não exista no catálogo."""
+        embalagem = (embalagem or "Unidade").strip()
+        unidade = (unidade or "UN").strip().upper()
+        marca = marca.strip() if marca and marca.strip() else None
         qtd_por_embalagem = float(qtd_por_embalagem)
         preco_embalagem = float(preco_embalagem)
 
         if not embalagem:
             raise ValueError("A descrição da embalagem não pode ser vazia.")
+        if not unidade:
+            raise ValueError("A unidade de contagem não pode ser vazia.")
         if qtd_por_embalagem <= 0:
             raise ValueError("A quantidade por embalagem deve ser maior que zero.")
         if preco_embalagem < 0:
@@ -765,24 +768,74 @@ class Api:
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_id(conn, id_rodada)
             cursor = conn.cursor()
+
+            # 1. Verifica existência do fornecedor (fornecedor continua obrigatório)
+            cursor.execute("SELECT id, nome FROM fornecedores WHERE id = ?", (id_fornecedor,))
+            forn = cursor.fetchone()
+            if not forn:
+                raise ValueError(f"Fornecedor #{id_fornecedor} não encontrado.")
+
+            # 2. Localiza ou auto-cadastra o produto
+            produto_novo = False
+            prod_id = id_produto
+
+            if prod_id:
+                cursor.execute("SELECT id, nome FROM produtos WHERE id = ?", (prod_id,))
+                prod_row = cursor.fetchone()
+                if not prod_row:
+                    prod_id = None
+
+            if not prod_id and produto_nome and produto_nome.strip():
+                nome_limpo = produto_nome.strip()
+                cursor.execute("SELECT id, nome FROM produtos WHERE LOWER(nome) = LOWER(?)", (nome_limpo,))
+                prod_row = cursor.fetchone()
+                if prod_row:
+                    prod_id = prod_row["id"]
+                else:
+                    # Auto-cadastro do novo produto
+                    cursor.execute(
+                        "INSERT INTO produtos (nome, categoria, ativo) VALUES (?, NULL, 1)",
+                        (nome_limpo,),
+                    )
+                    prod_id = cursor.lastrowid
+                    produto_novo = True
+
+            if not prod_id:
+                raise ValueError("Informe um produto existente ou o nome do produto para cadastro automático.")
+
+            # 3. Garante que o produto conste nas necessidades da rodada ativa
+            cursor.execute(
+                """
+                INSERT INTO necessidades (id_rodada, id_produto, quantidade)
+                VALUES (?, ?, 0.0)
+                ON CONFLICT(id_rodada, id_produto) DO NOTHING
+                """,
+                (id_rodada, prod_id),
+            )
+
+            # 4. Upsert da Cotação
             cursor.execute(
                 """
                 INSERT INTO cotacoes (
                     id_rodada, id_fornecedor, id_produto,
-                    embalagem, qtd_por_embalagem, preco_embalagem
+                    marca, embalagem, qtd_por_embalagem, unidade, preco_embalagem
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id_rodada, id_fornecedor, id_produto) DO UPDATE SET
+                    marca = excluded.marca,
                     embalagem = excluded.embalagem,
                     qtd_por_embalagem = excluded.qtd_por_embalagem,
+                    unidade = excluded.unidade,
                     preco_embalagem = excluded.preco_embalagem
                 """,
                 (
                     id_rodada,
                     id_fornecedor,
-                    id_produto,
+                    prod_id,
+                    marca,
                     embalagem,
                     qtd_por_embalagem,
+                    unidade,
                     preco_embalagem,
                 ),
             )
@@ -797,9 +850,10 @@ class Api:
                     f.nome AS fornecedor_nome,
                     c.id_produto,
                     p.nome AS produto_nome,
-                    p.unidade_padrao AS produto_unidade_padrao,
+                    c.marca,
                     c.embalagem,
                     c.qtd_por_embalagem,
+                    c.unidade,
                     c.preco_embalagem,
                     (c.preco_embalagem / c.qtd_por_embalagem) AS preco_unitario
                 FROM cotacoes c
@@ -807,9 +861,11 @@ class Api:
                 JOIN produtos p ON p.id = c.id_produto
                 WHERE c.id_rodada = ? AND c.id_fornecedor = ? AND c.id_produto = ?
                 """,
-                (id_rodada, id_fornecedor, id_produto),
+                (id_rodada, id_fornecedor, prod_id),
             )
-            return dict(cursor.fetchone())
+            row = dict(cursor.fetchone())
+            row["produto_novo"] = produto_novo
+            return row
 
     def remover_cotacao(self, id_cotacao: int) -> Dict[str, Any]:
         """Remove uma cotação pelo ID."""
@@ -834,13 +890,14 @@ class Api:
                     a.id_rodada,
                     a.id_produto,
                     p.nome AS produto_nome,
-                    p.unidade_padrao AS produto_unidade_padrao,
                     a.id_fornecedor,
                     f.nome AS fornecedor_nome,
                     a.quantidade,
                     a.observacao,
+                    c.marca,
                     c.embalagem,
                     c.qtd_por_embalagem,
+                    c.unidade,
                     c.preco_embalagem,
                     (c.preco_embalagem / c.qtd_por_embalagem) AS preco_unitario
                 FROM alocacoes a
