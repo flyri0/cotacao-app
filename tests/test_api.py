@@ -66,7 +66,7 @@ class TestApi(unittest.TestCase):
                 dest_path = dest.name
 
             try:
-                res = api_temp.salvar_backup_em_caminho(dest_path)
+                res = api_temp._salvar_backup_em_caminho(dest_path)
                 self.assertTrue(res["sucesso"])
                 self.assertEqual(res["caminho"], dest_path)
                 self.assertGreater(res["tamanho_bytes"], 0)
@@ -319,8 +319,8 @@ class TestApi(unittest.TestCase):
         # Cadastra produto avulso
         prod = self.api.criar_produto(nome="Pano Multiuso Rolo", unidade_padrao="ROLO")
 
-        # Adiciona necessidade na rodada 1 (sem quantidade obrigatória)
-        nec = self.api.criar_necessidade(id_rodada=1, id_produto=prod["id"])
+        # Adiciona necessidade na rodada 4 (sem quantidade obrigatória)
+        nec = self.api.criar_necessidade(id_rodada=4, id_produto=prod["id"])
         self.assertEqual(nec["produto_nome"], "Pano Multiuso Rolo")
 
         # Remove necessidade
@@ -346,7 +346,7 @@ class TestApi(unittest.TestCase):
     def test_criar_e_remover_cotacao(self) -> None:
         # Cria cotação: Caixa com 50 unidades a R$ 100.00 -> unitário 2.00
         cotacao = self.api.criar_cotacao(
-            id_rodada=1,
+            id_rodada=4,
             id_fornecedor=1,
             id_produto=1,
             embalagem="Caixa Especial c/ 50",
@@ -396,11 +396,11 @@ class TestApi(unittest.TestCase):
                 "observacao": "Integral",
             },
         ]
-        res = self.api.salvar_alocacoes(id_rodada=1, alocacoes=novas_alocacoes)
+        res = self.api.salvar_alocacoes(id_rodada=4, alocacoes=novas_alocacoes)
         self.assertTrue(res["sucesso"])
         self.assertEqual(res["total_alocacoes"], 3)
 
-        alocs = self.api.listar_alocacoes(id_rodada=1)
+        alocs = self.api.listar_alocacoes(id_rodada=4)
         self.assertEqual(len(alocs), 3)
 
         # Filtra alocações do produto 1 para confirmar a divisão permitida
@@ -409,12 +409,12 @@ class TestApi(unittest.TestCase):
         self.assertEqual(sum(a["quantidade"] for a in alocs_prod1), 120.0)
 
     def test_remover_alocacao(self) -> None:
-        alocs = self.api.listar_alocacoes(id_rodada=1)
+        alocs = self.api.listar_alocacoes(id_rodada=4)
         id_remover = alocs[0]["id"]
         res = self.api.remover_alocacao(id_remover)
         self.assertTrue(res["sucesso"])
 
-        alocs_apos = self.api.listar_alocacoes(id_rodada=1)
+        alocs_apos = self.api.listar_alocacoes(id_rodada=4)
         self.assertEqual(len(alocs_apos), len(alocs) - 1)
 
     # -------------------------------------------------------------------------
