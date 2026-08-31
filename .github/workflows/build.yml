@@ -1,0 +1,102 @@
+name: Build e Empacotamento Multi-Alvo (Windows 10/11 & Windows 7)
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compilar para ${{ matrix.target.name }} (Python ${{ matrix.target.python-version }})
+    runs-on: ${{ matrix.target.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: "Windows-10-11"
+            python-version: "3.11"
+            os: "windows-latest"
+            artifact-name: "MapaCotacoes-Win10-Win11"
+            output-exe: "MapaCotacoes-Win10-Win11.exe"
+            description: "Executável moderno otimizado para Windows 10 e Windows 11 (64-bit)"
+
+          - name: "Windows-7-Legacy"
+            python-version: "3.8"
+            os: "windows-latest"
+            artifact-name: "MapaCotacoes-Win7-Legacy"
+            output-exe: "MapaCotacoes-Win7-Legacy.exe"
+            description: "Executável retrocompatível para Windows 7 SP1 e Windows 8 (requer WebView2 v109)"
+
+    steps:
+      - name: 📥 Clonar repositório
+        uses: actions/checkout@v4
+
+      - name: 🟢 Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: 🐍 Configurar Python ${{ matrix.target.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.target.python-version }}
+          cache: 'pip'
+
+      - name: 📦 Instalar dependências do Frontend
+        run: |
+          cd frontend
+          npm ci
+
+      - name: 🛠️ Compilar Frontend React (Vite / TypeScript)
+        run: |
+          cd frontend
+          npm run build
+
+      - name: 🐍 Instalar dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🧪 Executar Testes Unitários Automatizados
+        run: |
+          python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: 🏗️ Gerar Executável Standalone com PyInstaller
+        run: |
+          pyinstaller app.spec --noconfirm --clean
+          Rename-Item -Path "dist/MapaCotacoes.exe" -NewName "${{ matrix.target.output-exe }}"
+
+      - name: 📤 Fazer Upload do Artefato (.exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target.artifact-name }}
+          path: dist/${{ matrix.target.output-exe }}
+          retention-days: 30
+
+  release:
+    name: 🚀 Criar Release no GitHub (quando gerada tag v*)
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Baixar artefatos compilados
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: 📦 Criar GitHub Release com os executáveis
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./artifacts/MapaCotacoes-Win10-Win11/MapaCotacoes-Win10-Win11.exe
+            ./artifacts/MapaCotacoes-Win7-Legacy/MapaCotacoes-Win7-Legacy.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true

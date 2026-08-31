@@ -1,0 +1,18 @@
+# Python & PyInstaller
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite
+*.db
+build/
+dist/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

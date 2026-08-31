@@ -1,0 +1,838 @@
+import { useEffect, useState, useRef } from 'react'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Divider,
+  FileInput,
+  Group,
+  Modal,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  ThemeIcon,
+  Title,
+  useComputedColorScheme,
+  useMantineColorScheme,
+} from '@mantine/core'
+import { useForm } from '@mantine/form'
+import { useDisclosure } from '@mantine/hooks'
+import { notifications } from '@mantine/notifications'
+import {
+  IconAlertCircle,
+  IconAlertTriangle,
+  IconBriefcase,
+  IconBuildingStore,
+  IconCheck,
+  IconCoins,
+  IconDatabase,
+  IconDatabaseExport,
+  IconDatabaseImport,
+  IconDeviceDesktop,
+  IconDeviceFloppy,
+  IconFileDatabase,
+  IconFolder,
+  IconMoon,
+  IconPackage,
+  IconPalette,
+  IconReceipt,
+  IconScale,
+  IconSettings,
+  IconShoppingCart,
+  IconSun,
+  IconTrash,
+  IconTrendingUp,
+  IconX,
+} from '@tabler/icons-react'
+import { PageHeader } from './common/PageHeader'
+import { AppSelect } from './common/AppSelect'
+import { getApi } from '../services/api'
+import type { ConfiguracoesApp } from '../types'
+
+export const OPCOES_ICONES = [
+  { value: 'Scale', label: 'Balança de Comparação (Padrão)', icon: <IconScale size={18} /> },
+  { value: 'ShoppingCart', label: 'Carrinho de Compras', icon: <IconShoppingCart size={18} /> },
+  { value: 'BuildingStore', label: 'Loja / Fornecedor', icon: <IconBuildingStore size={18} /> },
+  { value: 'Package', label: 'Pacote / Mercadoria', icon: <IconPackage size={18} /> },
+  { value: 'TrendingUp', label: 'Gráfico / Estatística', icon: <IconTrendingUp size={18} /> },
+  { value: 'Coins', label: 'Moedas / Economia', icon: <IconCoins size={18} /> },
+  { value: 'Briefcase', label: 'Maleta Comercial', icon: <IconBriefcase size={18} /> },
+  { value: 'Receipt', label: 'Recibo / Cotação', icon: <IconReceipt size={18} /> },
+]
+
+export const OPCOES_CORES = [
+  { value: 'blue', label: 'Azul Clássico (Padrão)', color: '#228be6' },
+  { value: 'teal', label: 'Verde Petróleo', color: '#12b886' },
+  { value: 'indigo', label: 'Índigo Moderno', color: '#4c6ef5' },
+  { value: 'cyan', label: 'Ciano Vibrante', color: '#15aabf' },
+  { value: 'green', label: 'Verde Floresta', color: '#40c057' },
+  { value: 'violet', label: 'Violeta / Roxo', color: '#7950f2' },
+  { value: 'orange', label: 'Laranja Comercial', color: '#fd7e14' },
+]
+
+export const OPCOES_ESQUEMA_COR = [
+  { value: 'light', label: 'Modo Claro (Light)', icon: <IconSun size={18} /> },
+  { value: 'dark', label: 'Modo Escuro (Dark)', icon: <IconMoon size={18} /> },
+  { value: 'auto', label: 'Automático do Sistema (Auto)', icon: <IconDeviceDesktop size={18} /> },
+]
+
+interface ConfiguracoesViewProps {
+  configuracoes?: ConfiguracoesApp
+  onConfiguracoesAlteradas?: (novasConfigs: ConfiguracoesApp) => void
+}
+
+export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: ConfiguracoesViewProps) {
+  const { colorScheme, setColorScheme } = useMantineColorScheme()
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const [salvandoConfig, setSalvandoConfig] = useState(false)
+  const [loadingAcaoBanco, setLoadingAcaoBanco] = useState(false)
+
+  // Modais
+  const [modalExportarOpened, { open: openModalExportar, close: closeModalExportar }] =
+    useDisclosure(false)
+  const [modalImportarOpened, { open: openModalImportar, close: closeModalImportar }] =
+    useDisclosure(false)
+  const [modalFormatar1Opened, { open: openModalFormatar1, close: closeModalFormatar1 }] =
+    useDisclosure(false)
+  const [modalFormatar2Opened, { open: openModalFormatar2, close: closeModalFormatar2 }] =
+    useDisclosure(false)
+
+  // Timers de 5 segundos
+  const [timerExportar, setTimerExportar] = useState<number>(5)
+  const [timerImportar, setTimerImportar] = useState<number>(5)
+  const [timerFormatar, setTimerFormatar] = useState<number>(5)
+
+  // Estados de confirmação
+  const [nomeArquivoBackup, setNomeArquivoBackup] = useState('')
+  const [arquivoImportar, setArquivoImportar] = useState<File | null>(null)
+  const [palavraConfirmacaoFormatar, setPalavraConfirmacaoFormatar] = useState('')
+
+  const timerRef = useRef<number | null>(null)
+
+  const form = useForm({
+    initialValues: {
+      app_nome: configuracoes?.app_nome || 'Mapa de Cotações',
+      app_subtitulo: configuracoes?.app_subtitulo || 'Comparativo e Alocação Inteligente',
+      app_icone: configuracoes?.app_icone || 'Scale',
+      app_theme_color: configuracoes?.app_theme_color || 'blue',
+      app_color_scheme: (configuracoes?.app_color_scheme || colorScheme || 'light') as 'light' | 'dark' | 'auto',
+    },
+  })
+
+  // Sincroniza o formulário sempre que as configurações ou tema do App mudarem
+  useEffect(() => {
+    if (configuracoes) {
+      const scheme = (configuracoes.app_color_scheme as 'light' | 'dark' | 'auto') || colorScheme || 'light'
+      form.setValues({
+        app_nome: configuracoes.app_nome || 'Mapa de Cotações',
+        app_subtitulo: configuracoes.app_subtitulo || 'Comparativo e Alocação Inteligente',
+        app_icone: configuracoes.app_icone || 'Scale',
+        app_theme_color: configuracoes.app_theme_color || 'blue',
+        app_color_scheme: scheme,
+      })
+    }
+  }, [configuracoes, colorScheme])
+
+  // Gerenciador de timers regressivos de segurança (5 segundos)
+  const iniciarTimer = (setter: (val: number | ((prev: number) => number)) => void) => {
+    setter(5)
+    if (timerRef.current) clearInterval(timerRef.current)
+    let contador = 5
+    timerRef.current = window.setInterval(() => {
+      contador -= 1
+      setter(contador)
+      if (contador <= 0 && timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }, 1000)
+  }
+
+  const handleOpenExportar = () => {
+    const dataHora = new Date()
+      .toISOString()
+      .replace(/[-:T]/g, '')
+      .slice(0, 15)
+    setNomeArquivoBackup(`backup_cotacao_${dataHora}.db`)
+    iniciarTimer(setTimerExportar)
+    openModalExportar()
+  }
+
+  const handleOpenImportar = () => {
+    setArquivoImportar(null)
+    iniciarTimer(setTimerImportar)
+    openModalImportar()
+  }
+
+  const handleOpenFormatar = () => {
+    setPalavraConfirmacaoFormatar('')
+    iniciarTimer(setTimerFormatar)
+    openModalFormatar1()
+  }
+
+  const handleAvancarFormatar2 = () => {
+    closeModalFormatar1()
+    setPalavraConfirmacaoFormatar('')
+    openModalFormatar2()
+  }
+
+  // Alteração imediata de tema no seletor com aplicação instantânea
+  const handleMudarTema = async (val: string | null) => {
+    if (val === 'light' || val === 'dark' || val === 'auto') {
+      form.setFieldValue('app_color_scheme', val)
+      setColorScheme(val)
+      const atualizadas: ConfiguracoesApp = {
+        ...form.values,
+        app_color_scheme: val,
+      }
+      onConfiguracoesAlteradas?.(atualizadas)
+      try {
+        const api = await getApi()
+        await api.salvar_configuracoes(atualizadas)
+      } catch (err) {
+        console.error('Erro ao salvar preferência de tema:', err)
+      }
+    }
+  }
+
+  // Salvar Identidade Visual
+  const handleSubmitConfigs = async (values: typeof form.values) => {
+    try {
+      setSalvandoConfig(true)
+      const api = await getApi()
+      const atualizadas = await api.salvar_configuracoes(values)
+      setColorScheme(values.app_color_scheme)
+
+      notifications.show({
+        title: 'Configurações Salvas',
+        message: 'A identidade visual e preferências foram atualizadas com sucesso.',
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      })
+
+      onConfiguracoesAlteradas?.(atualizadas)
+    } catch (error: any) {
+      console.error('Erro ao salvar configurações:', error)
+      notifications.show({
+        title: 'Erro ao salvar',
+        message: error?.message || 'Não foi possível salvar as configurações.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setSalvandoConfig(false)
+    }
+  }
+
+  // AÇÃO 1: Escolher Local do Backup via Diálogo Nativo do SO (Salvar Como...)
+  const handleSalvarBackupDialogoNativo = async () => {
+    try {
+      setLoadingAcaoBanco(true)
+      const api = await getApi()
+      const res = await api.selecionar_local_e_salvar_backup(nomeArquivoBackup)
+
+      if (res.cancelado) {
+        notifications.show({
+          title: 'Operação Cancelada',
+          message: 'Nenhum local foi selecionado para o backup.',
+          color: 'gray',
+          icon: <IconAlertCircle size={16} />,
+        })
+        return
+      }
+
+      if (res.conteudo_base64) {
+        // Fallback em navegador
+        const linkSource = `data:application/octet-stream;base64,${res.conteudo_base64}`
+        const downloadLink = document.createElement('a')
+        downloadLink.href = linkSource
+        downloadLink.download = res.nome_arquivo || nomeArquivoBackup
+        downloadLink.click()
+      }
+
+      notifications.show({
+        title: 'Backup Gravado com Sucesso',
+        message: res.caminho
+          ? `Arquivo salvo em: ${res.caminho}`
+          : `Arquivo ${res.nome_arquivo || nomeArquivoBackup} baixado com sucesso.`,
+        color: 'teal',
+        icon: <IconDatabaseExport size={16} />,
+        autoClose: 6000,
+      })
+
+      closeModalExportar()
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erro ao salvar backup',
+        message: error?.message || 'Falha ao gravar arquivo de backup.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setLoadingAcaoBanco(false)
+    }
+  }
+
+  // AÇÃO 2C: Baixar Diretamente pelo Navegador (Base64)
+  const handleDownloadDiretoNavegador = async () => {
+    try {
+      setLoadingAcaoBanco(true)
+      const api = await getApi()
+      const res = await api.exportar_banco_dados()
+
+      const linkSource = `data:application/octet-stream;base64,${res.conteudo_base64}`
+      const downloadLink = document.createElement('a')
+      downloadLink.href = linkSource
+      downloadLink.download = nomeArquivoBackup || res.nome_arquivo
+      downloadLink.click()
+
+      notifications.show({
+        title: 'Download de Backup Iniciado',
+        message: `O arquivo ${nomeArquivoBackup || res.nome_arquivo} foi enviado ao navegador.`,
+        color: 'teal',
+        icon: <IconDatabaseExport size={16} />,
+      })
+
+      closeModalExportar()
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erro ao exportar',
+        message: error?.message || 'Falha ao gerar arquivo de backup.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setLoadingAcaoBanco(false)
+    }
+  }
+
+  // AÇÃO 3: Importar Banco de Dados (.db em Base64)
+  const handleConfirmarImportacao = async () => {
+    if (!arquivoImportar) {
+      notifications.show({
+        title: 'Selecione um arquivo',
+        message: 'Escolha um arquivo .db ou .sqlite para restaurar.',
+        color: 'orange',
+        icon: <IconAlertCircle size={16} />,
+      })
+      return
+    }
+
+    try {
+      setLoadingAcaoBanco(true)
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        try {
+          const buffer = e.target?.result as ArrayBuffer
+          const bytes = new Uint8Array(buffer)
+          let binary = ''
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i])
+          }
+          const base64 = window.btoa(binary)
+
+          const api = await getApi()
+          await api.importar_banco_dados(base64)
+
+          notifications.show({
+            title: 'Banco Restaurado com Sucesso',
+            message: 'O arquivo SQLite foi importado e validado.',
+            color: 'green',
+            icon: <IconCheck size={16} />,
+          })
+
+          closeModalImportar()
+          const dados = await api.obter_configuracoes()
+          onConfiguracoesAlteradas?.(dados)
+        } catch (err: any) {
+          notifications.show({
+            title: 'Erro na importação',
+            message: err?.message || 'O arquivo fornecido não é um banco SQLite válido.',
+            color: 'red',
+            icon: <IconX size={16} />,
+          })
+        } finally {
+          setLoadingAcaoBanco(false)
+        }
+      }
+      reader.readAsArrayBuffer(arquivoImportar)
+    } catch (error: any) {
+      setLoadingAcaoBanco(false)
+      notifications.show({
+        title: 'Erro de leitura',
+        message: error?.message || 'Não foi possível ler o arquivo.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    }
+  }
+
+  // AÇÃO 4: Formatar Banco de Dados (Wipe Total - 2ª Etapa)
+  const handleConfirmarFormatacaoFinal = async () => {
+    if (palavraConfirmacaoFormatar.trim().toUpperCase() !== 'FORMATAR') {
+      notifications.show({
+        title: 'Palavra-chave incorreta',
+        message: 'Digite exatamente a palavra FORMATAR para autorizar a limpeza.',
+        color: 'red',
+        icon: <IconAlertCircle size={16} />,
+      })
+      return
+    }
+
+    try {
+      setLoadingAcaoBanco(true)
+      const api = await getApi()
+      await api.formatar_banco_dados(false)
+
+      notifications.show({
+        title: 'Banco de Dados Formatado',
+        message: 'Todas as tabelas foram limpas e recriadas vazias com sucesso.',
+        color: 'blue',
+        icon: <IconCheck size={16} />,
+      })
+
+      closeModalFormatar2()
+      const dados = await api.obter_configuracoes()
+      onConfiguracoesAlteradas?.(dados)
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erro ao formatar',
+        message: error?.message || 'Falha ao formatar banco de dados.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setLoadingAcaoBanco(false)
+    }
+  }
+
+  return (
+    <Stack gap="md" style={{ width: '100%' }}>
+      {/* Cabeçalho */}
+      <PageHeader
+        icon={IconSettings}
+        iconColor="gray"
+        title="Configurações do Aplicativo"
+        subtitle="Personalize tema, identidade visual e gerencie o banco de dados SQLite local com backup seguro"
+      />
+
+      {/* SEÇÃO 1: Identidade Visual e Tema Claro/Escuro */}
+      <Card withBorder radius="md" p="lg">
+        <Title order={3} mb="xs" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <IconPalette size={22} />
+          Identidade Visual & Tema
+        </Title>
+        <Text size="xs" c="dimmed" mb="lg">
+          O modo de exibição (claro/escuro), nome, subtítulo, ícone e paleta de cores ficam salvos no banco SQLite
+        </Text>
+
+        <form onSubmit={form.onSubmit(handleSubmitConfigs)}>
+          <Stack gap="md">
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+              <TextInput
+                label="Nome do Aplicativo (Título do Cabeçalho)"
+                placeholder="Ex: Mapa de Cotações"
+                required
+                {...form.getInputProps('app_nome')}
+              />
+
+              <TextInput
+                label="Subtítulo do Cabeçalho"
+                placeholder="Ex: Comparativo e Alocação Inteligente"
+                required
+                {...form.getInputProps('app_subtitulo')}
+              />
+
+              <AppSelect
+                label="Modo de Exibição (Tema Claro / Escuro)"
+                data={OPCOES_ESQUEMA_COR.map((op) => ({
+                  value: op.value,
+                  label: op.label,
+                }))}
+                value={form.values.app_color_scheme}
+                onChange={handleMudarTema}
+                allowDeselect={false}
+              />
+            </SimpleGrid>
+
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <AppSelect
+                label="Ícone do Cabeçalho"
+                data={OPCOES_ICONES.map((op) => ({
+                  value: op.value,
+                  label: op.label,
+                }))}
+                {...form.getInputProps('app_icone')}
+                allowDeselect={false}
+              />
+
+              <AppSelect
+                label="Cor de Destaque do Tema"
+                data={OPCOES_CORES.map((op) => ({
+                  value: op.value,
+                  label: op.label,
+                }))}
+                {...form.getInputProps('app_theme_color')}
+                allowDeselect={false}
+              />
+            </SimpleGrid>
+
+            {/* Preview da Barra */}
+            <Paper withBorder p="sm" radius="md" mt="xs">
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={4}>
+                Pré-visualização do Cabeçalho:
+              </Text>
+              <Group justify="space-between" align="center">
+                <Group>
+                  <ThemeIcon
+                    size="lg"
+                    radius="md"
+                    variant="filled"
+                    color={form.values.app_theme_color || 'blue'}
+                  >
+                    {OPCOES_ICONES.find((i) => i.value === form.values.app_icone)?.icon || (
+                      <IconScale size={22} />
+                    )}
+                  </ThemeIcon>
+                  <div>
+                    <Title order={4} style={{ lineHeight: 1.1 }}>
+                      {form.values.app_nome || 'Mapa de Cotações'}
+                    </Title>
+                    <Text size="xs" c="dimmed">
+                      {form.values.app_subtitulo || 'Comparativo e Alocação Inteligente'}
+                    </Text>
+                  </div>
+                </Group>
+                <Group gap="xs">
+                  <Badge variant="light" color={form.values.app_theme_color || 'blue'}>
+                    {computedColorScheme === 'dark' ? 'Modo Escuro Ativo' : 'Modo Claro Ativo'}
+                  </Badge>
+                  <Badge variant="outline" color={form.values.app_theme_color || 'blue'}>
+                    Versão Desktop
+                  </Badge>
+                </Group>
+              </Group>
+            </Paper>
+
+            <Group justify="flex-end" mt="md">
+              <Button
+                type="submit"
+                leftSection={<IconDeviceFloppy size={18} />}
+                loading={salvandoConfig}
+                color={form.values.app_theme_color || 'blue'}
+              >
+                Salvar Preferências
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Card>
+
+      {/* SEÇÃO 2: Gerenciamento Seguro do Banco de Dados SQLite */}
+      <Card withBorder shadow="sm" radius="md" p="lg">
+        <Title order={3} mb="xs" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <IconDatabase size={22} />
+          Gerenciamento do Banco de Dados (SQLite Local)
+        </Title>
+        <Text size="xs" c="dimmed" mb="lg">
+          Arquivo local independente (<b>cotacao.db</b>). Todas as ações críticas contam com confirmação segura e timer de proteção.
+        </Text>
+
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+          {/* Card 1: Backup / Restaurar */}
+          <Paper withBorder p="md" radius="md">
+            <Stack justify="space-between" h="100%">
+              <div>
+                <Group gap="xs" mb="xs">
+                  <ThemeIcon color="teal" variant="light" size="lg" radius="md">
+                    <IconFileDatabase size={20} />
+                  </ThemeIcon>
+                  <Title order={4}>Backup & Restauração</Title>
+                </Group>
+                <Text size="xs" c="dimmed">
+                  Gere cópias de segurança escolhendo a pasta de destino no computador ou restaure um backup existente.
+                </Text>
+              </div>
+
+              <Group gap="xs" mt="md" grow>
+                <Button
+                  variant="outline"
+                  color="teal"
+                  size="xs"
+                  leftSection={<IconDatabaseExport size={14} />}
+                  onClick={handleOpenExportar}
+                >
+                  Fazer Backup...
+                </Button>
+                <Button
+                  variant="light"
+                  color="teal"
+                  size="xs"
+                  leftSection={<IconDatabaseImport size={14} />}
+                  onClick={handleOpenImportar}
+                >
+                  Importar .db
+                </Button>
+              </Group>
+            </Stack>
+          </Paper>
+
+          {/* Card 2: Formatar / Limpar Tudo */}
+          <Paper withBorder p="md" radius="md" style={{ borderColor: '#ffa8a8' }}>
+            <Stack justify="space-between" h="100%">
+              <div>
+                <Group gap="xs" mb="xs">
+                  <ThemeIcon color="red" variant="light" size="lg" radius="md">
+                    <IconTrash size={20} />
+                  </ThemeIcon>
+                  <Title order={4} c="red.8">
+                    Formatar Banco
+                  </Title>
+                </Group>
+                <Text size="xs" c="dimmed">
+                  Exclui permanentemente todos os produtos, fornecedores, cotações e alocações. Requer <b>dupla confirmação</b>.
+                </Text>
+              </div>
+
+              <Button
+                variant="filled"
+                color="red"
+                leftSection={<IconTrash size={16} />}
+                onClick={handleOpenFormatar}
+                mt="md"
+              >
+                Formatar Banco...
+              </Button>
+            </Stack>
+          </Paper>
+        </SimpleGrid>
+      </Card>
+
+      {/* MODAL 2: Exportar Backup do Banco com Pergunta de Local (Timer 5s) */}
+      <Modal
+        opened={modalExportarOpened}
+        onClose={closeModalExportar}
+        title={
+          <Group gap="xs">
+            <IconDatabaseExport size={22} color="#12b886" />
+            <Text fw={700}>Exportar Cópia de Segurança (Backup do Banco)</Text>
+          </Group>
+        }
+        size="lg"
+        centered
+      >
+        <Stack gap="md">
+          <Alert color="teal" variant="light">
+            <Text size="sm">
+              Será gerado um arquivo com a cópia exata de todos os dados do banco local{' '}
+              <b>cotacao.db</b> (produtos, fornecedores, necessidades, cotações e alocações).
+            </Text>
+          </Alert>
+
+          <TextInput
+            label="Nome do Arquivo de Backup"
+            description="Você pode personalizar o nome do arquivo gerado"
+            value={nomeArquivoBackup}
+            onChange={(e) => setNomeArquivoBackup(e.currentTarget.value)}
+            required
+          />
+
+          <Divider label="Onde você deseja salvar o backup?" labelPosition="center" my="xs" />
+
+          {/* Opção Principal: Diálogo do Sistema Operacional */}
+          <Paper withBorder p="md" radius="md">
+            <Group justify="space-between" align="center">
+              <div>
+                <Group gap="xs">
+                  <ThemeIcon color="teal" variant="light" size="md">
+                    <IconFolder size={18} />
+                  </ThemeIcon>
+                  <Text fw={600} size="sm">
+                    Escolher Local pelo Sistema Operacional (Recomendado)
+                  </Text>
+                </Group>
+                <Text size="xs" c="dimmed" mt={2}>
+                  Abre a janela nativa do Windows para você escolher a pasta de destino desejada.
+                </Text>
+              </div>
+
+              <Button
+                color="teal"
+                variant="filled"
+                disabled={timerExportar > 0 || !nomeArquivoBackup.trim()}
+                loading={loadingAcaoBanco}
+                onClick={handleSalvarBackupDialogoNativo}
+              >
+                {timerExportar > 0
+                  ? `Aguarde (${timerExportar}s)...`
+                  : 'Escolher Pasta & Salvar'}
+              </Button>
+            </Group>
+          </Paper>
+
+          <Group justify="space-between" mt="md">
+            <Button
+              variant="subtle"
+              color="gray"
+              size="xs"
+              disabled={timerExportar > 0}
+              onClick={handleDownloadDiretoNavegador}
+            >
+              Baixar via Navegador
+            </Button>
+
+            <Button variant="default" onClick={closeModalExportar}>
+              Fechar
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* MODAL 3: Importar Banco de Dados (Timer 5s) */}
+      <Modal
+        opened={modalImportarOpened}
+        onClose={closeModalImportar}
+        title={
+          <Group gap="xs">
+            <IconDatabaseImport size={20} color="#12b886" />
+            <Text fw={700}>Importar Banco de Dados (.db)</Text>
+          </Group>
+        }
+        centered
+      >
+        <Stack gap="md">
+          <Alert color="teal" variant="light">
+            <Text size="sm">
+              Você está prestes a carregar um arquivo <b>.db</b> ou <b>.sqlite</b>. Os dados
+              atuais serão substituídos integralmente pelo arquivo selecionado.
+            </Text>
+          </Alert>
+
+          <FileInput
+            label="Selecione o arquivo SQLite (.db)"
+            placeholder="Clique para escolher o arquivo .db"
+            accept=".db,.sqlite"
+            value={arquivoImportar}
+            onChange={setArquivoImportar}
+            required
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={closeModalImportar}>
+              Cancelar
+            </Button>
+            <Button
+              color="teal"
+              disabled={timerImportar > 0 || !arquivoImportar}
+              loading={loadingAcaoBanco}
+              onClick={handleConfirmarImportacao}
+            >
+              {timerImportar > 0
+                ? `Liberando (${timerImportar}s)...`
+                : 'Restaurar Banco de Dados'}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* MODAL 4 - ETAPA 1: Formatar Banco (Aviso Crítico + Timer 5s) */}
+      <Modal
+        opened={modalFormatar1Opened}
+        onClose={closeModalFormatar1}
+        title={
+          <Group gap="xs">
+            <IconAlertTriangle size={22} color="#fa5252" />
+            <Text fw={700} c="red.8">
+              Etapa 1/2: Alerta de Formatação Total
+            </Text>
+          </Group>
+        }
+        centered
+      >
+        <Stack gap="md">
+          <Alert color="red" variant="filled">
+            <Text size="sm" fw={700}>
+              ATENÇÃO: AÇÃO IRREVERSÍVEL!
+            </Text>
+            <Text size="xs" mt={4}>
+              A formatação irá apagar <b>TODOS</b> os produtos, fornecedores, histórico de
+              cotações, rodadas e decisões de alocação. O banco ficará totalmente vazio.
+            </Text>
+          </Alert>
+
+          <Text size="sm">
+            Recomendamos exportar um backup antes de prosseguir. Para sua segurança, aguarde a
+            contagem regressiva para avançar para a tela de confirmação final.
+          </Text>
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={closeModalFormatar1}>
+              Cancelar
+            </Button>
+            <Button
+              color="red"
+              disabled={timerFormatar > 0}
+              onClick={handleAvancarFormatar2}
+            >
+              {timerFormatar > 0
+                ? `Aguarde (${timerFormatar}s)...`
+                : 'Avançar para Confirmação Final'}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* MODAL 4 - ETAPA 2: Formatar Banco (Confirmação com Palavra-Chave 'FORMATAR') */}
+      <Modal
+        opened={modalFormatar2Opened}
+        onClose={closeModalFormatar2}
+        title={
+          <Group gap="xs">
+            <IconTrash size={22} color="#fa5252" />
+            <Text fw={700} c="red.8">
+              Etapa 2/2: Confirmação Definitiva
+            </Text>
+          </Group>
+        }
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Para autorizar a formatação imediata de todo o banco de dados, digite exatamente{' '}
+            <Text span fw={700} c="red">
+              FORMATAR
+            </Text>{' '}
+            no campo abaixo:
+          </Text>
+
+          <TextInput
+            placeholder="Digite FORMATAR..."
+            value={palavraConfirmacaoFormatar}
+            onChange={(e) => setPalavraConfirmacaoFormatar(e.currentTarget.value)}
+            required
+            autoFocus
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={closeModalFormatar2}>
+              Cancelar
+            </Button>
+            <Button
+              color="red"
+              variant="filled"
+              disabled={palavraConfirmacaoFormatar.trim().toUpperCase() !== 'FORMATAR'}
+              loading={loadingAcaoBanco}
+              onClick={handleConfirmarFormatacaoFinal}
+            >
+              Apagar Tudo Definitivamente
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Stack>
+  )
+}
+
+export default ConfiguracoesView

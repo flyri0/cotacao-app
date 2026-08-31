@@ -1,0 +1,116 @@
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Oculto na tela normal, visível somente na impressão */
+.print-only {
+  display: none !important;
+}
+
+/* ==========================================================================
+   REGRAS PROFISSIONAIS DE IMPRESSÃO (@media print)
+   ========================================================================== */
+@media print {
+  /* Oculta tudo que não faz parte do documento impresso */
+  header,
+  nav,
+  aside,
+  .mantine-AppShell-header,
+  .mantine-AppShell-navbar,
+  .mantine-AppShell-aside,
+  .no-print,
+  button,
+  .mantine-Button-root,
+  .mantine-ActionIcon-root,
+  .mantine-Modal-root,
+  .mantine-Notifications-root,
+  .mantine-SegmentedControl-root,
+  .mantine-Textarea-root,
+  textarea {
+    display: none !important;
+  }
+
+  /* Exibe elementos específicos de impressão */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Reset de layout na folha A4 */
+  html,
+  body,
+  #root,
+  .mantine-AppShell-root,
+  .mantine-AppShell-main {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    min-height: auto !important;
+  }
+
+  /* Card da Ordem de Compra individual */
+  .pedido-ordem-compra {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background: #ffffff !important;
+    border: 1.5px solid #1e293b !important;
+    box-shadow: none !important;
+    margin: 0 0 20pt 0 !important;
+    padding: 16pt !important;
+    width: 100% !important;
+    border-radius: 4px !important;
+  }
+
+  /* Quebra de página automática por fornecedor para múltiplos pedidos */
+  .pedido-ordem-compra + .pedido-ordem-compra {
+    page-break-before: always !important;
+    break-before: always !important;
+  }
+
+  /* Tabela de itens formatada para papel */
+  .pedido-ordem-compra table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 10pt !important;
+    margin-bottom: 10pt !important;
+  }
+
+  .pedido-ordem-compra th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #64748b !important;
+    font-weight: 700 !important;
+    font-size: 9.5pt !important;
+    padding: 5pt 6pt !important;
+    text-align: left !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .pedido-ordem-compra td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 4.5pt 6pt !important;
+    font-size: 9pt !important;
+    color: #1e293b !important;
+  }
+
+  /* Oculta pedido não selecionado quando for impressão individual */
+  .oculto-na-impressao {
+    display: none !important;
+  }
+}
+
