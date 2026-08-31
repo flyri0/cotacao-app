@@ -3,6 +3,7 @@ export interface Produto {
   nome: string
   categoria?: string | null
   unidade_padrao: string
+  ativo?: number
 }
 
 export interface Fornecedor {
@@ -12,6 +13,7 @@ export interface Fornecedor {
   telefone?: string | null
   email?: string | null
   pedido_minimo: number
+  ativo?: number
 }
 
 export interface Rodada {
@@ -174,7 +176,8 @@ export interface PywebviewApi {
   salvar_backup_em_caminho: (caminho_completo: string) => Promise<RespostaBackup>
   importar_banco_dados: (conteudo_base64: string) => Promise<{ sucesso: boolean; mensagem: string }>
 
-  listar_produtos: () => Promise<Produto[]>
+  listar_produtos: (apenas_ativos?: boolean) => Promise<Produto[]>
+  alternar_status_produto: (id_produto: number, ativo?: boolean) => Promise<{ sucesso: boolean; produto: Produto }>
   criar_produto: (
     nome: string,
     categoria?: string | null,
@@ -186,12 +189,13 @@ export interface PywebviewApi {
     categoria?: string | null,
     unidade_padrao?: string,
   ) => Promise<Produto>
-  remover_produto: (id_produto: number) => Promise<{ sucesso: boolean; id: number }>
+  remover_produto: (id_produto: number) => Promise<{ sucesso: boolean; id: number; mensagem: string }>
   obter_estatisticas_produto: (id_produto: number) => Promise<EstatisticasProduto>
   obter_estatisticas_fornecedor: (id_fornecedor: number) => Promise<EstatisticasFornecedor>
   obter_historico_global_cotacoes: () => Promise<HistoricoGlobalCotacaoItem[]>
 
-  listar_fornecedores: () => Promise<Fornecedor[]>
+  listar_fornecedores: (apenas_ativos?: boolean) => Promise<Fornecedor[]>
+  alternar_status_fornecedor: (id_fornecedor: number, ativo?: boolean) => Promise<{ sucesso: boolean; fornecedor: Fornecedor }>
   criar_fornecedor: (
     nome: string,
     contato?: string | null,
@@ -207,7 +211,7 @@ export interface PywebviewApi {
     email?: string | null,
     pedido_minimo?: number,
   ) => Promise<Fornecedor>
-  remover_fornecedor: (id_fornecedor: number) => Promise<{ sucesso: boolean; id: number }>
+  remover_fornecedor: (id_fornecedor: number) => Promise<{ sucesso: boolean; id: number; mensagem: string }>
 
   listar_rodadas: () => Promise<Rodada[]>
   listar_rodadas_com_metricas: () => Promise<RodadaComMetricas[]>

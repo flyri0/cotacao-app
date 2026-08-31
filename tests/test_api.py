@@ -204,6 +204,30 @@ class TestApi(unittest.TestCase):
                 nome=prod2["nome"],
             )
 
+    def test_bloqueio_exclusao_produto_com_historico(self) -> None:
+        # Produto 1 (Detergente) tem necessidades, cotações e alocações
+        with self.assertRaises(ValueError) as ctx:
+            self.api.remover_produto(1)
+        self.assertIn("possui vínculos históricos", str(ctx.exception))
+        self.assertIn("Desativar", str(ctx.exception))
+
+    def test_alternar_status_produto(self) -> None:
+        # Desativa produto 1
+        res = self.api.alternar_status_produto(1, False)
+        self.assertTrue(res["sucesso"])
+        self.assertEqual(res["produto"]["ativo"], 0)
+
+        # Filtro de apenas ativos deve retornar 11
+        self.assertEqual(len(self.api.listar_produtos(apenas_ativos=True)), 11)
+        # Listagem total deve retornar 12
+        self.assertEqual(len(self.api.listar_produtos(apenas_ativos=False)), 12)
+
+        # Reativa produto 1
+        res_ativar = self.api.alternar_status_produto(1, True)
+        self.assertTrue(res_ativar["sucesso"])
+        self.assertEqual(res_ativar["produto"]["ativo"], 1)
+        self.assertEqual(len(self.api.listar_produtos(apenas_ativos=True)), 12)
+
     # -------------------------------------------------------------------------
     # Testes de Fornecedores
     # -------------------------------------------------------------------------
@@ -211,6 +235,30 @@ class TestApi(unittest.TestCase):
         fornecedores = self.api.listar_fornecedores()
         self.assertEqual(len(fornecedores), 5)
         self.assertTrue(all("pedido_minimo" in f for f in fornecedores))
+
+    def test_bloqueio_exclusao_fornecedor_com_historico(self) -> None:
+        # Fornecedor 1 (Distribuidora Alvorada) tem cotações e alocações
+        with self.assertRaises(ValueError) as ctx:
+            self.api.remover_fornecedor(1)
+        self.assertIn("possui vínculos históricos", str(ctx.exception))
+        self.assertIn("Desativar", str(ctx.exception))
+
+    def test_alternar_status_fornecedor(self) -> None:
+        # Desativa fornecedor 1
+        res = self.api.alternar_status_fornecedor(1, False)
+        self.assertTrue(res["sucesso"])
+        self.assertEqual(res["fornecedor"]["ativo"], 0)
+
+        # Filtro de apenas ativos deve retornar 4
+        self.assertEqual(len(self.api.listar_fornecedores(apenas_ativos=True)), 4)
+        # Listagem total deve retornar 5
+        self.assertEqual(len(self.api.listar_fornecedores(apenas_ativos=False)), 5)
+
+        # Reativa fornecedor 1
+        res_ativar = self.api.alternar_status_fornecedor(1, True)
+        self.assertTrue(res_ativar["sucesso"])
+        self.assertEqual(res_ativar["fornecedor"]["ativo"], 1)
+        self.assertEqual(len(self.api.listar_fornecedores(apenas_ativos=True)), 5)
 
     def test_criar_e_remover_fornecedor(self) -> None:
         novo = self.api.criar_fornecedor(
@@ -306,6 +354,12 @@ class TestApi(unittest.TestCase):
         res = self.api.remover_rodada(nova["id"])
         self.assertTrue(res["sucesso"])
         self.assertEqual(len(self.api.listar_rodadas()), 4)
+
+    def test_bloqueio_exclusao_rodada_fechada_api(self) -> None:
+        # Rodada 1 está fechada
+        with self.assertRaises(ValueError) as ctx:
+            self.api.remover_rodada(1)
+        self.assertIn("Não é possível excluir uma rodada com status 'fechada'", str(ctx.exception))
 
     # -------------------------------------------------------------------------
     # Testes de Necessidades (sem exigir quantidade)

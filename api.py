@@ -27,6 +27,10 @@ from db import (
     duplicar_necessidades_rodada_db,
     atualizar_produto_db,
     atualizar_fornecedor_db,
+    verificar_historico_produto_db,
+    verificar_historico_fornecedor_db,
+    alternar_status_produto_db,
+    alternar_status_fornecedor_db,
 )
 from excel_service import (
     gerar_planilha_modelo_cotacao_db,
@@ -285,19 +289,29 @@ class Api:
     # -------------------------------------------------------------------------
     # PRODUTOS
     # -------------------------------------------------------------------------
-    def listar_produtos(self) -> List[Dict[str, Any]]:
-        """Retorna todos os produtos ordenados por nome."""
+    def listar_produtos(self, apenas_ativos: bool = False) -> List[Dict[str, Any]]:
+        """Retorna produtos ordenados por nome, opcionalmente filtrando apenas ativos."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT id, nome, categoria, unidade_padrao
-                FROM produtos
-                WHERE ativo = 1
-                ORDER BY nome ASC
-                """
-            )
+            query = "SELECT id, nome, categoria, unidade_padrao, ativo FROM produtos"
+            if apenas_ativos:
+                query += " WHERE ativo = 1"
+            query += " ORDER BY nome ASC"
+            cursor.execute(query)
             return [dict(r) for r in cursor.fetchall()]
+
+    def alternar_status_produto(self, id_produto: int, ativo: Optional[bool] = None) -> Dict[str, Any]:
+        """Alterna ou define o status de ativação de um produto."""
+        with self._get_connection() as conn:
+            val = 1 if ativo is True else (0 if ativo is False else None)
+            sucesso = alternar_status_produto_db(conn, id_produto, val)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, nome, categoria, unidade_padrao, ativo FROM produtos WHERE id = ?",
+                (id_produto,),
+            )
+            row = cursor.fetchone()
+            return {"sucesso": sucesso, "produto": dict(row) if row else None}
 
     def criar_produto(
         self,
@@ -317,8 +331,8 @@ class Api:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO produtos (nome, categoria, unidade_padrao)
-                VALUES (?, ?, ?)
+                INSERT INTO produtos (nome, categoria, unidade_padrao, ativo)
+                VALUES (?, ?, ?, 1)
                 """,
                 (nome, categoria, unidade_padrao),
             )
@@ -326,7 +340,7 @@ class Api:
             conn.commit()
 
             cursor.execute(
-                "SELECT id, nome, categoria, unidade_padrao FROM produtos WHERE id = ?",
+                "SELECT id, nome, categoria, unidade_padrao, ativo FROM produtos WHERE id = ?",
                 (id_produto,),
             )
             return dict(cursor.fetchone())
@@ -343,19 +357,38 @@ class Api:
             return atualizar_produto_db(conn, id_produto, nome, categoria, unidade_padrao)
 
     def remover_produto(self, id_produto: int) -> Dict[str, Any]:
-        """Remove um produto fisicamente se possível, senão aplica soft-delete (inativa)."""
+        """Remove um produto fisicamente se não possuir nenhum histórico, senão bloqueia com mensagem explicativa."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            try:
-                cursor.execute("DELETE FROM produtos WHERE id = ?", (id_produto,))
-                conn.commit()
-                return {"sucesso": True, "id": id_produto, "mensagem": "Produto excluído permanentemente."}
-            except sqlite3.IntegrityError:
-                # Fallback para Soft Delete devido ao histórico
-                conn.rollback()
-                cursor.execute("UPDATE produtos SET ativo = 0 WHERE id = ?", (id_produto,))
-                conn.commit()
-                return {"sucesso": True, "id": id_produto, "mensagem": "Produto ocultado (já possui histórico)."}
+            cursor.execute("SELECT nome FROM produtos WHERE id = ?", (id_produto,))
+            prod = cursor.fetchone()
+            if not prod:
+                raise ValueError(f"Produto #{id_produto} não encontrado.")
+            nome = prod["nome"]
+
+            hist = verificar_historico_produto_db(conn, id_produto)
+            if hist["total"] > 0:
+                detalhes = []
+                if hist["necessidades"] > 0:
+                    detalhes.append(f"{hist['necessidades']} necessidade(s)")
+                if hist["cotacoes"] > 0:
+                    detalhes.append(f"{hist['cotacoes']} cotação(ões)")
+                if hist["alocacoes"] > 0:
+                    detalhes.append(f"{hist['alocacoes']} alocação(ões) de compra")
+                detalhes_str = ", ".join(detalhes)
+
+                raise ValueError(
+                    f"Não é possível excluir o produto '{nome}' pois ele possui vínculos históricos ({detalhes_str}). "
+                    f"Para ocultá-lo de novas cotações sem comprometer o histórico financeiro, utilize a opção 'Desativar'."
+                )
+
+            cursor.execute("DELETE FROM produtos WHERE id = ?", (id_produto,))
+            conn.commit()
+            return {
+                "sucesso": True,
+                "id": id_produto,
+                "mensagem": f"Produto '{nome}' excluído permanentemente com sucesso.",
+            }
 
     def obter_estatisticas_produto(self, id_produto: int) -> Dict[str, Any]:
         """Retorna histórico completo e métricas analíticas de preços de um produto."""
@@ -365,19 +398,29 @@ class Api:
     # -------------------------------------------------------------------------
     # FORNECEDORES
     # -------------------------------------------------------------------------
-    def listar_fornecedores(self) -> List[Dict[str, Any]]:
-        """Retorna todos os fornecedores ordenados por nome."""
+    def listar_fornecedores(self, apenas_ativos: bool = False) -> List[Dict[str, Any]]:
+        """Retorna fornecedores ordenados por nome, opcionalmente filtrando apenas ativos."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT id, nome, contato, telefone, email, pedido_minimo
-                FROM fornecedores
-                WHERE ativo = 1
-                ORDER BY nome ASC
-                """
-            )
+            query = "SELECT id, nome, contato, telefone, email, pedido_minimo, ativo FROM fornecedores"
+            if apenas_ativos:
+                query += " WHERE ativo = 1"
+            query += " ORDER BY nome ASC"
+            cursor.execute(query)
             return [dict(row) for row in cursor.fetchall()]
+
+    def alternar_status_fornecedor(self, id_fornecedor: int, ativo: Optional[bool] = None) -> Dict[str, Any]:
+        """Alterna ou define o status de ativação de um fornecedor."""
+        with self._get_connection() as conn:
+            val = 1 if ativo is True else (0 if ativo is False else None)
+            sucesso = alternar_status_fornecedor_db(conn, id_fornecedor, val)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, nome, contato, telefone, email, pedido_minimo, ativo FROM fornecedores WHERE id = ?",
+                (id_fornecedor,),
+            )
+            row = cursor.fetchone()
+            return {"sucesso": sucesso, "fornecedor": dict(row) if row else None}
 
     def criar_fornecedor(
         self,
@@ -401,8 +444,8 @@ class Api:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO fornecedores (nome, contato, telefone, email, pedido_minimo)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO fornecedores (nome, contato, telefone, email, pedido_minimo, ativo)
+                VALUES (?, ?, ?, ?, ?, 1)
                 """,
                 (nome, contato, telefone, email, pedido_minimo),
             )
@@ -411,7 +454,7 @@ class Api:
 
             cursor.execute(
                 """
-                SELECT id, nome, contato, telefone, email, pedido_minimo
+                SELECT id, nome, contato, telefone, email, pedido_minimo, ativo
                 FROM fornecedores WHERE id = ?
                 """,
                 (id_fornecedor,),
@@ -434,19 +477,36 @@ class Api:
             )
 
     def remover_fornecedor(self, id_fornecedor: int) -> Dict[str, Any]:
-        """Remove um fornecedor fisicamente se possível, senão aplica soft-delete (inativa)."""
+        """Remove um fornecedor fisicamente se não possuir nenhum histórico, senão bloqueia com mensagem explicativa."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            try:
-                cursor.execute("DELETE FROM fornecedores WHERE id = ?", (id_fornecedor,))
-                conn.commit()
-                return {"sucesso": True, "id": id_fornecedor, "mensagem": "Fornecedor excluído permanentemente."}
-            except sqlite3.IntegrityError:
-                # Fallback para Soft Delete devido ao histórico
-                conn.rollback()
-                cursor.execute("UPDATE fornecedores SET ativo = 0 WHERE id = ?", (id_fornecedor,))
-                conn.commit()
-                return {"sucesso": True, "id": id_fornecedor, "mensagem": "Fornecedor ocultado (já possui histórico)."}
+            cursor.execute("SELECT nome FROM fornecedores WHERE id = ?", (id_fornecedor,))
+            forn = cursor.fetchone()
+            if not forn:
+                raise ValueError(f"Fornecedor #{id_fornecedor} não encontrado.")
+            nome = forn["nome"]
+
+            hist = verificar_historico_fornecedor_db(conn, id_fornecedor)
+            if hist["total"] > 0:
+                detalhes = []
+                if hist["cotacoes"] > 0:
+                    detalhes.append(f"{hist['cotacoes']} cotação(ões)")
+                if hist["alocacoes"] > 0:
+                    detalhes.append(f"{hist['alocacoes']} alocação(ões) de compra")
+                detalhes_str = ", ".join(detalhes)
+
+                raise ValueError(
+                    f"Não é possível excluir o fornecedor '{nome}' pois ele possui vínculos históricos ({detalhes_str}). "
+                    f"Para ocultá-lo de novas rodadas sem comprometer o histórico comercial, utilize a opção 'Desativar'."
+                )
+
+            cursor.execute("DELETE FROM fornecedores WHERE id = ?", (id_fornecedor,))
+            conn.commit()
+            return {
+                "sucesso": True,
+                "id": id_fornecedor,
+                "mensagem": f"Fornecedor '{nome}' excluído permanentemente com sucesso.",
+            }
 
     def obter_estatisticas_fornecedor(self, id_fornecedor: int) -> Dict[str, Any]:
         """Retorna histórico comercial, volume financeiro alocado e taxa de competitividade do fornecedor."""
@@ -527,8 +587,16 @@ class Api:
             return atualizar_rodada_db(conn, id_rodada, descricao, status)
 
     def remover_rodada(self, id_rodada: int) -> Dict[str, Any]:
-        """Exclui permanentemente uma rodada e todos os seus lançamentos."""
+        """Exclui uma rodada aberta e todos os seus lançamentos. Rodadas fechadas são protegidas."""
         with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT status FROM rodadas WHERE id = ?", (id_rodada,))
+            row = cursor.fetchone()
+            if row and row["status"] == "fechada":
+                raise ValueError(
+                    "Ação bloqueada: Não é possível excluir uma rodada com status 'fechada' "
+                    "pois ela representa histórico consolidado de compras."
+                )
             sucesso = remover_rodada_db(conn, id_rodada)
             return {"sucesso": sucesso, "id": id_rodada}
 

@@ -26,6 +26,7 @@ import {
   IconFileSpreadsheet,
   IconPackage,
   IconPlus,
+  IconPower,
   IconTrash,
   IconUpload,
   IconX,
@@ -85,6 +86,7 @@ export function ProdutosView() {
   const [submitting, setSubmitting] = useState(false)
   const [salvandoEdicao, setSalvandoEdicao] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [togglingId, setTogglingId] = useState<number | null>(null)
   const [produtoEmEdicao, setProdutoEmEdicao] = useState<Produto | null>(null)
   const [modalEditarOpened, { open: openModalEditar, close: closeModalEditar }] =
     useDisclosure(false)
@@ -121,7 +123,6 @@ export function ProdutosView() {
     },
   })
 
-  // Lista dinâmica de categorias cadastradas para sugestão
   const categoriasSugeridas = useMemo(() => {
     const set = new Set<string>()
     produtos.forEach((p) => {
@@ -136,7 +137,7 @@ export function ProdutosView() {
     try {
       setLoading(true)
       const api = await getApi()
-      const data = await api.listar_produtos()
+      const data = await api.listar_produtos(false)
       setProdutos(data)
     } catch (error) {
       console.error('Erro ao carregar produtos:', error)
@@ -153,7 +154,6 @@ export function ProdutosView() {
 
   useEffect(() => {
     carregarProdutos()
-    // Foca no primeiro campo ao carregar
     setTimeout(() => nomeRef.current?.focus(), 150)
   }, [])
 
@@ -178,7 +178,6 @@ export function ProdutosView() {
       form.setFieldValue('unidade_padrao', 'UN')
       await carregarProdutos()
 
-      // Refoca no campo de nome para inclusão contínua imediata
       setTimeout(() => {
         nomeRef.current?.focus()
       }, 50)
@@ -196,7 +195,6 @@ export function ProdutosView() {
     }
   }
 
-  // Abertura do modal de edição
   const handleAbrirEdicao = (p: Produto) => {
     setProdutoEmEdicao(p)
     formEdicao.setValues({
@@ -207,7 +205,6 @@ export function ProdutosView() {
     openModalEditar()
   }
 
-  // Salvar alterações de edição
   const handleSalvarEdicao = async (values: typeof formEdicao.values) => {
     if (!produtoEmEdicao) return
     try {
@@ -243,14 +240,41 @@ export function ProdutosView() {
     }
   }
 
-  // Estado para Modal de Importação Excel
+  const handleToggleAtivo = async (p: Produto) => {
+    const novoStatus = p.ativo === 0 ? true : false
+    try {
+      setTogglingId(p.id)
+      const api = await getApi()
+      await api.alternar_status_produto(p.id, novoStatus)
+
+      notifications.show({
+        title: novoStatus ? 'Produto Ativado' : 'Produto Desativado',
+        message: novoStatus
+          ? `O produto "${p.nome}" está ativo e disponível para novas cotações.`
+          : `O produto "${p.nome}" foi desativado (não aparecerá em novas cotações).`,
+        color: novoStatus ? 'teal' : 'gray',
+        icon: novoStatus ? <IconCheck size={16} /> : <IconPower size={16} />,
+      })
+
+      await carregarProdutos()
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erro ao alterar status',
+        message: error?.message || 'Não foi possível alterar o status do produto.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
   const [modalImportarOpened, { open: openModalImportar, close: closeModalImportar }] =
     useDisclosure(false)
   const [arquivoExcel, setArquivoExcel] = useState<File | null>(null)
   const [importandoExcel, setImportandoExcel] = useState(false)
   const [exportandoExcel, setExportandoExcel] = useState(false)
 
-  // Exportar Catálogo para Excel
   const handleExportarExcel = async () => {
     try {
       setExportandoExcel(true)
@@ -289,7 +313,6 @@ export function ProdutosView() {
     }
   }
 
-  // Processar Importação de Produtos via Excel
   const handleProcessarImportacaoExcel = async () => {
     if (!arquivoExcel) {
       notifications.show({
@@ -343,10 +366,14 @@ export function ProdutosView() {
       title: 'Excluir Produto',
       centered: true,
       children: (
-        <Text size="sm">
-          Deseja realmente remover o produto <b>{nome}</b>? Todas as cotações e necessidades
-          vinculadas a este produto também serão removidas.
-        </Text>
+        <Stack gap="xs">
+          <Text size="sm">
+            Deseja realmente excluir o produto <b>{nome}</b>?
+          </Text>
+          <Text size="xs" c="dimmed">
+            Nota: Apenas produtos sem nenhum histórico vinculado (necessidades, cotações ou compras) podem ser excluídos permanentemente.
+          </Text>
+        </Stack>
       ),
       labels: { confirm: 'Excluir Produto', cancel: 'Cancelar' },
       confirmProps: { color: 'red' },
@@ -354,23 +381,56 @@ export function ProdutosView() {
         try {
           setDeletingId(id)
           const api = await getApi()
-          await api.remover_produto(id)
+          const res = await api.remover_produto(id)
 
           notifications.show({
-            title: 'Produto Removido',
-            message: `O produto "${nome}" foi removido com sucesso.`,
-            color: 'blue',
+            title: 'Produto Excluído',
+            message: res.mensagem || `O produto "${nome}" foi excluído com sucesso.`,
+            color: 'teal',
             icon: <IconCheck size={16} />,
           })
 
           await carregarProdutos()
-        } catch (error) {
+        } catch (error: any) {
           console.error('Erro ao remover produto:', error)
-          notifications.show({
-            title: 'Erro ao remover produto',
-            message: 'Não foi possível excluir o produto.',
-            color: 'red',
-            icon: <IconX size={16} />,
+          const msg = error?.message || 'Não foi possível excluir o produto.'
+          modals.open({
+            title: (
+              <Group gap="xs">
+                <IconAlertCircle color="var(--mantine-color-red-6)" size={20} />
+                <Text fw={700}>Exclusão Bloqueada</Text>
+              </Group>
+            ),
+            centered: true,
+            children: (
+              <Stack gap="sm">
+                <Text size="sm">{msg}</Text>
+                <Group justify="flex-end" mt="md">
+                  <Button
+                    variant="light"
+                    color="teal"
+                    leftSection={<IconPower size={16} />}
+                    onClick={async () => {
+                      modals.closeAll()
+                      const api = await getApi()
+                      await api.alternar_status_produto(id, false)
+                      notifications.show({
+                        title: 'Produto Desativado',
+                        message: `O produto "${nome}" foi desativado com sucesso.`,
+                        color: 'teal',
+                        icon: <IconCheck size={16} />,
+                      })
+                      await carregarProdutos()
+                    }}
+                  >
+                    Desativar Produto
+                  </Button>
+                  <Button variant="default" onClick={() => modals.closeAll()}>
+                    Fechar
+                  </Button>
+                </Group>
+              </Stack>
+            ),
           })
         } finally {
           setDeletingId(null)
@@ -384,16 +444,27 @@ export function ProdutosView() {
       {
         accessorKey: 'nome',
         header: 'Nome do Produto',
-        Cell: ({ cell }) => <Text fw={600}>{cell.getValue<string>()}</Text>,
+        Cell: ({ cell, row }) => (
+          <Group gap="xs">
+            <Text fw={600} c={row.original.ativo === 0 ? 'dimmed' : undefined}>
+              {cell.getValue<string>()}
+            </Text>
+            {row.original.ativo === 0 && (
+              <Badge size="xs" color="gray" variant="outline">
+                Inativo
+              </Badge>
+            )}
+          </Group>
+        ),
       },
       {
         accessorKey: 'categoria',
         header: 'Categoria',
         size: 180,
-        Cell: ({ cell }) => {
+        Cell: ({ cell, row }) => {
           const val = cell.getValue<string | null>()
           return val ? (
-            <Badge variant="dot" color="teal">
+            <Badge variant="dot" color={row.original.ativo === 0 ? 'gray' : 'teal'}>
               {val}
             </Badge>
           ) : (
@@ -406,7 +477,7 @@ export function ProdutosView() {
       {
         accessorKey: 'unidade_padrao',
         header: 'Unidade Padrão',
-        size: 150,
+        size: 140,
         Cell: ({ cell }) => (
           <Badge variant="light" color="indigo">
             {cell.getValue<string>()}
@@ -414,36 +485,65 @@ export function ProdutosView() {
         ),
       },
       {
+        accessorKey: 'ativo',
+        header: 'Status',
+        size: 120,
+        Cell: ({ row }) =>
+          row.original.ativo === 0 ? (
+            <Badge color="gray" variant="light" size="sm">
+              Inativo
+            </Badge>
+          ) : (
+            <Badge color="teal" variant="filled" size="sm">
+              Ativo
+            </Badge>
+          ),
+      },
+      {
         id: 'acoes',
         header: 'Ações',
-        size: 110,
-        Cell: ({ row }) => (
-          <Group gap={4} wrap="nowrap">
-            <Tooltip label="Editar produto">
-              <ActionIcon
-                color="blue"
-                variant="subtle"
-                onClick={() => handleAbrirEdicao(row.original)}
-              >
-                <IconEdit size={18} />
-              </ActionIcon>
-            </Tooltip>
+        size: 130,
+        Cell: ({ row }) => {
+          const isAtivo = row.original.ativo !== 0
+          return (
+            <Group gap={4} wrap="nowrap">
+              <Tooltip label={isAtivo ? 'Desativar produto' : 'Ativar produto'}>
+                <ActionIcon
+                  color={isAtivo ? 'teal' : 'gray'}
+                  variant="subtle"
+                  loading={togglingId === row.original.id}
+                  onClick={() => handleToggleAtivo(row.original)}
+                >
+                  <IconPower size={18} />
+                </ActionIcon>
+              </Tooltip>
 
-            <Tooltip label="Excluir produto">
-              <ActionIcon
-                color="red"
-                variant="subtle"
-                loading={deletingId === row.original.id}
-                onClick={() => handleRemover(row.original.id, row.original.nome)}
-              >
-                <IconTrash size={18} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        ),
+              <Tooltip label="Editar produto">
+                <ActionIcon
+                  color="blue"
+                  variant="subtle"
+                  onClick={() => handleAbrirEdicao(row.original)}
+                >
+                  <IconEdit size={18} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip label="Excluir produto">
+                <ActionIcon
+                  color="red"
+                  variant="subtle"
+                  loading={deletingId === row.original.id}
+                  onClick={() => handleRemover(row.original.id, row.original.nome)}
+                >
+                  <IconTrash size={18} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          )
+        },
       },
     ],
-    [deletingId],
+    [deletingId, togglingId],
   )
 
   const table = useMantineReactTable({

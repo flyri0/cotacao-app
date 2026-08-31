@@ -1012,6 +1012,76 @@ def atualizar_fornecedor_db(
     return dict(cursor.fetchone())
 
 
+def verificar_historico_produto_db(conn: sqlite3.Connection, id_produto: int) -> Dict[str, int]:
+    """Retorna a contagem de registros vinculados a um produto em necessidades, cotações e alocações."""
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM necessidades WHERE id_produto = ?", (id_produto,))
+    nec = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM cotacoes WHERE id_produto = ?", (id_produto,))
+    cot = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM alocacoes WHERE id_produto = ?", (id_produto,))
+    aloc = cursor.fetchone()[0]
+    return {
+        "necessidades": nec,
+        "cotacoes": cot,
+        "alocacoes": aloc,
+        "total": nec + cot + aloc,
+    }
+
+
+def verificar_historico_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: int) -> Dict[str, int]:
+    """Retorna a contagem de registros vinculados a um fornecedor em cotações e alocações."""
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM cotacoes WHERE id_fornecedor = ?", (id_fornecedor,))
+    cot = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM alocacoes WHERE id_fornecedor = ?", (id_fornecedor,))
+    aloc = cursor.fetchone()[0]
+    return {
+        "cotacoes": cot,
+        "alocacoes": aloc,
+        "total": cot + aloc,
+    }
+
+
+def alternar_status_produto_db(
+    conn: sqlite3.Connection, id_produto: int, ativo: Optional[int] = None
+) -> bool:
+    """Alterna ou define explicitamente o status ativo (1 ou 0) de um produto."""
+    cursor = conn.cursor()
+    if ativo is None:
+        cursor.execute(
+            "UPDATE produtos SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END WHERE id = ?",
+            (id_produto,),
+        )
+    else:
+        cursor.execute(
+            "UPDATE produtos SET ativo = ? WHERE id = ?",
+            (1 if ativo else 0, id_produto),
+        )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
+def alternar_status_fornecedor_db(
+    conn: sqlite3.Connection, id_fornecedor: int, ativo: Optional[int] = None
+) -> bool:
+    """Alterna ou define explicitamente o status ativo (1 ou 0) de um fornecedor."""
+    cursor = conn.cursor()
+    if ativo is None:
+        cursor.execute(
+            "UPDATE fornecedores SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END WHERE id = ?",
+            (id_fornecedor,),
+        )
+    else:
+        cursor.execute(
+            "UPDATE fornecedores SET ativo = ? WHERE id = ?",
+            (1 if ativo else 0, id_fornecedor),
+        )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
+
 def reset_db(db_path: str = DB_PATH) -> sqlite3.Connection:
     """Apaga o banco existente e recria o schema com o seed atualizado."""
     if os.path.exists(db_path):

@@ -249,8 +249,8 @@ export function CotacoesView({
       const api = await getApi()
       const [listaRodadas, listaProdutos, listaFornecedores] = await Promise.all([
         api.listar_rodadas(),
-        api.listar_produtos(),
-        api.listar_fornecedores(),
+        api.listar_produtos(true),
+        api.listar_fornecedores(true),
       ])
 
       setRodadas(listaRodadas)

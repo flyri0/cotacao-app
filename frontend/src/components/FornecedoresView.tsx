@@ -26,6 +26,7 @@ import {
   IconEdit,
   IconFileSpreadsheet,
   IconPlus,
+  IconPower,
   IconTrash,
   IconTruck,
   IconUpload,
@@ -77,6 +78,7 @@ export function FornecedoresView() {
   const [submitting, setSubmitting] = useState(false)
   const [salvandoEdicao, setSalvandoEdicao] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [togglingId, setTogglingId] = useState<number | null>(null)
   const [fornecedorEmEdicao, setFornecedorEmEdicao] = useState<Fornecedor | null>(null)
   const [modalEditarOpened, { open: openModalEditar, close: closeModalEditar }] =
     useDisclosure(false)
@@ -117,7 +119,7 @@ export function FornecedoresView() {
     try {
       setLoading(true)
       const api = await getApi()
-      const data = await api.listar_fornecedores()
+      const data = await api.listar_fornecedores(false)
       setFornecedores(data)
     } catch (error) {
       console.error('Erro ao carregar fornecedores:', error)
@@ -149,7 +151,7 @@ export function FornecedoresView() {
       )
 
       notifications.show({
-        title: 'Fornecedor Adicionado',
+        title: 'Fornecedor Cadastrado',
         message: `O fornecedor "${novoFornecedor.nome}" foi cadastrado com sucesso.`,
         color: 'green',
         icon: <IconCheck size={16} />,
@@ -160,8 +162,8 @@ export function FornecedoresView() {
     } catch (error: any) {
       console.error('Erro ao criar fornecedor:', error)
       notifications.show({
-        title: 'Erro ao salvar fornecedor',
-        message: error?.message || 'Verifique os dados informados.',
+        title: 'Erro ao cadastrar fornecedor',
+        message: error?.message || 'Verifique se a razão social já existe.',
         color: 'red',
         icon: <IconX size={16} />,
       })
@@ -218,6 +220,35 @@ export function FornecedoresView() {
       })
     } finally {
       setSalvandoEdicao(false)
+    }
+  }
+
+  const handleToggleAtivo = async (f: Fornecedor) => {
+    const novoStatus = f.ativo === 0 ? true : false
+    try {
+      setTogglingId(f.id)
+      const api = await getApi()
+      await api.alternar_status_fornecedor(f.id, novoStatus)
+
+      notifications.show({
+        title: novoStatus ? 'Fornecedor Ativado' : 'Fornecedor Desativado',
+        message: novoStatus
+          ? `O fornecedor "${f.nome}" está ativo e disponível para novas cotações.`
+          : `O fornecedor "${f.nome}" foi desativado (não aparecerá em novas cotações).`,
+        color: novoStatus ? 'teal' : 'gray',
+        icon: novoStatus ? <IconCheck size={16} /> : <IconPower size={16} />,
+      })
+
+      await carregarFornecedores()
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erro ao alterar status',
+        message: error?.message || 'Não foi possível alterar o status do fornecedor.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -321,10 +352,14 @@ export function FornecedoresView() {
       title: 'Excluir Fornecedor',
       centered: true,
       children: (
-        <Text size="sm">
-          Deseja realmente remover o fornecedor <b>{nome}</b>? Todas as cotações e alocações
-          vinculadas a este fornecedor também serão excluídas.
-        </Text>
+        <Stack gap="xs">
+          <Text size="sm">
+            Deseja realmente excluir o fornecedor <b>{nome}</b>?
+          </Text>
+          <Text size="xs" c="dimmed">
+            Nota: Apenas fornecedores sem nenhum histórico vinculado (cotações ou compras) podem ser excluídos permanentemente.
+          </Text>
+        </Stack>
       ),
       labels: { confirm: 'Excluir Fornecedor', cancel: 'Cancelar' },
       confirmProps: { color: 'red' },
@@ -332,23 +367,56 @@ export function FornecedoresView() {
         try {
           setDeletingId(id)
           const api = await getApi()
-          await api.remover_fornecedor(id)
+          const res = await api.remover_fornecedor(id)
 
           notifications.show({
             title: 'Fornecedor Removido',
-            message: `O fornecedor "${nome}" foi removido com sucesso.`,
-            color: 'blue',
+            message: res.mensagem || `O fornecedor "${nome}" foi removido com sucesso.`,
+            color: 'teal',
             icon: <IconCheck size={16} />,
           })
 
           await carregarFornecedores()
-        } catch (error) {
+        } catch (error: any) {
           console.error('Erro ao remover fornecedor:', error)
-          notifications.show({
-            title: 'Erro ao remover fornecedor',
-            message: 'Não foi possível excluir o fornecedor.',
-            color: 'red',
-            icon: <IconX size={16} />,
+          const msg = error?.message || 'Não foi possível excluir o fornecedor.'
+          modals.open({
+            title: (
+              <Group gap="xs">
+                <IconAlertCircle color="var(--mantine-color-red-6)" size={20} />
+                <Text fw={700}>Exclusão Bloqueada</Text>
+              </Group>
+            ),
+            centered: true,
+            children: (
+              <Stack gap="sm">
+                <Text size="sm">{msg}</Text>
+                <Group justify="flex-end" mt="md">
+                  <Button
+                    variant="light"
+                    color="teal"
+                    leftSection={<IconPower size={16} />}
+                    onClick={async () => {
+                      modals.closeAll()
+                      const api = await getApi()
+                      await api.alternar_status_fornecedor(id, false)
+                      notifications.show({
+                        title: 'Fornecedor Desativado',
+                        message: `O fornecedor "${nome}" foi desativado com sucesso.`,
+                        color: 'teal',
+                        icon: <IconCheck size={16} />,
+                      })
+                      await carregarFornecedores()
+                    }}
+                  >
+                    Desativar Fornecedor
+                  </Button>
+                  <Button variant="default" onClick={() => modals.closeAll()}>
+                    Fechar
+                  </Button>
+                </Group>
+              </Stack>
+            ),
           })
         } finally {
           setDeletingId(null)
@@ -362,7 +430,18 @@ export function FornecedoresView() {
       {
         accessorKey: 'nome',
         header: 'Fornecedor / Razão Social',
-        Cell: ({ cell }) => <Text fw={600}>{cell.getValue<string>()}</Text>,
+        Cell: ({ cell, row }) => (
+          <Group gap="xs">
+            <Text fw={600} c={row.original.ativo === 0 ? 'dimmed' : undefined}>
+              {cell.getValue<string>()}
+            </Text>
+            {row.original.ativo === 0 && (
+              <Badge size="xs" color="gray" variant="outline">
+                Inativo
+              </Badge>
+            )}
+          </Group>
+        ),
       },
       {
         accessorKey: 'contato',
@@ -407,36 +486,65 @@ export function FornecedoresView() {
         },
       },
       {
+        accessorKey: 'ativo',
+        header: 'Status',
+        size: 120,
+        Cell: ({ row }) =>
+          row.original.ativo === 0 ? (
+            <Badge color="gray" variant="light" size="sm">
+              Inativo
+            </Badge>
+          ) : (
+            <Badge color="teal" variant="filled" size="sm">
+              Ativo
+            </Badge>
+          ),
+      },
+      {
         id: 'acoes',
         header: 'Ações',
-        size: 110,
-        Cell: ({ row }) => (
-          <Group gap={4} wrap="nowrap">
-            <Tooltip label="Editar fornecedor">
-              <ActionIcon
-                color="blue"
-                variant="subtle"
-                onClick={() => handleAbrirEdicao(row.original)}
-              >
-                <IconEdit size={18} />
-              </ActionIcon>
-            </Tooltip>
+        size: 130,
+        Cell: ({ row }) => {
+          const isAtivo = row.original.ativo !== 0
+          return (
+            <Group gap={4} wrap="nowrap">
+              <Tooltip label={isAtivo ? 'Desativar fornecedor' : 'Ativar fornecedor'}>
+                <ActionIcon
+                  color={isAtivo ? 'teal' : 'gray'}
+                  variant="subtle"
+                  loading={togglingId === row.original.id}
+                  onClick={() => handleToggleAtivo(row.original)}
+                >
+                  <IconPower size={18} />
+                </ActionIcon>
+              </Tooltip>
 
-            <Tooltip label="Excluir fornecedor">
-              <ActionIcon
-                color="red"
-                variant="subtle"
-                loading={deletingId === row.original.id}
-                onClick={() => handleRemover(row.original.id, row.original.nome)}
-              >
-                <IconTrash size={18} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        ),
+              <Tooltip label="Editar fornecedor">
+                <ActionIcon
+                  color="blue"
+                  variant="subtle"
+                  onClick={() => handleAbrirEdicao(row.original)}
+                >
+                  <IconEdit size={18} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip label="Excluir fornecedor">
+                <ActionIcon
+                  color="red"
+                  variant="subtle"
+                  loading={deletingId === row.original.id}
+                  onClick={() => handleRemover(row.original.id, row.original.nome)}
+                >
+                  <IconTrash size={18} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          )
+        },
       },
     ],
-    [deletingId],
+    [deletingId, togglingId],
   )
 
   const table = useMantineReactTable({

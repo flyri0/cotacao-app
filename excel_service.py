@@ -410,11 +410,12 @@ def importar_produtos_excel_db(conn: sqlite3.Connection, conteudo_base64: str) -
         try:
             cursor.execute(
                 """
-                INSERT INTO produtos (nome, categoria, unidade_padrao)
-                VALUES (?, ?, ?)
+                INSERT INTO produtos (nome, categoria, unidade_padrao, ativo)
+                VALUES (?, ?, ?, 1)
                 ON CONFLICT(nome) DO UPDATE SET
                     categoria = excluded.categoria,
-                    unidade_padrao = excluded.unidade_padrao
+                    unidade_padrao = excluded.unidade_padrao,
+                    ativo = 1
                 """,
                 (nome, cat, un),
             )
@@ -428,7 +429,7 @@ def importar_produtos_excel_db(conn: sqlite3.Connection, conteudo_base64: str) -
 
 
 def exportar_fornecedores_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
-    """Exporta o catálogo mestre de fornecedores para Excel."""
+    """Exporta o catálogo completo de fornecedores para uma planilha Excel estilizada."""
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome, contato, telefone, email, pedido_minimo FROM fornecedores ORDER BY nome ASC")
     fornecedores = [dict(r) for r in cursor.fetchall()]
@@ -441,11 +442,12 @@ def exportar_fornecedores_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     headers = [
         ("ID", 8),
         ("Fornecedor / Razão Social", 35),
-        ("Contato", 20),
-        ("Telefone", 20),
+        ("Contato", 22),
+        ("Telefone / WhatsApp", 20),
         ("E-mail", 30),
         ("Pedido Mínimo (R$)", 20),
     ]
+    ws.row_dimensions[1].height = 24
 
     for col_i, (h_text, width) in enumerate(headers, 1):
         c = ws.cell(row=1, column=col_i, value=h_text)
@@ -462,9 +464,8 @@ def exportar_fornecedores_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
         ws.cell(row=row_i, column=4, value=f["telefone"] or "-").alignment = Alignment(horizontal="center")
         ws.cell(row=row_i, column=5, value=f["email"] or "-").alignment = Alignment(horizontal="left")
         c_min = ws.cell(row=row_i, column=6, value=f["pedido_minimo"])
+        c_min.number_format = 'R$ #,##0.00'
         c_min.alignment = Alignment(horizontal="right")
-        c_min.number_format = "R$ #,##0.00"
-
         for c in range(1, 7):
             ws.cell(row=row_i, column=c).border = BORDER_THIN
 
@@ -522,13 +523,14 @@ def importar_fornecedores_excel_db(conn: sqlite3.Connection, conteudo_base64: st
         try:
             cursor.execute(
                 """
-                INSERT INTO fornecedores (nome, contato, telefone, email, pedido_minimo)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO fornecedores (nome, contato, telefone, email, pedido_minimo, ativo)
+                VALUES (?, ?, ?, ?, ?, 1)
                 ON CONFLICT(nome) DO UPDATE SET
                     contato = excluded.contato,
                     telefone = excluded.telefone,
                     email = excluded.email,
-                    pedido_minimo = excluded.pedido_minimo
+                    pedido_minimo = excluded.pedido_minimo,
+                    ativo = 1
                 """,
                 (nome, contato, tel, email, ped_min),
             )

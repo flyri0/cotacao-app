@@ -137,7 +137,7 @@ export function NecessidadesView({
       const api = await getApi()
       const [listaRodadas, listaProdutos] = await Promise.all([
         api.listar_rodadas(),
-        api.listar_produtos(),
+        api.listar_produtos(true),
       ])
 
       setRodadas(listaRodadas)
