@@ -431,6 +431,19 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
               fornecedorIdImprimir !== null &&
               fornecedorIdImprimir !== pedido.fornecedor.id
 
+            const observacoesItens = pedido.itens.filter(
+              (item) =>
+                item.observacao &&
+                !item.observacao.toLowerCase().includes('sugerido menor') &&
+                !item.observacao.toLowerCase().includes('menor preco') &&
+                !item.observacao.toLowerCase().includes('menor preço'),
+            )
+
+            const totalEmbalagensFechadas = pedido.itens.reduce(
+              (acc, it) => acc + (it.embalagens_comprar || 0),
+              0,
+            )
+
             return (
               <Card
                 key={pedido.fornecedor.id}
@@ -440,65 +453,215 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                 p="xs"
                 className={`pedido-ordem-compra ${estaOculto ? 'oculto-na-impressao' : ''}`}
               >
-                {/* CABEÇALHO FORMAL DE ORDEM DE COMPRA (VISÍVEL SOMENTE NA IMPRESSÃO) */}
-                <div className="print-only" style={{ marginBottom: '16px' }}>
-                  <div
-                    style={{
-                      borderBottom: '2px solid #0f172a',
-                      paddingBottom: '8px',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    <table style={{ width: '100%', border: 'none', margin: 0 }}>
+                {/* ========================================================= */}
+                {/* DOCUMENTO FORMAL DE IMPRESSÃO (ESTILO DANFE - PRINT ONLY) */}
+                {/* ========================================================= */}
+                <div className="print-only danfe-documento">
+                  {/* QUADRO 1: CABEÇALHO DA ORDEM DE COMPRA */}
+                  <div className="danfe-quadro">
+                    <table className="danfe-header-table">
                       <tbody>
-                        <tr style={{ border: 'none' }}>
-                          <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                            <h2 style={{ margin: 0, fontSize: '16pt', color: '#0f172a' }}>
+                        <tr>
+                          <td style={{ width: '65%' }}>
+                            <div
+                              style={{
+                                fontSize: '13pt',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                color: '#0f172a',
+                              }}
+                            >
                               ORDEM DE COMPRA / PEDIDO DE FORNECIMENTO
-                            </h2>
-                            <p style={{ margin: '4px 0 0 0', fontSize: '10pt', color: '#475569' }}>
-                              Rodada: <b>#{rodadaAtual?.id || selectedRodadaId} — {rodadaAtual?.descricao}</b>
-                            </p>
+                            </div>
+                            <div style={{ fontSize: '8pt', color: '#334155', marginTop: '2pt' }}>
+                              Ciclo de Cotação: <b>#{rodadaAtual?.id || selectedRodadaId} — {rodadaAtual?.descricao}</b>
+                            </div>
                           </td>
-                          <td style={{ border: 'none', padding: 0, textAlign: 'right', verticalAlign: 'top' }}>
-                            <p style={{ margin: 0, fontSize: '10pt', color: '#475569' }}>
-                              Data de Emissão: <b>{new Date().toLocaleDateString('pt-BR')}</b>
-                            </p>
-                            <p style={{ margin: '2px 0 0 0', fontSize: '9pt', color: '#64748b' }}>
-                              Status: <b>Aprovado para Compra</b>
-                            </p>
+                          <td style={{ width: '35%', textAlign: 'right', borderLeft: '1px solid #0f172a' }}>
+                            <span className="danfe-label">DATA DE EMISSÃO</span>
+                            <div className="danfe-valor" style={{ fontSize: '8.5pt' }}>
+                              {new Date().toLocaleDateString('pt-BR')} às{' '}
+                              {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div style={{ fontSize: '7pt', color: '#0f172a', fontWeight: 800, marginTop: '2pt' }}>
+                              SITUAÇÃO: APROVADO PARA COMPRA
+                            </div>
                           </td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Dados do Fornecedor na Impressão */}
-                  <div
-                    style={{
-                      backgroundColor: '#f8fafc',
-                      border: '1px solid #cbd5e1',
-                      padding: '8px 12px',
-                      borderRadius: '4px',
-                      fontSize: '9.5pt',
-                    }}
-                  >
-                    <table style={{ width: '100%', border: 'none', margin: 0 }}>
+                  {/* QUADRO 2: IDENTIFICAÇÃO DO FORNECEDOR / DESTINATÁRIO */}
+                  <div className="danfe-quadro">
+                    <div className="danfe-titulo-quadro">IDENTIFICAÇÃO DO FORNECEDOR (DESTINATÁRIO)</div>
+                    <table className="danfe-grid-table">
                       <tbody>
-                        <tr style={{ border: 'none' }}>
-                          <td style={{ border: 'none', padding: '2px 0', width: '50%' }}>
-                            <b>Fornecedor:</b> {pedido.fornecedor.nome}
+                        <tr>
+                          <td style={{ width: '45%' }}>
+                            <span className="danfe-label">Razão Social / Nome do Fornecedor</span>
+                            <span className="danfe-valor-destaque">{pedido.fornecedor.nome}</span>
                           </td>
-                          <td style={{ border: 'none', padding: '2px 0', width: '50%' }}>
-                            <b>Contato / Vendedor:</b> {pedido.fornecedor.contato || 'Não informado'}
+                          <td style={{ width: '30%' }}>
+                            <span className="danfe-label">Contato / Vendedor</span>
+                            <span className="danfe-valor">{pedido.fornecedor.contato || 'Não informado'}</span>
+                          </td>
+                          <td style={{ width: '25%' }}>
+                            <span className="danfe-label">Telefone / WhatsApp</span>
+                            <span className="danfe-valor">{pedido.fornecedor.telefone || 'Não informado'}</span>
                           </td>
                         </tr>
-                        <tr style={{ border: 'none' }}>
-                          <td style={{ border: 'none', padding: '2px 0' }}>
-                            <b>Telefone / WhatsApp:</b> {pedido.fornecedor.telefone || 'Não informado'}
+                        <tr>
+                          <td>
+                            <span className="danfe-label">E-mail</span>
+                            <span className="danfe-valor">{pedido.fornecedor.email || 'Não informado'}</span>
                           </td>
-                          <td style={{ border: 'none', padding: '2px 0' }}>
-                            <b>E-mail:</b> {pedido.fornecedor.email || 'Não informado'}
+                          <td>
+                            <span className="danfe-label">Pedido Mínimo Exigido</span>
+                            <span className="danfe-valor">
+                              {pedido.fornecedor.pedido_minimo > 0
+                                ? formatMoney(pedido.fornecedor.pedido_minimo)
+                                : 'Não possui'}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="danfe-label">Situação do Pedido Mínimo</span>
+                            <span className="danfe-valor">
+                              {pedido.status_minimo === 'ok' && `✓ Atingido (+${formatMoney(pedido.diferenca_minimo)})`}
+                              {pedido.status_minimo === 'abaixo' && `⚠️ Abaixo (Falta ${formatMoney(pedido.diferenca_minimo)})`}
+                              {pedido.status_minimo === 'sem_minimo' && 'Sem exigência'}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* QUADRO 3: TABELA DE ITENS DA ORDEM DE COMPRA */}
+                  <table className="danfe-itens-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '24pt', textAlign: 'center' }}>Item</th>
+                        <th>Descrição do Produto / Marca Ofertada</th>
+                        <th style={{ width: '70pt' }}>Embalagem</th>
+                        <th style={{ width: '42pt', textAlign: 'right' }}>Qtd Ped.</th>
+                        <th style={{ width: '45pt', textAlign: 'center' }}>Comprar</th>
+                        <th style={{ width: '48pt', textAlign: 'right' }}>Qtd Total</th>
+                        <th style={{ width: '50pt', textAlign: 'right' }}>Preço Emb.</th>
+                        <th style={{ width: '50pt', textAlign: 'right' }}>Preço Un.</th>
+                        <th style={{ width: '58pt', textAlign: 'right' }}>Subtotal (R$)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pedido.itens.map((item, idx) => (
+                        <tr key={item.id_produto}>
+                          <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                            {String(idx + 1).padStart(2, '0')}
+                          </td>
+                          <td>
+                            <b>{item.produto_nome}</b>
+                            {item.marca ? ` [${item.marca}]` : ''}
+                          </td>
+                          <td>{item.embalagem}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            {item.quantidade_solicitada} {item.unidade}
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                            {item.embalagens_comprar} cx/emb
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {item.quantidade_efetiva} {item.unidade}
+                            {item.sobra > 0 ? ` (+${item.sobra})` : ''}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {formatMoney(item.preco_embalagem)}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {formatMoney(item.preco_unitario)}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                            {formatMoney(item.subtotal)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* QUADRO 4: TOTAIS DA ORDEM DE COMPRA */}
+                  <div className="danfe-quadro">
+                    <div className="danfe-titulo-quadro">TOTAIS DA ORDEM DE COMPRA</div>
+                    <table className="danfe-totais-table">
+                      <tbody>
+                        <tr>
+                          <td style={{ width: '25%' }}>
+                            <span className="danfe-label">Total de Itens</span>
+                            <span className="danfe-valor">{pedido.itens.length} produto(s)</span>
+                          </td>
+                          <td style={{ width: '25%' }}>
+                            <span className="danfe-label">Volume de Embalagens</span>
+                            <span className="danfe-valor">{totalEmbalagensFechadas} cx/emb</span>
+                          </td>
+                          <td style={{ width: '25%' }}>
+                            <span className="danfe-label">Status Pedido Mínimo</span>
+                            <span className="danfe-valor">
+                              {pedido.status_minimo === 'ok' && '✓ Mínimo Atingido'}
+                              {pedido.status_minimo === 'abaixo' && '⚠️ Abaixo do Mínimo'}
+                              {pedido.status_minimo === 'sem_minimo' && 'Sem Pedido Mínimo'}
+                            </span>
+                          </td>
+                          <td style={{ width: '25%', backgroundColor: '#f8fafc', textAlign: 'right' }}>
+                            <span className="danfe-label">VALOR TOTAL DO PEDIDO</span>
+                            <span className="danfe-valor-destaque" style={{ fontSize: '10.5pt' }}>
+                              {formatMoney(pedido.total_pedido)}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* QUADRO 5: OBSERVAÇÕES E DADOS COMPLEMENTARES */}
+                  <div className="danfe-quadro">
+                    <div className="danfe-titulo-quadro">DADOS COMPLEMENTARES / OBSERVAÇÕES</div>
+                    <div style={{ padding: '3pt 5pt', fontSize: '7pt', lineHeight: 1.3, color: '#334155' }}>
+                      {observacoesItens.length > 0 && (
+                        <div style={{ marginBottom: '2pt' }}>
+                          {observacoesItens.map((obs, oIdx) => (
+                            <div key={oIdx}>
+                              • <b>{obs.produto_nome}:</b> {obs.observacao}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div>• Condições comerciais, faturamento e prazos de entrega acordados conforme cotação aprovada.</div>
+                      <div>• Favor confirmar o recebimento deste pedido e informar data prevista de faturamento.</div>
+                    </div>
+                  </div>
+
+                  {/* QUADRO 6: CANHOTO DE RECEBIMENTO E ASSINATURA */}
+                  <div className="danfe-quadro">
+                    <table className="danfe-assinatura-table">
+                      <tbody>
+                        <tr>
+                          <td style={{ width: '50%' }}>
+                            <span className="danfe-label">Confirmação de Recebimento / Fornecedor</span>
+                            <div style={{ marginTop: '10pt', fontSize: '7.5pt' }}>
+                              Data de Aceite: _____ / _____ / __________
+                            </div>
+                          </td>
+                          <td style={{ width: '50%', textAlign: 'center' }}>
+                            <div
+                              style={{
+                                borderBottom: '1px solid #0f172a',
+                                width: '80%',
+                                margin: '0 auto',
+                                height: '12pt',
+                              }}
+                            ></div>
+                            <span className="danfe-label" style={{ marginTop: '2pt', textAlign: 'center' }}>
+                              Responsável / Setor de Compras
+                            </span>
                           </td>
                         </tr>
                       </tbody>
@@ -506,7 +669,9 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                   </div>
                 </div>
 
-                {/* Cabeçalho do Card de Fornecedor na Tela (Oculto na Impressão) */}
+                {/* ========================================================= */}
+                {/* CABEÇALHO DO CARD NA TELA (NO-PRINT)                       */}
+                {/* ========================================================= */}
                 <Group justify="space-between" align="center" mb={6} className="no-print">
                   <Group gap="xs" align="center">
                     <ThemeIcon color="teal" variant="light" size={26} radius="sm">
@@ -578,8 +743,8 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                   </Group>
                 </Group>
 
-                {/* Tabela dos Itens do Pedido */}
-                <Table withTableBorder striped highlightOnHover mb="xs" verticalSpacing={2} horizontalSpacing={6}>
+                {/* Tabela dos Itens na Tela (NO-PRINT) */}
+                <Table withTableBorder striped highlightOnHover mb="xs" verticalSpacing={2} horizontalSpacing={6} className="no-print">
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Produto / Item</Table.Th>
@@ -662,29 +827,6 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                     </Table.Tr>
                   </Table.Tbody>
                 </Table>
-
-                {/* BLOCO FORMAL DE APROVAÇÃO E ASSINATURA (VISÍVEL APENAS NA IMPRESSÃO) */}
-                <div className="print-only" style={{ marginTop: '24px', paddingTop: '12px', borderTop: '1px dashed #94a3b8' }}>
-                  <table style={{ width: '100%', border: 'none' }}>
-                    <tbody>
-                      <tr style={{ border: 'none' }}>
-                        <td style={{ width: '60%', border: 'none', verticalAlign: 'bottom', padding: 0 }}>
-                          <p style={{ margin: 0, fontSize: '9pt', color: '#475569' }}>
-                            {pedido.fornecedor.pedido_minimo > 0 &&
-                              `Pedido mínimo exigido: ${formatMoney(pedido.fornecedor.pedido_minimo)} | `}
-                            Condições comerciais de fornecimento conforme cotação aprovada.
-                          </p>
-                        </td>
-                        <td style={{ width: '40%', border: 'none', textAlign: 'center', padding: '0 0 0 20px' }}>
-                          <div style={{ borderBottom: '1px solid #0f172a', width: '100%', height: '35px' }}></div>
-                          <p style={{ margin: '4px 0 0 0', fontSize: '9pt', fontWeight: 'bold' }}>
-                            Responsável / Compras
-                          </p>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
 
                 {/* Área de Texto Pré-formatado para Envio Rápido (Oculta na Impressão) */}
                 <Paper withBorder p="sm" radius="md" className="no-print">

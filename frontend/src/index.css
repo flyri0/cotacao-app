@@ -104,9 +104,14 @@ body,
 }
 
 /* ==========================================================================
-   REGRAS PROFISSIONAIS DE IMPRESSÃO (@media print)
+   REGRAS PROFISSIONAIS DE IMPRESSÃO DANFE (@media print)
    ========================================================================== */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 8mm 8mm 8mm;
+  }
+
   /* Oculta tudo que não faz parte do documento impresso */
   header,
   nav,
@@ -143,19 +148,29 @@ body,
     color: #000000 !important;
     width: 100% !important;
     min-height: auto !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+    font-size: 8.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* Card da Ordem de Compra individual */
-  .pedido-ordem-compra {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    background: #ffffff !important;
-    border: 1.5px solid #1e293b !important;
-    box-shadow: none !important;
-    margin: 0 0 20pt 0 !important;
-    padding: 16pt !important;
+  /* Container do Documento DANFE */
+  .danfe-documento {
     width: 100% !important;
-    border-radius: 4px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    color: #0f172a !important;
+    background: #ffffff !important;
+  }
+
+  .pedido-ordem-compra {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 0 15pt 0 !important;
+    background: transparent !important;
   }
 
   /* Quebra de página automática por fornecedor para múltiplos pedidos */
@@ -164,36 +179,151 @@ body,
     break-before: always !important;
   }
 
-  /* Tabela de itens formatada para papel */
-  .pedido-ordem-compra table {
-    width: 100% !important;
-    border-collapse: collapse !important;
-    margin-top: 10pt !important;
-    margin-bottom: 10pt !important;
-  }
-
-  .pedido-ordem-compra th {
-    background-color: #f1f5f9 !important;
-    color: #0f172a !important;
-    border: 1px solid #64748b !important;
-    font-weight: 700 !important;
-    font-size: 9.5pt !important;
-    padding: 5pt 6pt !important;
-    text-align: left !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .pedido-ordem-compra td {
-    border: 1px solid #cbd5e1 !important;
-    padding: 4.5pt 6pt !important;
-    font-size: 9pt !important;
-    color: #1e293b !important;
-  }
-
   /* Oculta pedido não selecionado quando for impressão individual */
   .oculto-na-impressao {
     display: none !important;
+  }
+
+  /* Quadros no padrão DANFE com borda sólida de 1px */
+  .danfe-quadro {
+    border: 1px solid #0f172a !important;
+    margin-bottom: 4pt !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Barra de Título do Quadro DANFE */
+  .danfe-titulo-quadro {
+    background-color: #f1f5f9 !important;
+    border-bottom: 1px solid #0f172a !important;
+    padding: 2pt 5pt !important;
+    font-size: 6.5pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: #0f172a !important;
+  }
+
+  /* Cabeçalho Superior DANFE (Doc + Rodada + Data) */
+  .danfe-header-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .danfe-header-table td {
+    padding: 3pt 5pt !important;
+    vertical-align: middle !important;
+  }
+
+  /* Grid de Campos Internos dos Quadros DANFE */
+  .danfe-grid-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .danfe-grid-table td {
+    border-right: 1px solid #0f172a !important;
+    border-bottom: 1px solid #0f172a !important;
+    padding: 2.5pt 4pt !important;
+    vertical-align: top !important;
+  }
+
+  .danfe-grid-table tr td:last-child {
+    border-right: none !important;
+  }
+
+  .danfe-grid-table tr:last-child td {
+    border-bottom: none !important;
+  }
+
+  .danfe-label {
+    display: block !important;
+    font-size: 6pt !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    color: #475569 !important;
+    line-height: 1 !important;
+    margin-bottom: 1.5pt !important;
+  }
+
+  .danfe-valor {
+    font-size: 8.5pt !important;
+    font-weight: 600 !important;
+    color: #0f172a !important;
+    line-height: 1.15 !important;
+  }
+
+  .danfe-valor-destaque {
+    font-size: 9.5pt !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+  }
+
+  /* Tabela de Itens Ultra-Densa Estilo DANFE */
+  .danfe-itens-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border: 1px solid #0f172a !important;
+    margin-bottom: 4pt !important;
+  }
+
+  .danfe-itens-table thead {
+    display: table-header-group !important;
+  }
+
+  .danfe-itens-table th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #0f172a !important;
+    font-size: 6.5pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    padding: 2.5pt 3pt !important;
+    line-height: 1.1 !important;
+    text-align: left !important;
+  }
+
+  .danfe-itens-table td {
+    border: 1px solid #0f172a !important;
+    padding: 2pt 3.5pt !important;
+    font-size: 7.5pt !important;
+    color: #0f172a !important;
+    line-height: 1.15 !important;
+    vertical-align: middle !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  .danfe-itens-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Bloco de Totais DANFE */
+  .danfe-totais-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .danfe-totais-table td {
+    border-right: 1px solid #0f172a !important;
+    padding: 3pt 5pt !important;
+    vertical-align: top !important;
+  }
+
+  .danfe-totais-table td:last-child {
+    border-right: none !important;
+  }
+
+  /* Canhoto / Assinatura DANFE */
+  .danfe-assinatura-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .danfe-assinatura-table td {
+    padding: 4pt 6pt !important;
+    vertical-align: bottom !important;
   }
 }
 
