@@ -207,7 +207,7 @@ def seed_configuracoes(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def verificar_status_banco_db(conn: sqlite3.Connection, db_path: Optional[str] = None) -> dict[str, Any]:
+def verificar_status_banco_db(conn: sqlite3.Connection, db_path: Optional[str] = None) -> Dict[str, Any]:
     """Verifica se o banco de dados já foi inicializado pelo usuário."""
     if db_path and db_path != ":memory:" and not os.path.exists(db_path):
         return {
@@ -244,13 +244,13 @@ def verificar_status_banco_db(conn: sqlite3.Connection, db_path: Optional[str] =
     }
 
 
-def inicializar_banco_em_branco_db(conn: sqlite3.Connection) -> dict[str, Any]:
+def inicializar_banco_em_branco_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     """Marca o banco como inicializado em branco pronto para produção."""
     salvar_configuracao_db(conn, "sistema_inicializado", "1")
     return {"sucesso": True, "tipo": "em_branco"}
 
 
-def popular_banco_demo_completo_db(conn: sqlite3.Connection) -> dict[str, Any]:
+def popular_banco_demo_completo_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     """
     Popula o banco com um conjunto rico de demonstração:
     - 12 produtos em 4 categorias
@@ -505,7 +505,7 @@ def seed_data(conn: sqlite3.Connection) -> None:
     popular_banco_demo_completo_db(conn)
 
 
-def obter_configuracoes_db(conn: sqlite3.Connection) -> dict[str, str]:
+def obter_configuracoes_db(conn: sqlite3.Connection) -> Dict[str, str]:
     """Retorna todas as configurações como um dicionário chave-valor."""
     cursor = conn.cursor()
     cursor.execute("SELECT chave, valor FROM configuracoes")
@@ -525,7 +525,7 @@ def salvar_configuracao_db(conn: sqlite3.Connection, chave: str, valor: str) -> 
     conn.commit()
 
 
-def salvar_todas_configuracoes_db(conn: sqlite3.Connection, configs: dict[str, str]) -> dict[str, str]:
+def salvar_todas_configuracoes_db(conn: sqlite3.Connection, configs: Dict[str, str]) -> Dict[str, str]:
     """Salva múltiplas configurações de uma vez e retorna o estado atualizado."""
     for chave, valor in configs.items():
         salvar_configuracao_db(conn, chave, str(valor))
@@ -561,7 +561,7 @@ def formatar_banco_dados_db(conn: sqlite3.Connection, com_seed: bool = False) ->
     return True
 
 
-def obter_estatisticas_produto_db(conn: sqlite3.Connection, id_produto: int) -> dict[str, Any]:
+def obter_estatisticas_produto_db(conn: sqlite3.Connection, id_produto: int) -> Dict[str, Any]:
     """Calcula estatísticas agregadas e histórico completo de cotações de um produto."""
     cursor = conn.cursor()
 
@@ -631,7 +631,7 @@ def obter_estatisticas_produto_db(conn: sqlite3.Connection, id_produto: int) -> 
     )
 
     # Ranking de Fornecedores mais frequentes/competitivos para este produto
-    fornecedores_map: dict[int, dict] = {}
+    fornecedores_map: Dict[int, dict] = {}
     for c in cotacoes:
         f_id = c["id_fornecedor"]
         if f_id not in fornecedores_map:
@@ -673,7 +673,7 @@ def obter_estatisticas_produto_db(conn: sqlite3.Connection, id_produto: int) -> 
     }
 
 
-def obter_estatisticas_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: int) -> dict[str, Any]:
+def obter_estatisticas_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: int) -> Dict[str, Any]:
     """Calcula indicadores de volume, histórico de ofertas e taxa de competitividade de um fornecedor."""
     cursor = conn.cursor()
 
