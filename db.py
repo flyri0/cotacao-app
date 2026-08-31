@@ -170,7 +170,6 @@ def create_schema(conn: sqlite3.Connection) -> None:
             id_produto INTEGER NOT NULL,
             id_fornecedor INTEGER NOT NULL,
             quantidade REAL NOT NULL,
-            observacao TEXT,
             FOREIGN KEY (id_rodada) REFERENCES rodadas (id) ON DELETE CASCADE,
             FOREIGN KEY (id_produto) REFERENCES produtos (id),
             FOREIGN KEY (id_fornecedor) REFERENCES fornecedores (id)
@@ -444,47 +443,47 @@ def popular_banco_demo_completo_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     # ALOCAÇÕES HISTÓRICAS E ATIVAS
     alocacoes_seed = [
         # Rodada 1
-        (r1, 1, 2, 100.0, "Compra concluída"),
-        (r1, 2, 2, 20.0, "Compra concluída"),
-        (r1, 5, 5, 40.0, "Compra concluída"),
-        (r1, 6, 3, 4000.0, "Compra concluída"),
-        (r1, 9, 4, 30.0, "Compra concluída"),
-        (r1, 11, 2, 15.0, "Compra concluída"),
+        (r1, 1, 2, 100.0),
+        (r1, 2, 2, 20.0),
+        (r1, 5, 5, 40.0),
+        (r1, 6, 3, 4000.0),
+        (r1, 9, 4, 30.0),
+        (r1, 11, 2, 15.0),
         # Rodada 2
-        (r2, 1, 2, 120.0, "Compra concluída"),
-        (r2, 2, 3, 25.0, "Compra concluída"),
-        (r2, 3, 1, 30.0, "Compra concluída"),
-        (r2, 5, 5, 50.0, "Compra concluída"),
-        (r2, 6, 5, 5000.0, "Compra concluída"),
-        (r2, 7, 5, 20.0, "Compra concluída"),
-        (r2, 9, 4, 35.0, "Compra concluída"),
-        (r2, 12, 1, 10.0, "Compra concluída"),
+        (r2, 1, 2, 120.0),
+        (r2, 2, 3, 25.0),
+        (r2, 3, 1, 30.0),
+        (r2, 5, 5, 50.0),
+        (r2, 6, 5, 5000.0),
+        (r2, 7, 5, 20.0),
+        (r2, 9, 4, 35.0),
+        (r2, 12, 1, 10.0),
         # Rodada 3
-        (r3, 1, 2, 150.0, "Compra concluída"),
-        (r3, 2, 3, 30.0, "Compra concluída"),
-        (r3, 3, 4, 40.0, "Compra concluída"),
-        (r3, 4, 2, 20.0, "Compra concluída"),
-        (r3, 5, 5, 60.0, "Compra concluída"),
-        (r3, 6, 5, 6000.0, "Compra concluída"),
-        (r3, 9, 4, 40.0, "Compra concluída"),
-        (r3, 10, 4, 50.0, "Compra concluída"),
-        (r3, 11, 2, 20.0, "Compra concluída"),
+        (r3, 1, 2, 150.0),
+        (r3, 2, 3, 30.0),
+        (r3, 3, 4, 40.0),
+        (r3, 4, 2, 20.0),
+        (r3, 5, 5, 60.0),
+        (r3, 6, 5, 6000.0),
+        (r3, 9, 4, 40.0),
+        (r3, 10, 4, 50.0),
+        (r3, 11, 2, 20.0),
         # Rodada 4 (Atual - em andamento)
-        (r4, 1, 1, 96.0, "Menor preço unitário"),
-        (r4, 1, 4, 48.0, "Divisão para atingir mínimo"),
-        (r4, 2, 2, 24.0, "Melhor cotação"),
-        (r4, 3, 4, 35.0, "Melhor cotação"),
-        (r4, 5, 5, 55.0, "Embalagem mais econômica"),
-        (r4, 6, 3, 5000.0, "Caixa fechada"),
-        (r4, 9, 4, 45.0, "Menor preço"),
-        (r4, 11, 2, 18.0, "Melhor oferta"),
-        (r4, 12, 1, 12.0, "Melhor custo por rolo"),
+        (r4, 1, 1, 96.0),
+        (r4, 1, 4, 48.0),
+        (r4, 2, 2, 24.0),
+        (r4, 3, 4, 35.0),
+        (r4, 5, 5, 55.0),
+        (r4, 6, 3, 5000.0),
+        (r4, 9, 4, 45.0),
+        (r4, 11, 2, 18.0),
+        (r4, 12, 1, 12.0),
     ]
     cursor.executemany(
         """
         INSERT INTO alocacoes (
-            id_rodada, id_produto, id_fornecedor, quantidade, observacao
-        ) VALUES (?, ?, ?, ?, ?)
+            id_rodada, id_produto, id_fornecedor, quantidade
+        ) VALUES (?, ?, ?, ?)
         """,
         alocacoes_seed,
     )

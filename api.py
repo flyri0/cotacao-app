@@ -893,7 +893,6 @@ class Api:
                     a.id_fornecedor,
                     f.nome AS fornecedor_nome,
                     a.quantidade,
-                    a.observacao,
                     c.marca,
                     c.embalagem,
                     c.qtd_por_embalagem,
@@ -937,22 +936,20 @@ class Api:
                         quantidade = 0.0
                     else:
                         quantidade = float(qtd_str)
-                        
-                    observacao = item.get("observacao")
                 except (ValueError, TypeError):
                     continue # Pula itens com dados inválidos em vez de dar crash 500
 
                 if quantidade > 0 and id_fornecedor > 0 and id_produto > 0:
                     linhas_para_inserir.append(
-                        (id_rodada, id_produto, id_fornecedor, quantidade, observacao)
+                        (id_rodada, id_produto, id_fornecedor, quantidade)
                     )
 
             if linhas_para_inserir:
                 cursor.executemany(
                     """
                     INSERT INTO alocacoes (
-                        id_rodada, id_produto, id_fornecedor, quantidade, observacao
-                    ) VALUES (?, ?, ?, ?, ?)
+                        id_rodada, id_produto, id_fornecedor, quantidade
+                    ) VALUES (?, ?, ?, ?)
                     """,
                     linhas_para_inserir,
                 )

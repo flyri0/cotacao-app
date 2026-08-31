@@ -63,7 +63,6 @@ export interface LinhaAlocacao {
   quantidade_necessaria: number
   id_fornecedor: number
   quantidade_alocada: number
-  observacao?: string
 }
 
 export function AlocacaoView({
@@ -100,7 +99,6 @@ export function AlocacaoView({
           id_produto: Number(l.id_produto),
           id_fornecedor: Number(l.id_fornecedor),
           quantidade: Number(l.quantidade_alocada),
-          observacao: l.observacao || null,
         }))
 
       await api.salvar_alocacoes(rodadaId, payload)
@@ -151,7 +149,6 @@ export function AlocacaoView({
               quantidade_necessaria: necMap.get(Number(a.id_produto)) || 0,
               id_fornecedor: Number(a.id_fornecedor),
               quantidade_alocada: Number(a.quantidade) || 0,
-              observacao: a.observacao || '',
             }))
             setLinhas(carregadas)
           } else {
@@ -171,7 +168,6 @@ export function AlocacaoView({
                 quantidade_necessaria: Number(n.quantidade) || 0,
                 id_fornecedor: melhorFornId,
                 quantidade_alocada: 0,
-                observacao: '',
               }
             })
             setLinhas(iniciais)
@@ -260,7 +256,6 @@ export function AlocacaoView({
       quantidade_necessaria: Number(linhaBase.quantidade_necessaria),
       id_fornecedor: 0, // zerado
       quantidade_alocada: 0, // zerada para digitação
-      observacao: '',
     }
 
     const novas = [...linhas]
@@ -314,7 +309,6 @@ export function AlocacaoView({
         quantidade_necessaria: Number(n.quantidade) || 0,
         id_fornecedor: melhorFornId,
         quantidade_alocada: qtdAtual,
-        observacao: '',
       }
     })
 
@@ -340,7 +334,6 @@ export function AlocacaoView({
           id_produto: Number(l.id_produto),
           id_fornecedor: Number(l.id_fornecedor),
           quantidade: Number(l.quantidade_alocada),
-          observacao: l.observacao || null,
         }))
 
       await api.salvar_alocacoes(selectedRodadaId, payload)

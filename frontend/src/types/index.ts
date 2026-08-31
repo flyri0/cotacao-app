@@ -62,7 +62,6 @@ export interface Alocacao {
   id_fornecedor: number
   fornecedor_nome?: string
   quantidade: number
-  observacao?: string | null
   marca?: string | null
   embalagem?: string
   qtd_por_embalagem?: number
@@ -264,7 +263,6 @@ export interface PywebviewApi {
       id_produto: number
       id_fornecedor: number
       quantidade: number
-      observacao?: string | null
     }[],
   ) => Promise<{ sucesso: boolean; total_alocacoes: number }>
   remover_alocacao: (id_alocacao: number) => Promise<{ sucesso: boolean; id: number }>

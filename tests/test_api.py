@@ -494,20 +494,17 @@ class TestApi(unittest.TestCase):
                 "id_produto": 1,
                 "id_fornecedor": 1,
                 "quantidade": 60.0,
-                "observacao": "Metade no fornecedor 1",
             },
             {
                 "id_produto": 1,
                 "id_fornecedor": 2,
                 "quantidade": 60.0,
-                "observacao": "Metade no fornecedor 2",
             },
             # Produto 2 integral no fornecedor 3
             {
                 "id_produto": 2,
                 "id_fornecedor": 3,
                 "quantidade": 50.0,
-                "observacao": "Integral",
             },
         ]
         res = self.api.salvar_alocacoes(id_rodada=4, alocacoes=novas_alocacoes)

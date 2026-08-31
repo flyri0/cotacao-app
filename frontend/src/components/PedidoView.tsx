@@ -56,7 +56,6 @@ interface ItemPedidoLinha {
   quantidade_efetiva: number
   sobra: number
   subtotal: number
-  observacao?: string | null
 }
 
 interface PedidoPorFornecedor {
@@ -217,7 +216,6 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
           quantidade_efetiva: qtdEfetiva,
           sobra,
           subtotal,
-          observacao: aloc.observacao,
         })
       })
 
@@ -263,16 +261,7 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
         texto += `${idx + 1}. ${item.produto_nome}${item.marca ? ` [Marca: ${item.marca}]` : ''}\n`
         texto += `   - Quantidade: ${item.embalagens_comprar} ${item.embalagem} (${item.quantidade_efetiva} ${item.unidade})\n`
         texto += `   - Preço por Embalagem: ${formatMoney(item.preco_embalagem, 2)} | Preço Unitário: ${formatMoney(item.preco_unitario)}\n`
-        texto += `   - Subtotal: ${formatMoney(item.subtotal)}\n`
-        const obsVal = (item.observacao || '').trim()
-        const isObsSistema =
-          obsVal.toLowerCase().includes('sugerido menor') ||
-          obsVal.toLowerCase().includes('menor preco') ||
-          obsVal.toLowerCase().includes('menor preço')
-        if (obsVal && !isObsSistema) {
-          texto += `   - Obs: ${obsVal}\n`
-        }
-        texto += `\n`
+        texto += `   - Subtotal: ${formatMoney(item.subtotal)}\n\n`
       })
 
       texto += `--------------------------------------------------\n`
@@ -430,14 +419,6 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
             const estaOculto =
               fornecedorIdImprimir !== null &&
               fornecedorIdImprimir !== pedido.fornecedor.id
-
-            const observacoesItens = pedido.itens.filter(
-              (item) =>
-                item.observacao &&
-                !item.observacao.toLowerCase().includes('sugerido menor') &&
-                !item.observacao.toLowerCase().includes('menor preco') &&
-                !item.observacao.toLowerCase().includes('menor preço'),
-            )
 
             const totalEmbalagensFechadas = pedido.itens.reduce(
               (acc, it) => acc + (it.embalagens_comprar || 0),
@@ -625,15 +606,6 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                   <div className="danfe-quadro">
                     <div className="danfe-titulo-quadro">DADOS COMPLEMENTARES / OBSERVAÇÕES</div>
                     <div style={{ padding: '3pt 5pt', fontSize: '7pt', lineHeight: 1.3, color: '#334155' }}>
-                      {observacoesItens.length > 0 && (
-                        <div style={{ marginBottom: '2pt' }}>
-                          {observacoesItens.map((obs, oIdx) => (
-                            <div key={oIdx}>
-                              • <b>{obs.produto_nome}:</b> {obs.observacao}
-                            </div>
-                          ))}
-                        </div>
-                      )}
                       <div>• Condições comerciais, faturamento e prazos de entrega acordados conforme cotação aprovada.</div>
                       <div>• Favor confirmar o recebimento deste pedido e informar data prevista de faturamento.</div>
                     </div>
@@ -764,14 +736,6 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                           <Text fw={600} size="xs">
                             {item.produto_nome}
                           </Text>
-                          {item.observacao &&
-                            !item.observacao.toLowerCase().includes('sugerido menor') &&
-                            !item.observacao.toLowerCase().includes('menor preco') &&
-                            !item.observacao.toLowerCase().includes('menor preço') && (
-                              <Text size="10px" c="dimmed">
-                                Obs: {item.observacao}
-                              </Text>
-                            )}
                         </Table.Td>
                         <Table.Td>
                           <Badge variant="light" color="cyan" size="xs">

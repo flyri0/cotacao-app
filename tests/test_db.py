@@ -141,8 +141,8 @@ class TestDatabaseSchema(unittest.TestCase):
         # Linha 1: 70 unidades no Forn 1
         cursor.execute(
             """
-            INSERT INTO alocacoes (id_rodada, id_produto, id_fornecedor, quantidade, observacao)
-            VALUES (?, ?, ?, 70.0, 'Primeira parte')
+            INSERT INTO alocacoes (id_rodada, id_produto, id_fornecedor, quantidade)
+            VALUES (?, ?, ?, 70.0)
             """,
             (id_rod, id_prod, id_forn1),
         )
@@ -150,8 +150,8 @@ class TestDatabaseSchema(unittest.TestCase):
         # Linha 2: 30 unidades no Forn 2 (mesmo produto, mesma rodada!)
         cursor.execute(
             """
-            INSERT INTO alocacoes (id_rodada, id_produto, id_fornecedor, quantidade, observacao)
-            VALUES (?, ?, ?, 30.0, 'Segunda parte para bater mínimo')
+            INSERT INTO alocacoes (id_rodada, id_produto, id_fornecedor, quantidade)
+            VALUES (?, ?, ?, 30.0)
             """,
             (id_rod, id_prod, id_forn2),
         )
