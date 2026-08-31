@@ -355,11 +355,28 @@ class TestApi(unittest.TestCase):
         self.assertTrue(res["sucesso"])
         self.assertEqual(len(self.api.listar_rodadas()), 4)
 
-    def test_bloqueio_exclusao_rodada_fechada_api(self) -> None:
-        # Rodada 1 está fechada
+    def test_bloqueio_exclusao_rodada_com_historico_api(self) -> None:
+        # Rodada 1 tem cotações e alocações
         with self.assertRaises(ValueError) as ctx:
             self.api.remover_rodada(1)
-        self.assertIn("Não é possível excluir uma rodada com status 'fechada'", str(ctx.exception))
+        self.assertIn("possui vínculos históricos", str(ctx.exception))
+        self.assertIn("cancelada", str(ctx.exception))
+
+        # Reabrir a rodada 1 não deve contornar a proteção de integridade
+        self.api.atualizar_rodada(1, "Rodada Reaberta", "aberta")
+        with self.assertRaises(ValueError) as ctx:
+            self.api.remover_rodada(1)
+        self.assertIn("possui vínculos históricos", str(ctx.exception))
+
+    def test_cancelar_rodada_e_bloqueio_mutacao_api(self) -> None:
+        # Atualiza rodada 4 para cancelada
+        atualizada = self.api.atualizar_rodada(4, "Cotação Cancelada", "cancelada")
+        self.assertEqual(atualizada["status"], "cancelada")
+
+        # Tentar adicionar necessidade em rodada cancelada deve falhar
+        with self.assertRaises(ValueError) as ctx:
+            self.api.criar_necessidade(id_rodada=4, id_produto=1)
+        self.assertIn("cancelada", str(ctx.exception))
 
     # -------------------------------------------------------------------------
     # Testes de Necessidades (sem exigir quantidade)

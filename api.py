@@ -29,6 +29,7 @@ from db import (
     atualizar_fornecedor_db,
     verificar_historico_produto_db,
     verificar_historico_fornecedor_db,
+    verificar_historico_rodada_db,
     alternar_status_produto_db,
     alternar_status_fornecedor_db,
 )
@@ -276,8 +277,11 @@ class Api:
         cursor = conn.cursor()
         cursor.execute("SELECT status FROM rodadas WHERE id = ?", (id_rodada,))
         row = cursor.fetchone()
-        if row and row["status"] == "fechada":
-            raise ValueError("Ação bloqueada: Não é possível modificar os dados de uma rodada fechada.")
+        if row:
+            if row["status"] == "fechada":
+                raise ValueError("Ação bloqueada: Não é possível modificar os dados de uma rodada concluída (fechada).")
+            if row["status"] == "cancelada":
+                raise ValueError("Ação bloqueada: Não é possível modificar os dados de uma rodada cancelada.")
 
     def _verificar_rodada_aberta_por_entidade(self, conn: sqlite3.Connection, tabela: str, id_entidade: int) -> None:
         cursor = conn.cursor()
@@ -587,18 +591,37 @@ class Api:
             return atualizar_rodada_db(conn, id_rodada, descricao, status)
 
     def remover_rodada(self, id_rodada: int) -> Dict[str, Any]:
-        """Exclui uma rodada aberta e todos os seus lançamentos. Rodadas fechadas são protegidas."""
+        """Remove uma rodada permanentemente se não possuir histórico de cotações ou compras. Caso contrário, bloqueia a exclusão."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT status FROM rodadas WHERE id = ?", (id_rodada,))
-            row = cursor.fetchone()
-            if row and row["status"] == "fechada":
+            cursor.execute("SELECT id, descricao, status FROM rodadas WHERE id = ?", (id_rodada,))
+            rodada = cursor.fetchone()
+            if not rodada:
+                raise ValueError(f"Rodada #{id_rodada} não encontrada.")
+
+            descricao = rodada["descricao"]
+            hist = verificar_historico_rodada_db(conn, id_rodada)
+
+            if hist["total_historico"] > 0:
+                detalhes = []
+                if hist["cotacoes"] > 0:
+                    detalhes.append(f"{hist['cotacoes']} cotação(ões)")
+                if hist["alocacoes"] > 0:
+                    detalhes.append(f"{hist['alocacoes']} compra(s) alocada(s)")
+                detalhes_str = ", ".join(detalhes)
+
                 raise ValueError(
-                    "Ação bloqueada: Não é possível excluir uma rodada com status 'fechada' "
-                    "pois ela representa histórico consolidado de compras."
+                    f"Não é possível excluir a rodada #{id_rodada} ('{descricao}') pois ela possui vínculos históricos "
+                    f"({detalhes_str}). Para descontinuar este ciclo mantendo a integridade do histórico comercial, "
+                    f"altere o status da rodada para 'cancelada'."
                 )
+
             sucesso = remover_rodada_db(conn, id_rodada)
-            return {"sucesso": sucesso, "id": id_rodada}
+            return {
+                "sucesso": sucesso,
+                "id": id_rodada,
+                "mensagem": f"Rodada #{id_rodada} excluída permanentemente com sucesso.",
+            }
 
     def duplicar_necessidades_rodada(
         self,

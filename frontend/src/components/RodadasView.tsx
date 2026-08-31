@@ -18,8 +18,11 @@ import {
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { useDisclosure } from '@mantine/hooks'
+import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
 import {
+  IconAlertCircle,
+  IconBan,
   IconCheck,
   IconChecklist,
   IconEdit,
@@ -51,7 +54,7 @@ export function RodadasView({
   const [rodadas, setRodadas] = useState<RodadaComMetricas[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState<string>('todas')
+  const [filtroStatus, setFiltroStatus] = useState<'todas' | 'abertas' | 'fechadas' | 'canceladas'>('todas')
 
   // Modais
   const [modalCriarOpened, { open: openModalCriar, close: closeModalCriar }] =
@@ -140,6 +143,7 @@ export function RodadasView({
       if (!matchBusca) return false
       if (filtroStatus === 'abertas') return r.status === 'aberta'
       if (filtroStatus === 'fechadas') return r.status === 'fechada'
+      if (filtroStatus === 'canceladas') return r.status === 'cancelada'
       return true
     })
   }, [rodadas, busca, filtroStatus])
@@ -147,8 +151,9 @@ export function RodadasView({
   // KPIs
   const totalAbertas = useMemo(() => rodadas.filter((r) => r.status === 'aberta').length, [rodadas])
   const totalFechadas = useMemo(() => rodadas.filter((r) => r.status === 'fechada').length, [rodadas])
+  const totalCanceladas = useMemo(() => rodadas.filter((r) => r.status === 'cancelada').length, [rodadas])
   const totalFinanceiro = useMemo(
-    () => rodadas.reduce((acc, r) => acc + (r.valor_total_alocado || 0), 0),
+    () => rodadas.filter((r) => r.status !== 'cancelada').reduce((acc, r) => acc + (r.valor_total_alocado || 0), 0),
     [rodadas],
   )
 
@@ -223,7 +228,7 @@ export function RodadasView({
     }
   }
 
-  // Ação 4: Alternar Status Rápido (Abrir / Fechar)
+  // Ação 4: Alternar Status Rápido (Abrir / Fechar / Reativar)
   const handleToggleStatus = async (r: RodadaComMetricas) => {
     const novoStatus = r.status === 'aberta' ? 'fechada' : 'aberta'
     try {
@@ -254,30 +259,76 @@ export function RodadasView({
     openModalExcluir()
   }
 
-  // Ação 6: Confirmar Exclusão
+  // Ação 6: Confirmar Exclusão com bloqueio seguro e sugestão de cancelamento
   const handleConfirmarExclusao = async () => {
     if (!rodadaEmExclusao) return
+    const rodada = rodadaEmExclusao
     try {
       setSalvando(true)
       const api = await getApi()
-      await api.remover_rodada(rodadaEmExclusao.id)
+      const res = await api.remover_rodada(rodada.id)
 
       notifications.show({
         title: 'Rodada Excluída',
-        message: `A rodada #${rodadaEmExclusao.id} foi removida.`,
-        color: 'blue',
-        icon: <IconTrash size={16} />,
+        message: res.mensagem || `A rodada #${rodada.id} foi removida permanentemente.`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
       })
 
       closeModalExcluir()
       setRodadaEmExclusao(null)
       await carregarRodadas()
     } catch (error: any) {
-      notifications.show({
-        title: 'Erro ao excluir rodada',
-        message: error?.message || 'Não foi possível excluir a rodada.',
-        color: 'red',
-        icon: <IconX size={16} />,
+      console.error('Erro ao excluir rodada:', error)
+      const msg = error?.message || 'Não foi possível excluir a rodada.'
+      closeModalExcluir()
+
+      modals.open({
+        title: (
+          <Group gap="xs">
+            <IconAlertCircle color="var(--mantine-color-red-6)" size={20} />
+            <Text fw={700}>Exclusão Bloqueada</Text>
+          </Group>
+        ),
+        centered: true,
+        children: (
+          <Stack gap="sm">
+            <Text size="sm">{msg}</Text>
+            <Group justify="flex-end" mt="md">
+              <Button
+                variant="light"
+                color="red"
+                leftSection={<IconBan size={16} />}
+                onClick={async () => {
+                  modals.closeAll()
+                  try {
+                    const api = await getApi()
+                    await api.atualizar_rodada(rodada.id, rodada.descricao, 'cancelada')
+                    notifications.show({
+                      title: 'Rodada Cancelada',
+                      message: `A rodada #${rodada.id} foi arquivada como cancelada sem perder o histórico comercial.`,
+                      color: 'red',
+                      icon: <IconBan size={16} />,
+                    })
+                    await carregarRodadas()
+                  } catch (e: any) {
+                    notifications.show({
+                      title: 'Erro ao cancelar rodada',
+                      message: e?.message || 'Falha ao atualizar status.',
+                      color: 'red',
+                      icon: <IconX size={16} />,
+                    })
+                  }
+                }}
+              >
+                Cancelar Rodada Agora
+              </Button>
+              <Button variant="default" onClick={() => modals.closeAll()}>
+                Fechar
+              </Button>
+            </Group>
+          </Stack>
+        ),
       })
     } finally {
       setSalvando(false)
@@ -309,7 +360,7 @@ export function RodadasView({
         <StatCard
           label="Total de Rodadas"
           value={rodadas.length}
-          subtitle="Ciclos de cotação registrados"
+          subtitle="Ciclos registrados"
           icon={IconRotate}
           color="blue"
         />
@@ -317,15 +368,15 @@ export function RodadasView({
         <StatCard
           label="Rodadas Abertas"
           value={totalAbertas}
-          subtitle="Em cotação ou alocação ativa"
+          subtitle="Em cotação ou compra ativa"
           icon={IconLockOpen}
           color="green"
         />
 
         <StatCard
-          label="Rodadas Fechadas"
+          label="Fechadas / Concluídas"
           value={totalFechadas}
-          subtitle="Concluídas e arquivadas"
+          subtitle="Histórico consolidado"
           icon={IconLock}
           color="gray"
         />
@@ -333,7 +384,7 @@ export function RodadasView({
         <StatCard
           label="Volume Comprado"
           value={formatMoney(totalFinanceiro)}
-          subtitle="Soma de compras alocadas"
+          subtitle="Total financeiro alocado"
           icon={IconTrendingUp}
           color="teal"
         />
@@ -381,6 +432,14 @@ export function RodadasView({
             >
               Fechadas ({totalFechadas})
             </Button>
+            <Button
+              size="xs"
+              variant={filtroStatus === 'canceladas' ? 'filled' : 'light'}
+              color="red"
+              onClick={() => setFiltroStatus('canceladas')}
+            >
+              Canceladas ({totalCanceladas})
+            </Button>
           </Group>
         </Group>
       </Card>
@@ -418,7 +477,7 @@ export function RodadasView({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Descrição / Nome da Rodada</Table.Th>
-                <Table.Th style={{ width: 120 }}>Status</Table.Th>
+                <Table.Th style={{ width: 130 }}>Status</Table.Th>
                 <Table.Th style={{ width: 120 }}>Criada em</Table.Th>
                 <Table.Th style={{ width: 130, textAlign: 'center' }}>Produtos</Table.Th>
                 <Table.Th style={{ width: 130, textAlign: 'center' }}>Cotações</Table.Th>
@@ -430,12 +489,13 @@ export function RodadasView({
               {rodadasFiltradas.map((r) => {
                 const isAtiva = r.id === rodadaAtivaId
                 const isAberta = r.status === 'aberta'
+                const isCancelada = r.status === 'cancelada'
 
                 return (
                   <Table.Tr key={r.id} style={isAtiva ? { fontWeight: 600 } : undefined}>
                     <Table.Td>
                       <Group gap="xs">
-                        <Text size="sm" fw={isAtiva ? 700 : 500}>
+                        <Text size="sm" fw={isAtiva ? 700 : 500} c={isCancelada ? 'dimmed' : undefined}>
                           {r.descricao}
                         </Text>
                         {isAtiva && (
@@ -447,13 +507,19 @@ export function RodadasView({
                     </Table.Td>
 
                     <Table.Td>
-                      {isAberta ? (
+                      {isAberta && (
                         <Badge color="green" variant="light" size="sm" leftSection={<IconLockOpen size={12} />}>
                           Aberta
                         </Badge>
-                      ) : (
+                      )}
+                      {r.status === 'fechada' && (
                         <Badge color="gray" variant="outline" size="sm" leftSection={<IconLock size={12} />}>
                           Fechada
+                        </Badge>
+                      )}
+                      {isCancelada && (
+                        <Badge color="red" variant="light" size="sm" leftSection={<IconBan size={12} />}>
+                          Cancelada
                         </Badge>
                       )}
                     </Table.Td>
@@ -477,7 +543,7 @@ export function RodadasView({
                     </Table.Td>
 
                     <Table.Td style={{ textAlign: 'right' }}>
-                      <Text size="sm" fw={700} c={r.valor_total_alocado > 0 ? 'teal.7' : 'dimmed'}>
+                      <Text size="sm" fw={700} c={r.valor_total_alocado > 0 && !isCancelada ? 'teal.7' : 'dimmed'}>
                         {formatMoney(r.valor_total_alocado)}
                       </Text>
                     </Table.Td>
@@ -496,18 +562,32 @@ export function RodadasView({
                           </Button>
                         </Tooltip>
 
-                        <Tooltip label={isAberta ? 'Fechar / Concluir rodada' : 'Reabrir rodada'}>
+                        <Tooltip
+                          label={
+                            isAberta
+                              ? 'Fechar / Concluir rodada'
+                              : isCancelada
+                              ? 'Reativar rodada'
+                              : 'Reabrir rodada'
+                          }
+                        >
                           <ActionIcon
                             size="sm"
                             variant="light"
                             color={isAberta ? 'gray' : 'green'}
                             onClick={() => handleToggleStatus(r)}
                           >
-                            {isAberta ? <IconLock size={15} /> : <IconLockOpen size={15} />}
+                            {isAberta ? (
+                              <IconLock size={15} />
+                            ) : isCancelada ? (
+                              <IconRotate size={15} />
+                            ) : (
+                              <IconLockOpen size={15} />
+                            )}
                           </ActionIcon>
                         </Tooltip>
 
-                        <Tooltip label="Editar descrição da rodada">
+                        <Tooltip label="Editar rodada">
                           <ActionIcon
                             size="sm"
                             variant="light"
@@ -561,36 +641,36 @@ export function RodadasView({
               {...formNova.getInputProps('descricao')}
             />
 
-            <AppSelect
-              label="Copiar lista de necessidades de rodada anterior (Opcional)"
-              description="Duplica os produtos necessários da rodada selecionada para poupar digitação"
-              placeholder="Nenhum (Começar com lista em branco)"
-              data={rodadas.map((r) => ({
-                value: String(r.id),
-                label: `${r.descricao} (${r.total_necessidades} produtos)`,
-              }))}
-              clearable
-              value={formNova.values.duplicar_de_id}
-              onChange={(val) => formNova.setFieldValue('duplicar_de_id', val)}
-            />
-
             <Radio.Group
               label="Status Inicial"
               value={formNova.values.status}
               onChange={(val) => formNova.setFieldValue('status', val)}
             >
               <Group mt="xs">
-                <Radio value="aberta" label="Aberta (Em cotação e alocação)" />
-                <Radio value="fechada" label="Fechada (Arquivada)" />
+                <Radio value="aberta" label="Aberta (Em cotação)" />
+                <Radio value="fechada" label="Fechada (Concluída)" />
               </Group>
             </Radio.Group>
+
+            {rodadas.length > 0 && (
+              <AppSelect
+                label="Duplicar Necessidades de Outra Rodada (Opcional)"
+                placeholder="Selecione para copiar itens em falta..."
+                data={rodadas.map((r) => ({
+                  value: String(r.id),
+                  label: `${r.descricao} (${r.total_necessidades} itens)`,
+                }))}
+                clearable
+                {...formNova.getInputProps('duplicar_de_id')}
+              />
+            )}
 
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeModalCriar}>
                 Cancelar
               </Button>
-              <Button type="submit" color="blue" loading={salvando} leftSection={<IconPlus size={16} />}>
-                Criar e Ativar Rodada
+              <Button type="submit" color="blue" loading={salvando}>
+                Criar Rodada
               </Button>
             </Group>
           </Stack>
@@ -624,8 +704,9 @@ export function RodadasView({
               onChange={(val) => formEdicao.setFieldValue('status', val)}
             >
               <Group mt="xs">
-                <Radio value="aberta" label="Aberta (Em cotação)" />
-                <Radio value="fechada" label="Fechada (Concluída)" />
+                <Radio value="aberta" label="Aberta" color="green" />
+                <Radio value="fechada" label="Fechada (Concluída)" color="gray" />
+                <Radio value="cancelada" label="Cancelada (Arquivada)" color="red" />
               </Group>
             </Radio.Group>
 
@@ -662,7 +743,8 @@ export function RodadasView({
           </Text>
 
           <Text size="xs" c="dimmed">
-            Esta ação excluirá todas as necessidades, cotações e alocações vinculadas a esta rodada.
+            Nota: Apenas rodadas sem cotações ou compras registradas podem ser excluídas permanentemente.
+            Para ciclos com histórico, utilize a opção "Cancelada" no status para arquivá-los com segurança.
           </Text>
 
           <Group justify="flex-end" mt="md">

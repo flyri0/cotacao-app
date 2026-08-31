@@ -225,7 +225,7 @@ export interface PywebviewApi {
     descricao: string,
     status?: string,
   ) => Promise<Rodada>
-  remover_rodada: (id_rodada: number) => Promise<{ sucesso: boolean; id: number }>
+  remover_rodada: (id_rodada: number) => Promise<{ sucesso: boolean; id: number; mensagem?: string }>
   duplicar_necessidades_rodada: (
     id_origem: number,
     id_destino: number,

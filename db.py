@@ -853,12 +853,12 @@ def listar_rodadas_com_metricas_db(conn: sqlite3.Connection) -> List[Dict[str, A
 def atualizar_rodada_db(
     conn: sqlite3.Connection, id_rodada: int, descricao: str, status: str
 ) -> Dict[str, Any]:
-    """Atualiza a descrição e o status ('aberta' ou 'fechada') de uma rodada."""
+    """Atualiza a descrição e o status ('aberta', 'fechada' ou 'cancelada') de uma rodada."""
     descricao = descricao.strip()
     if not descricao:
         raise ValueError("A descrição da rodada não pode ser vazia.")
-    if status not in ("aberta", "fechada"):
-        raise ValueError("O status da rodada deve ser 'aberta' ou 'fechada'.")
+    if status not in ("aberta", "fechada", "cancelada"):
+        raise ValueError("O status da rodada deve ser 'aberta', 'fechada' ou 'cancelada'.")
 
     cursor = conn.cursor()
     cursor.execute(
@@ -877,8 +877,25 @@ def atualizar_rodada_db(
     return dict(row)
 
 
+def verificar_historico_rodada_db(conn: sqlite3.Connection, id_rodada: int) -> Dict[str, int]:
+    """Retorna a contagem de cotações, alocações e necessidades vinculadas a uma rodada."""
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM necessidades WHERE id_rodada = ?", (id_rodada,))
+    nec = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM cotacoes WHERE id_rodada = ?", (id_rodada,))
+    cot = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM alocacoes WHERE id_rodada = ?", (id_rodada,))
+    aloc = cursor.fetchone()[0]
+    return {
+        "necessidades": nec,
+        "cotacoes": cot,
+        "alocacoes": aloc,
+        "total_historico": cot + aloc,
+    }
+
+
 def remover_rodada_db(conn: sqlite3.Connection, id_rodada: int) -> bool:
-    """Remove uma rodada e todos os seus vínculos de alocações, cotações e necessidades."""
+    """Remove uma rodada e seus vínculos de necessidades, cotações e alocações."""
     cursor = conn.cursor()
     cursor.execute("DELETE FROM alocacoes WHERE id_rodada = ?", (id_rodada,))
     cursor.execute("DELETE FROM cotacoes WHERE id_rodada = ?", (id_rodada,))
