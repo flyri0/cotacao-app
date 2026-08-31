@@ -5,6 +5,7 @@ import {
   Badge,
   Center,
   Container,
+  Divider,
   Group,
   Kbd,
   Loader,
@@ -24,10 +25,14 @@ import {
   IconBuildingStore,
   IconChartBar,
   IconChecklist,
+  IconChevronsLeft,
+  IconChevronsRight,
   IconCoins,
   IconFileText,
   IconHistory,
   IconKeyboard,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
   IconListCheck,
   IconMoon,
   IconPackage,
@@ -73,6 +78,7 @@ export default function App() {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
 
   const [activeTab, setActiveTab] = useState<TabType>('produtos')
+  const [navbarCollapsed, setNavbarCollapsed] = useState<boolean>(false)
   const [bancoInicializado, setBancoInicializado] = useState<boolean | null>(null)
   const [rodadaAtivaId, setRodadaAtivaId] = useState<number | undefined>(undefined)
   const [configuracoes, setConfiguracoes] = useState<ConfiguracoesApp>({
@@ -239,6 +245,49 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [openHelp])
 
+  // Helper para renderizar itens de navegação com suporte a modo colapsado
+  const renderNavItem = (
+    tab: TabType,
+    label: string,
+    icon: React.ReactNode,
+    shortcut?: string,
+  ) => {
+    const isActive = activeTab === tab
+    const content = (
+      <NavLink
+        label={navbarCollapsed ? undefined : label}
+        leftSection={icon}
+        rightSection={!navbarCollapsed && shortcut ? <Kbd size="xs">{shortcut}</Kbd> : undefined}
+        active={isActive}
+        onClick={() => setActiveTab(tab)}
+        variant="light"
+        style={{
+          borderRadius: 6,
+          justifyContent: navbarCollapsed ? 'center' : 'flex-start',
+          paddingLeft: navbarCollapsed ? 12 : undefined,
+          paddingRight: navbarCollapsed ? 12 : undefined,
+        }}
+        mb={2}
+      />
+    )
+
+    if (navbarCollapsed) {
+      return (
+        <Tooltip
+          key={tab}
+          label={`${label}${shortcut ? ` (${shortcut})` : ''}`}
+          position="right"
+          withArrow
+          offset={12}
+        >
+          <div>{content}</div>
+        </Tooltip>
+      )
+    }
+
+    return <div key={tab}>{content}</div>
+  }
+
   // Estado de carregamento inicial
   if (bancoInicializado === null) {
     return (
@@ -266,15 +315,33 @@ export default function App() {
   return (
     <AppShell
       header={{ height: 60 }}
-      navbar={{ width: 250, breakpoint: 'sm' }}
+      navbar={{ width: navbarCollapsed ? 64 : 250, breakpoint: 'sm' }}
       padding="md"
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Group>
+          <Group gap="sm">
+            <Tooltip
+              label={navbarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            >
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                size="lg"
+                onClick={() => setNavbarCollapsed(!navbarCollapsed)}
+              >
+                {navbarCollapsed ? (
+                  <IconLayoutSidebarLeftExpand size={20} />
+                ) : (
+                  <IconLayoutSidebarLeftCollapse size={20} />
+                )}
+              </ActionIcon>
+            </Tooltip>
+
             <ThemeIcon size="lg" radius="md" variant="filled" color={themeColor}>
               {iconeCabecalho}
             </ThemeIcon>
+
             <div>
               <Title order={3} style={{ lineHeight: 1.1 }}>
                 {configuracoes.app_nome || 'Mapa de Cotações'}
@@ -314,127 +381,72 @@ export default function App() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="xs">
-        <Text size="xs" fw={700} c="dimmed" px="xs" py={4} tt="uppercase">
-          Cadastros
-        </Text>
-        <NavLink
-          label="Produtos"
-          leftSection={<IconPackage size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+1</Kbd>}
-          active={activeTab === 'produtos'}
-          onClick={() => setActiveTab('produtos')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
-        <NavLink
-          label="Fornecedores"
-          leftSection={<IconTruck size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+2</Kbd>}
-          active={activeTab === 'fornecedores'}
-          onClick={() => setActiveTab('fornecedores')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
+      <AppShell.Navbar p="xs" style={{ display: 'flex', flexDirection: 'column' }}>
+        <AppShell.Section grow>
+          {navbarCollapsed ? (
+            <Divider my="xs" />
+          ) : (
+            <Text size="xs" fw={700} c="dimmed" px="xs" py={4} tt="uppercase">
+              Cadastros
+            </Text>
+          )}
+          {renderNavItem('produtos', 'Produtos', <IconPackage size={18} />, 'Ctrl+1')}
+          {renderNavItem('fornecedores', 'Fornecedores', <IconTruck size={18} />, 'Ctrl+2')}
 
-        <Text size="xs" fw={700} c="dimmed" px="xs" pt="md" pb={4} tt="uppercase">
-          Rodada de Cotação
-        </Text>
-        <NavLink
-          label="Rodadas"
-          leftSection={<IconRotate size={18} />}
-          active={activeTab === 'rodadas'}
-          onClick={() => setActiveTab('rodadas')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
-        <NavLink
-          label="Necessidades"
-          leftSection={<IconChecklist size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+3</Kbd>}
-          active={activeTab === 'necessidades'}
-          onClick={() => setActiveTab('necessidades')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
-        <NavLink
-          label="Cotações"
-          leftSection={<IconReceipt size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+4</Kbd>}
-          active={activeTab === 'cotacoes'}
-          onClick={() => setActiveTab('cotacoes')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
-        <NavLink
-          label="Comparação"
-          leftSection={<IconScale size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+5</Kbd>}
-          active={activeTab === 'comparacao'}
-          onClick={() => setActiveTab('comparacao')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
-        <NavLink
-          label="Alocação"
-          leftSection={<IconListCheck size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+6</Kbd>}
-          active={activeTab === 'alocacao'}
-          onClick={() => setActiveTab('alocacao')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
-        <NavLink
-          label="Resumo Fornecedor"
-          leftSection={<IconChartBar size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+7</Kbd>}
-          active={activeTab === 'resumo'}
-          onClick={() => setActiveTab('resumo')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
-        <NavLink
-          label="Gerar Pedido"
-          leftSection={<IconFileText size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+8</Kbd>}
-          active={activeTab === 'pedido'}
-          onClick={() => setActiveTab('pedido')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
+          {navbarCollapsed ? (
+            <Divider my="xs" />
+          ) : (
+            <Text size="xs" fw={700} c="dimmed" px="xs" pt="md" pb={4} tt="uppercase">
+              Rodada de Cotação
+            </Text>
+          )}
+          {renderNavItem('rodadas', 'Rodadas', <IconRotate size={18} />)}
+          {renderNavItem('necessidades', 'Necessidades', <IconChecklist size={18} />, 'Ctrl+3')}
+          {renderNavItem('cotacoes', 'Cotações', <IconReceipt size={18} />, 'Ctrl+4')}
+          {renderNavItem('comparacao', 'Comparação', <IconScale size={18} />, 'Ctrl+5')}
+          {renderNavItem('alocacao', 'Alocação', <IconListCheck size={18} />, 'Ctrl+6')}
+          {renderNavItem('resumo', 'Resumo por Fornecedor', <IconChartBar size={18} />, 'Ctrl+7')}
+          {renderNavItem('pedido', 'Gerar Pedido', <IconFileText size={18} />, 'Ctrl+8')}
 
-        <Text size="xs" fw={700} c="dimmed" px="xs" pt="md" pb={4} tt="uppercase">
-          Inteligência & Sistema
-        </Text>
-        <NavLink
-          label="Estatísticas & Histórico"
-          leftSection={<IconHistory size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+9</Kbd>}
-          active={activeTab === 'estatisticas'}
-          onClick={() => setActiveTab('estatisticas')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
-        <NavLink
-          label="Configurações"
-          leftSection={<IconSettings size={18} />}
-          rightSection={<Kbd size="xs">Ctrl+0</Kbd>}
-          active={activeTab === 'configuracoes'}
-          onClick={() => setActiveTab('configuracoes')}
-          variant="light"
-          style={{ borderRadius: 6 }}
-          mb={2}
-        />
+          {navbarCollapsed ? (
+            <Divider my="xs" />
+          ) : (
+            <Text size="xs" fw={700} c="dimmed" px="xs" pt="md" pb={4} tt="uppercase">
+              Inteligência & Sistema
+            </Text>
+          )}
+          {renderNavItem('estatisticas', 'Estatísticas & Histórico', <IconHistory size={18} />, 'Ctrl+9')}
+          {renderNavItem('configuracoes', 'Configurações', <IconSettings size={18} />, 'Ctrl+0')}
+        </AppShell.Section>
+
+        <AppShell.Section pt="xs">
+          <Divider mb="xs" />
+          <Tooltip
+            label={navbarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            position="right"
+            withArrow
+            disabled={!navbarCollapsed}
+          >
+            <NavLink
+              label={navbarCollapsed ? undefined : 'Recolher menu'}
+              leftSection={
+                navbarCollapsed ? (
+                  <IconChevronsRight size={18} />
+                ) : (
+                  <IconChevronsLeft size={18} />
+                )
+              }
+              onClick={() => setNavbarCollapsed(!navbarCollapsed)}
+              variant="subtle"
+              style={{
+                borderRadius: 6,
+                justifyContent: navbarCollapsed ? 'center' : 'flex-start',
+                paddingLeft: navbarCollapsed ? 12 : undefined,
+                paddingRight: navbarCollapsed ? 12 : undefined,
+              }}
+            />
+          </Tooltip>
+        </AppShell.Section>
       </AppShell.Navbar>
 
       <AppShell.Main>
@@ -573,7 +585,7 @@ export default function App() {
                   <Kbd>Ctrl</Kbd> + <Kbd>7</Kbd>
                 </Group>
               </Table.Td>
-              <Table.Td>Ir para tela de <b>Resumo da Rodada</b></Table.Td>
+              <Table.Td>Ir para tela de <b>Resumo por Fornecedor</b></Table.Td>
             </Table.Tr>
             <Table.Tr>
               <Table.Td>

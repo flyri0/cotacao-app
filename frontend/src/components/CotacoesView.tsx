@@ -788,7 +788,7 @@ export function CotacoesView({
               loading={exportandoExcel}
               onClick={handleExportarPlanilhaModelo}
             >
-              Exportar para Excel
+              Exportar Excel
             </Button>
             <Button
               variant="outline"

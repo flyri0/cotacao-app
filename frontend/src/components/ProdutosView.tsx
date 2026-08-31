@@ -486,7 +486,7 @@ export function ProdutosView() {
               loading={exportandoExcel}
               onClick={handleExportarExcel}
             >
-              Exportar para Excel
+              Exportar Excel
             </Button>
             <Button
               variant="outline"
@@ -494,7 +494,7 @@ export function ProdutosView() {
               leftSection={<IconUpload size={16} />}
               onClick={openModalImportar}
             >
-              Importar Planilha
+              Importar Excel
             </Button>
           </Group>
         }

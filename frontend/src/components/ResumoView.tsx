@@ -4,15 +4,15 @@ import {
   Center,
   Group,
   Loader,
+  Paper,
   Progress,
   SimpleGrid,
   Stack,
+  Table,
   Text,
-  Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
-  IconAlertCircle,
   IconAlertTriangle,
   IconCheck,
   IconChartBar,
@@ -31,7 +31,7 @@ import { PageHeader } from './common/PageHeader'
 import { RoundHeaderSelector } from './common/RoundHeaderSelector'
 import { StatCard } from './common/StatCard'
 import { getApi } from '../services/api'
-import type { Alocacao, Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
+import type { Alocacao, Cotacao, Fornecedor, Rodada } from '../types'
 
 function formatMoney(valor: number, maxDigits = 2): string {
   return new Intl.NumberFormat('pt-BR', {
@@ -66,34 +66,12 @@ interface ResumoFornecedorRow {
   }[]
 }
 
-interface ResumoProdutoRow {
-  id_produto: number
-  produto_nome: string
-  produto_categoria?: string | null
-  produto_unidade_padrao: string
-  quantidade_necessaria: number
-  quantidade_alocada_nominal: number
-  quantidade_efetiva_comprada: number
-  sobra_embalagem: number
-  subtotal_item: number
-  status: 'ok' | 'excedente' | 'falta_cobrir'
-  status_detalhe: string
-  detalhe_fornecedores: {
-    fornecedor_nome: string
-    quantidade: number
-    embalagens: number
-    embalagem_desc: string
-    subtotal: number
-  }[]
-}
-
 export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
   const [rodadas, setRodadas] = useState<Rodada[]>([])
   const [selectedRodadaId, setSelectedRodadaId] = useState<number | null>(
     rodadaAtivaId || null,
   )
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
-  const [necessidades, setNecessidades] = useState<Necessidade[]>([])
   const [cotacoes, setCotacoes] = useState<Cotacao[]>([])
   const [alocacoes, setAlocacoes] = useState<Alocacao[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,13 +96,11 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       }
 
       if (idAlvo) {
-        const [listaNec, listaCot, listaAloc] = await Promise.all([
-          api.listar_necessidades(idAlvo),
+        const [listaCot, listaAloc] = await Promise.all([
           api.listar_cotacoes(idAlvo),
           api.listar_alocacoes(idAlvo),
         ])
 
-        setNecessidades(listaNec)
         setCotacoes(listaCot)
         setAlocacoes(listaAloc)
       }
@@ -145,7 +121,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
     carregarDados(selectedRodadaId || undefined)
   }, [])
 
-  // CÁLCULOS 1: Resumo Financeiro por Fornecedor
+  // Resumo Financeiro por Fornecedor
   const dadosFornecedores = useMemo<ResumoFornecedorRow[]>(() => {
     return fornecedores.map((forn) => {
       const alocsDoForn = alocacoes.filter(
@@ -206,85 +182,6 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
     })
   }, [fornecedores, alocacoes, cotacoes])
 
-  // CÁLCULOS 2: Conferência por Produto (Necessidades vs. Múltiplas Alocações)
-  const dadosProdutos = useMemo<ResumoProdutoRow[]>(() => {
-    return necessidades.map((nec) => {
-      const alocsDoProd = alocacoes.filter(
-        (a) => a.id_produto === nec.id_produto && a.quantidade > 0,
-      )
-
-      let totalAlocadoNominal = 0
-      let totalEfetivoComprado = 0
-      let subtotalItem = 0
-      const detalheFornecedores: ResumoProdutoRow['detalhe_fornecedores'] = []
-
-      alocsDoProd.forEach((aloc) => {
-        totalAlocadoNominal += aloc.quantidade
-
-        const cot = cotacoes.find(
-          (c) =>
-            c.id_produto === aloc.id_produto &&
-            c.id_fornecedor === aloc.id_fornecedor,
-        )
-        const fator = cot && cot.qtd_por_embalagem > 0 ? cot.qtd_por_embalagem : 1
-        const precoEmb = cot ? cot.preco_embalagem : 0
-        const embComprar = Math.ceil(aloc.quantidade / fator)
-        const efetivo = embComprar * fator
-        const subtotal = embComprar * precoEmb
-
-        totalEfetivoComprado += efetivo
-        subtotalItem += subtotal
-
-        detalheFornecedores.push({
-          fornecedor_nome: aloc.fornecedor_nome || 'Fornecedor',
-          quantidade: aloc.quantidade,
-          embalagens: embComprar,
-          embalagem_desc: cot ? cot.embalagem : 'Unidade',
-          subtotal,
-        })
-      })
-
-      const sobra = Math.max(0, totalEfetivoComprado - totalAlocadoNominal)
-      const qtdNec = nec.quantidade || 0
-
-      let status: ResumoProdutoRow['status'] = 'falta_cobrir'
-      let statusDetalhe = 'Nenhuma compra alocada'
-
-      if (totalAlocadoNominal > 0) {
-        if (qtdNec > 0) {
-          if (totalAlocadoNominal < qtdNec) {
-            status = 'falta_cobrir'
-            statusDetalhe = `Faltam ${qtdNec - totalAlocadoNominal} ${nec.produto_unidade_padrao}`
-          } else if (totalAlocadoNominal === qtdNec) {
-            status = 'ok'
-            statusDetalhe = '100% Coberto'
-          } else {
-            status = 'excedente'
-            statusDetalhe = `+${totalAlocadoNominal - qtdNec} ${nec.produto_unidade_padrao} extra`
-          }
-        } else {
-          status = 'ok'
-          statusDetalhe = `${totalAlocadoNominal} ${nec.produto_unidade_padrao} alocados`
-        }
-      }
-
-      return {
-        id_produto: nec.id_produto,
-        produto_nome: nec.produto_nome,
-        produto_categoria: nec.produto_categoria,
-        produto_unidade_padrao: nec.produto_unidade_padrao,
-        quantidade_necessaria: qtdNec,
-        quantidade_alocada_nominal: totalAlocadoNominal,
-        quantidade_efetiva_comprada: totalEfetivoComprado,
-        sobra_embalagem: sobra,
-        subtotal_item: subtotalItem,
-        status,
-        status_detalhe: statusDetalhe,
-        detalhe_fornecedores: detalheFornecedores,
-      }
-    })
-  }, [necessidades, alocacoes, cotacoes])
-
   // Indicadores Gerais (KPIs)
   const metricas = useMemo(() => {
     const totalFinanceiro = dadosFornecedores.reduce(
@@ -297,9 +194,9 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
     const fornecedoresAbaixo = dadosFornecedores.filter(
       (f) => f.status === 'abaixo',
     )
-
-    const produtosCobertos = dadosProdutos.filter(
-      (p) => p.status === 'ok' || p.status === 'excedente',
+    const totalItensAlocados = dadosFornecedores.reduce(
+      (acc, f) => acc + f.itens_comprados_count,
+      0,
     )
 
     return {
@@ -307,10 +204,9 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       fornecedoresAtivosCount: fornecedoresAtivos.length,
       fornecedoresAptosCount: fornecedoresAptos.length,
       fornecedoresAbaixoCount: fornecedoresAbaixo.length,
-      produtosTotalCount: dadosProdutos.length,
-      produtosCobertosCount: produtosCobertos.length,
+      totalItensAlocados,
     }
-  }, [dadosFornecedores, dadosProdutos])
+  }, [dadosFornecedores])
 
   // Colunas da Tabela de Fornecedores
   const columnsFornecedores = useMemo<MRT_ColumnDef<ResumoFornecedorRow>[]>(
@@ -318,7 +214,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       {
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
-        size: 200,
+        size: 220,
         Cell: ({ cell, row }) => (
           <Stack gap={2}>
             <Text fw={700} size="sm">
@@ -334,7 +230,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       {
         accessorKey: 'total_alocado',
         header: 'Total Alocado (R$)',
-        size: 160,
+        size: 170,
         Cell: ({ cell, row }) => (
           <Text
             fw={700}
@@ -354,7 +250,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       {
         accessorKey: 'pedido_minimo',
         header: 'Pedido Mínimo (R$)',
-        size: 150,
+        size: 160,
         Cell: ({ cell }) => (
           <Text size="sm">
             {cell.getValue<number>() > 0
@@ -366,7 +262,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       {
         id: 'progresso',
         header: 'Meta Mínima',
-        size: 200,
+        size: 220,
         Cell: ({ row }) => {
           const { pedido_minimo, total_alocado, percentual_atingido, status } =
             row.original
@@ -407,7 +303,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       {
         id: 'status_minimo',
         header: 'Status Pedido Mínimo',
-        size: 220,
+        size: 240,
         Cell: ({ row }) => {
           const { status, diferenca } = row.original
 
@@ -448,138 +344,6 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
     [],
   )
 
-  // Colunas da Tabela de Produtos
-  const columnsProdutos = useMemo<MRT_ColumnDef<ResumoProdutoRow>[]>(
-    () => [
-      {
-        accessorKey: 'produto_nome',
-        header: 'Produto',
-        size: 220,
-        Cell: ({ cell, row }) => (
-          <Stack gap={2}>
-            <Text fw={600} size="sm">
-              {cell.getValue<string>()}
-            </Text>
-            {row.original.produto_categoria && (
-              <Text size="11px" c="dimmed">
-                {row.original.produto_categoria}
-              </Text>
-            )}
-          </Stack>
-        ),
-      },
-      {
-        id: 'alocacao_fornecedores',
-        header: 'Distribuição por Fornecedor (Divisão / Compra)',
-        size: 320,
-        Cell: ({ row }) => {
-          const { detalhe_fornecedores, produto_unidade_padrao } = row.original
-
-          if (detalhe_fornecedores.length === 0) {
-            return (
-              <Text size="xs" c="dimmed">
-                Nenhum fornecedor alocado
-              </Text>
-            )
-          }
-
-          return (
-            <Stack gap={4}>
-              {detalhe_fornecedores.map((d, i) => (
-                <Group key={i} gap="xs" justify="space-between">
-                  <Badge variant="outline" color="cyan" size="xs">
-                    {d.fornecedor_nome}
-                  </Badge>
-                  <Text size="xs">
-                    <b>{d.quantidade}</b> {produto_unidade_padrao} (
-                    {d.embalagens} emb. • {formatMoney(d.subtotal)})
-                  </Text>
-                </Group>
-              ))}
-            </Stack>
-          )
-        },
-      },
-      {
-        accessorKey: 'quantidade_alocada_nominal',
-        header: 'Total Comprado',
-        size: 170,
-        Cell: ({ row }) => {
-          const item = row.original
-          return (
-            <Stack gap={2}>
-              <Text fw={700} size="sm">
-                {item.quantidade_alocada_nominal} {item.produto_unidade_padrao}
-              </Text>
-              {item.sobra_embalagem > 0 && (
-                <Text size="11px" c="blue" fw={600}>
-                  ({item.quantidade_efetiva_comprada} {item.produto_unidade_padrao} emb.{' '}
-                  <span style={{ color: '#1c7ed6' }}>+{item.sobra_embalagem} sobra</span>)
-                </Text>
-              )}
-            </Stack>
-          )
-        },
-      },
-      {
-        accessorKey: 'subtotal_item',
-        header: 'Subtotal (R$)',
-        size: 130,
-        Cell: ({ cell }) => (
-          <Text fw={700} size="sm" c="teal.8">
-            {formatMoney(cell.getValue<number>())}
-          </Text>
-        ),
-      },
-      {
-        id: 'status_cobertura',
-        header: 'Conferência de Necessidade',
-        size: 190,
-        Cell: ({ row }) => {
-          const item = row.original
-
-          if (item.status === 'ok') {
-            return (
-              <Badge
-                leftSection={<IconCheck size={14} />}
-                color="teal"
-                variant="filled"
-                size="md"
-              >
-                {item.status_detalhe}
-              </Badge>
-            )
-          }
-
-          if (item.status === 'excedente') {
-            return (
-              <Badge
-                leftSection={<IconPackage size={14} />}
-                color="blue"
-                variant="filled"
-                size="md"
-              >
-                {item.status_detalhe}
-              </Badge>
-            )
-          }
-
-          return (
-            <Badge
-              leftSection={<IconAlertCircle size={14} />}
-              color="red"
-              variant="filled"
-              size="md"
-            >
-              {item.status_detalhe}
-            </Badge>
-          )
-        },
-      },
-    ],
-    [],
-  )
-
   const tableFornecedores = useMantineReactTable({
     columns: columnsFornecedores,
     data: dadosFornecedores,
@@ -588,26 +352,51 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
     enablePagination: false,
     enableBottomToolbar: false,
     enableTopToolbar: false,
-    mantineTableProps: {
-      striped: true,
-      highlightOnHover: true,
-      withTableBorder: true,
+    renderDetailPanel: ({ row }) => {
+      const { itens_detalhes, fornecedor_nome } = row.original
+      if (!itens_detalhes || itens_detalhes.length === 0) {
+        return (
+          <Text size="xs" c="dimmed" p="sm">
+            Nenhum item alocado para este fornecedor.
+          </Text>
+        )
+      }
+      return (
+        <Paper p="xs" withBorder radius="sm" bg="var(--mantine-color-body)" m="xs">
+          <Text size="xs" fw={700} mb="xs" c="dimmed" tt="uppercase">
+            Itens alocados para {fornecedor_nome} ({itens_detalhes.length})
+          </Text>
+          <Table striped highlightOnHover withTableBorder>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Produto</Table.Th>
+                <Table.Th>Qtd Alocada</Table.Th>
+                <Table.Th>Embalagens Fechadas</Table.Th>
+                <Table.Th>Subtotal</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {itens_detalhes.map((item, idx) => (
+                <Table.Tr key={idx}>
+                  <Table.Td>
+                    <b>{item.produto_nome}</b>
+                  </Table.Td>
+                  <Table.Td>
+                    {item.quantidade} {item.unidade}
+                  </Table.Td>
+                  <Table.Td>
+                    {item.embalagens}x ({item.embalagem_desc})
+                  </Table.Td>
+                  <Table.Td>
+                    <b>{formatMoney(item.subtotal)}</b>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Paper>
+      )
     },
-    mantinePaperProps: {
-      withBorder: true,
-      radius: 'md',
-      shadow: 'none',
-    },
-  })
-
-  const tableProdutos = useMantineReactTable({
-    columns: columnsProdutos,
-    data: dadosProdutos,
-    localization: MRT_Localization_PT_BR,
-    enableRowActions: false,
-    enablePagination: true,
-    enableBottomToolbar: true,
-    enableTopToolbar: true,
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,
@@ -626,8 +415,8 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       <PageHeader
         icon={IconChartBar}
         iconColor="indigo"
-        title="Resumo da Rodada & Auditoria"
-        subtitle="Conferência consolidada de pedidos mínimos por fornecedor e cobertura de necessidades"
+        title="Resumo por Fornecedor"
+        subtitle="Acompanhamento consolidado de valores alocados e atingimento do pedido mínimo por fornecedor"
         rightSection={
           <RoundHeaderSelector
             rodadas={rodadas}
@@ -668,36 +457,16 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
         />
 
         <StatCard
-          label="Itens Cobertos"
-          value={`${metricas.produtosCobertosCount} de ${metricas.produtosTotalCount}`}
-          subtitle={
-            metricas.produtosCobertosCount < metricas.produtosTotalCount
-              ? `⚠️ ${metricas.produtosTotalCount - metricas.produtosCobertosCount} produto(s) sem alocação`
-              : '✓ 100% dos produtos da rodada alocados'
-          }
+          label="Total de Itens Alocados"
+          value={`${metricas.totalItensAlocados}`}
+          subtitle={`${metricas.fornecedoresAtivosCount} fornecedor(es) com compras ativas`}
           icon={IconPackage}
-          color={metricas.produtosCobertosCount < metricas.produtosTotalCount ? 'orange' : 'teal'}
-          badge={{
-            label: `${Math.round((metricas.produtosCobertosCount / (metricas.produtosTotalCount || 1)) * 100)}% Coberto`,
-            color: metricas.produtosCobertosCount < metricas.produtosTotalCount ? 'orange' : 'teal',
-          }}
+          color="indigo"
         />
       </SimpleGrid>
 
-      {/* SEÇÃO 1: Resumo Financeiro por Fornecedor */}
+      {/* Tabela de Resumo Financeiro por Fornecedor */}
       <Stack gap="xs" mt="xs">
-        <Group justify="space-between">
-          <div>
-            <Title order={3} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <IconTruck size={22} />
-              1. Resumo por Fornecedor (Pedido Mínimo)
-            </Title>
-            <Text size="xs" c="dimmed">
-              Valores alocados comparados ao pedido mínimo de cada fornecedor
-            </Text>
-          </div>
-        </Group>
-
         {loading ? (
           <Center p="xl">
             <Loader size="lg" />
@@ -706,31 +475,9 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
           <MantineReactTable table={tableFornecedores} />
         )}
       </Stack>
-
-      {/* SEÇÃO 2: Conferência por Produto */}
-      <Stack gap="xs">
-        <Group justify="space-between">
-          <div>
-            <Title order={3} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <IconPackage size={22} />
-              2. Conferência de Necessidades por Produto
-            </Title>
-            <Text size="xs" c="dimmed">
-              Consolidação de todas as alocações (mesmo divididas) contra as necessidades da rodada
-            </Text>
-          </div>
-        </Group>
-
-        {loading ? (
-          <Center p="xl">
-            <Loader size="lg" />
-          </Center>
-        ) : (
-          <MantineReactTable table={tableProdutos} />
-        )}
-      </Stack>
     </Stack>
   )
 }
 
 export default ResumoView
+

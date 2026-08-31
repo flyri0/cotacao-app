@@ -81,7 +81,6 @@ export function AlocacaoView({
   const [linhas, setLinhas] = useState<LinhaAlocacao[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [statusAutosave, setStatusAutosave] = useState<'salvo' | 'salvando' | 'ocioso'>('ocioso')
 
   const initialLoadDone = useRef(false)
   const autosaveTimeoutRef = useRef<number | null>(null)
@@ -95,7 +94,6 @@ export function AlocacaoView({
   const executarSalvarSilencioso = useCallback(async (linhasParaSalvar: LinhaAlocacao[], rodadaId: number | null) => {
     if (!rodadaId || isFechada) return
     try {
-      setStatusAutosave('salvando')
       const api = await getApi()
       const payload = linhasParaSalvar
         .filter((l) => Number(l.quantidade_alocada) > 0 && Number(l.id_fornecedor) > 0)
@@ -107,12 +105,10 @@ export function AlocacaoView({
         }))
 
       await api.salvar_alocacoes(rodadaId, payload)
-      setStatusAutosave('salvo')
     } catch (err) {
       console.error('Erro no autosave:', err)
-      setStatusAutosave('ocioso')
     }
-  }, [])
+  }, [isFechada])
 
   const carregarDados = useCallback(
     async (rodadaId?: number) => {
@@ -216,7 +212,6 @@ export function AlocacaoView({
       clearTimeout(autosaveTimeoutRef.current)
     }
 
-    setStatusAutosave('salvando')
     autosaveTimeoutRef.current = window.setTimeout(() => {
       executarSalvarSilencioso(linhas, selectedRodadaId)
     }, 600)
@@ -354,7 +349,6 @@ export function AlocacaoView({
         }))
 
       await api.salvar_alocacoes(selectedRodadaId, payload)
-      setStatusAutosave('salvo')
 
       notifications.show({
         title: 'Alocações Salvas com Sucesso',
@@ -769,16 +763,6 @@ export function AlocacaoView({
             {isFechada && (
               <Badge variant="filled" color="red" size="md">
                 Rodada Fechada - Somente Leitura
-              </Badge>
-            )}
-            {!isFechada && statusAutosave === 'salvando' && (
-              <Badge variant="light" color="yellow" size="sm" leftSection={<Loader size={10} color="yellow" />}>
-                Salvando...
-              </Badge>
-            )}
-            {!isFechada && statusAutosave === 'salvo' && (
-              <Badge variant="light" color="teal" size="sm" leftSection={<IconCheck size={12} />}>
-                Salvo automaticamente
               </Badge>
             )}
 

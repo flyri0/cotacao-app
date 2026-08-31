@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createTheme, MantineProvider, Autocomplete, Select } from '@mantine/core'
+import { createTheme, MantineProvider, Autocomplete, Select, Modal } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'
 import { ModalsProvider } from '@mantine/modals'
 import '@mantine/core/styles.css'
@@ -12,6 +12,11 @@ import App from './App.tsx'
 
 const theme = createTheme({
   components: {
+    Modal: Modal.extend({
+      defaultProps: {
+        lockScroll: false,
+      },
+    }),
     Autocomplete: Autocomplete.extend({
       defaultProps: {
         selectFirstOptionOnChange: true,

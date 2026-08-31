@@ -479,7 +479,7 @@ export function FornecedoresView() {
               loading={exportandoExcel}
               onClick={handleExportarExcel}
             >
-              Exportar para Excel
+              Exportar Excel
             </Button>
             <Button
               variant="outline"
@@ -487,7 +487,7 @@ export function FornecedoresView() {
               leftSection={<IconUpload size={16} />}
               onClick={openModalImportar}
             >
-              Importar Planilha
+              Importar Excel
             </Button>
           </Group>
         }
