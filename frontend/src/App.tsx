@@ -3,6 +3,7 @@ import {
   ActionIcon,
   AppShell,
   Badge,
+  Button,
   Center,
   Container,
   Divider,
@@ -11,6 +12,8 @@ import {
   Loader,
   Modal,
   NavLink,
+  Paper,
+  Stack,
   Table,
   Text,
   Title,
@@ -22,6 +25,7 @@ import {
 import { useDisclosure } from '@mantine/hooks'
 import {
   IconBriefcase,
+  IconBrowser,
   IconBuildingStore,
   IconChartBar,
   IconChecklist,
@@ -36,6 +40,7 @@ import {
   IconListCheck,
   IconMoon,
   IconPackage,
+  IconPower,
   IconReceipt,
   IconRotate,
   IconScale,
@@ -91,6 +96,10 @@ export default function App() {
     app_tamanho_fonte: 'medio',
   })
   const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false)
+  const [modalEncerrarOpened, { open: openModalEncerrar, close: closeModalEncerrar }] = useDisclosure(false)
+  const [sistemaEncerrado, setSistemaEncerrado] = useState(false)
+
+  const isNavegador = typeof window !== 'undefined' && !window.pywebview?.api
 
   // Sincroniza densidade e tamanho de fonte com o documento HTML
   useEffect(() => {
@@ -311,6 +320,26 @@ export default function App() {
     )
   }
 
+  // Se o usuário encerrou o aplicativo no modo navegador
+  if (sistemaEncerrado) {
+    return (
+      <Center style={{ minHeight: '100vh', backgroundColor: computedColorScheme === 'dark' ? '#141517' : '#f8fafc', padding: 20 }}>
+        <Paper withBorder p="xl" radius="md" style={{ maxWidth: 480, textAlign: 'center', boxShadow: 'none' }}>
+          <ThemeIcon size={56} radius="xl" color="teal" variant="light" mb="md" mx="auto">
+            <IconPower size={32} />
+          </ThemeIcon>
+          <Title order={3} mb="xs">Aplicativo Encerrado com Sucesso</Title>
+          <Text size="sm" c="dimmed" mb="md">
+            O banco de dados SQLite foi sincronizado e o servidor local foi finalizado com segurança.
+          </Text>
+          <Badge size="lg" color="gray" variant="light">
+            Você já pode fechar esta aba do navegador
+          </Badge>
+        </Paper>
+      </Center>
+    )
+  }
+
   // Se o banco ainda não foi inicializado, exibe a tela de Boas-Vindas / Onboarding
   if (!bancoInicializado) {
     return (
@@ -388,8 +417,8 @@ export default function App() {
               </ActionIcon>
             </Tooltip>
 
-            <Badge variant="outline" color={themeColor} size="xs">
-              Desktop
+            <Badge variant="outline" color={themeColor} size="xs" leftSection={isNavegador ? <IconBrowser size={12} /> : undefined}>
+              {isNavegador ? 'Navegador' : 'Desktop'}
             </Badge>
           </Group>
         </Group>
@@ -460,6 +489,30 @@ export default function App() {
               }}
             />
           </Tooltip>
+
+          {isNavegador && (
+            <Tooltip
+              label={navbarCollapsed ? 'Encerrar aplicativo' : undefined}
+              position="right"
+              withArrow
+              disabled={!navbarCollapsed}
+            >
+              <NavLink
+                label={navbarCollapsed ? undefined : 'Encerrar App'}
+                leftSection={<IconPower size={16} color="var(--mantine-color-red-6)" />}
+                onClick={openModalEncerrar}
+                variant="subtle"
+                c="red"
+                style={{
+                  borderRadius: 4,
+                  justifyContent: navbarCollapsed ? 'center' : 'flex-start',
+                  paddingLeft: navbarCollapsed ? 8 : undefined,
+                  paddingRight: navbarCollapsed ? 8 : undefined,
+                  marginTop: 2,
+                }}
+              />
+            </Tooltip>
+          )}
         </AppShell.Section>
       </AppShell.Navbar>
 
@@ -649,6 +702,52 @@ export default function App() {
             </Table.Tr>
           </Table.Tbody>
         </Table>
+      </Modal>
+
+      {/* Modal de Confirmação de Encerramento do Sistema */}
+      <Modal
+        opened={modalEncerrarOpened}
+        onClose={closeModalEncerrar}
+        title={
+          <Group gap="xs">
+            <ThemeIcon color="red" variant="light" size={24} radius="sm">
+              <IconPower size={16} />
+            </ThemeIcon>
+            <Text fw={700} size="sm">
+              Encerrar Aplicativo
+            </Text>
+          </Group>
+        }
+        centered
+        size="sm"
+      >
+        <Stack gap="sm">
+          <Text size="sm">
+            Deseja realmente desligar o servidor local do <b>Mapa de Cotações</b>? Todas as alterações já estão salvas no banco de dados SQLite.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" size="xs" onClick={closeModalEncerrar}>
+              Cancelar
+            </Button>
+            <Button
+              color="red"
+              size="xs"
+              leftSection={<IconPower size={14} />}
+              onClick={async () => {
+                closeModalEncerrar()
+                setSistemaEncerrado(true)
+                try {
+                  const api = await getApi()
+                  await api.encerrar_sistema?.()
+                } catch {
+                  // Processo finalizado
+                }
+              }}
+            >
+              Encerrar Agora
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </AppShell>
   )

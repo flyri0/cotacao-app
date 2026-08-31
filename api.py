@@ -1075,4 +1075,22 @@ class Api:
         with self._get_connection() as conn:
             return importar_fornecedores_excel_db(conn, conteudo_base64)
 
+    def encerrar_sistema(self) -> Dict[str, Any]:
+        """Solicita o encerramento seguro do backend e do aplicativo."""
+        import threading
+        import time
+
+        def _do_shutdown():
+            time.sleep(0.5)
+            try:
+                import webview
+                for window in getattr(webview, "windows", []):
+                    window.destroy()
+            except Exception:
+                pass
+            os._exit(0)
+
+        threading.Thread(target=_do_shutdown, daemon=True).start()
+        return {"sucesso": True, "mensagem": "Sistema sendo encerrado com sucesso."}
+
 

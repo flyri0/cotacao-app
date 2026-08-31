@@ -79,6 +79,7 @@ export interface ConfiguracoesApp {
   app_color_scheme?: 'light' | 'dark' | 'auto'
   app_densidade?: 'compacto' | 'confortavel'
   app_tamanho_fonte?: 'pequeno' | 'medio' | 'grande'
+  app_modo_execucao?: 'janela' | 'navegador'
   [key: string]: string | undefined
 }
 
@@ -325,6 +326,12 @@ export interface PywebviewApi {
     importados: number
     ignorados: number
     erros: string[]
+  }>
+
+  // Controle de Ciclo de Vida
+  encerrar_sistema?: () => Promise<{
+    sucesso: boolean
+    mensagem?: string
   }>
 }
 

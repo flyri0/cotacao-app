@@ -6,13 +6,18 @@ compra, substituindo um processo manual de planilha. Uso interno, uma
 pessoa/equipe de compras.
 
 ## Stack
-- **Backend**: Python 3.11+, pywebview (janela nativa), SQLite (arquivo local)
-- **Comunicação**: bridge JS↔Python nativa do pywebview (`window.pywebview.api`) — sem servidor HTTP separado
+- **Backend**: Python 3.8+ (compatível com Windows 7 32-bit e Windows 10/11), SQLite (arquivo local)
+- **Modos de Exibição (Dual-Mode)**:
+  - **Janela Nativa**: via `pywebview` (`window.pywebview.api`).
+  - **Navegador Padrão**: via micro-servidor HTTP local integrado (`server.py`, biblioteca padrão `http.server`), ideal para Windows 7 32-bit sem WebView2 e máquinas de baixo consumo.
+  - **Instância Única (Single Instance)**: se o programa já estiver em execução na porta 54321, nova inicialização apenas reabre a aba no navegador e encerra o processo duplicado.
+  - **Frontend Isomórfico**: Proxy transparente em `frontend/src/services/api.ts` que direciona para pywebview ou REST POST `/api/*` sem alterar componentes React.
 - **Frontend**: React (Vite) + Mantine (core, hooks, form, notifications) + Mantine React Table
-- **Empacotamento**: PyInstaller (fase final, não priorizar antes do resto funcionar)
+- **Empacotamento**: PyInstaller (para Win7 32-bit, compilar com Python 3.8.10 x86)
 
 ## Por que essa stack (não trocar sem justificativa forte)
 - pywebview evita a complexidade do Electron mantendo um app nativo leve.
+- O micro-servidor embutido usa apenas a biblioteca padrão do Python (`http.server`), garantindo compatibilidade imediata com Windows 7 (32 bits) sem precisar instalar WebView2 runtime nem frameworks pesados (Flask/FastAPI).
 - SQLite evita gerenciar um servidor de banco — arquivo único, fácil de dar backup.
 - Mantine resolve autocomplete (`Autocomplete`/`Select` pesquisável) e
   tabelas de forma nativa. Esse ponto é importante: versões anteriores
@@ -93,12 +98,13 @@ pessoa/equipe de compras.
 
 ## Comandos
 - `npm run dev` (dentro de `frontend/`) — Vite em modo desenvolvimento
-- `python app.py` — abre a janela pywebview (aponta pro Vite dev server em
-  desenvolvimento, pro build estático em produção)
 - `npm run build` (dentro de `frontend/`) — gera `frontend/dist`
+- `python app.py` — abre no modo padrão configurado (Janela Nativa ou Navegador Padrão)
+- `python app.py --browser` — força abertura no Navegador Padrão do sistema
+- `python app.py --window` — força abertura em Janela Nativa (pywebview)
+- `python -m unittest discover -s tests -p "test_*.py"` — executa todos os testes unitários de backend
 
 ## O que não fazer
 - Não guardar preço unitário calculado no banco.
 - Não restringir Alocação a uma linha por (produto, rodada).
-- Não adicionar um servidor HTTP separado (FastAPI/Flask) — a bridge do
-  pywebview já cobre a comunicação; mantenha a stack enxuta.
+- Não adicionar frameworks pesados de backend (FastAPI/Flask/Django) — o `server.py` nativo (`http.server`) e a bridge do `pywebview` já cobrem tudo com máxima leveza e compatibilidade com Win7.

@@ -1,8 +1,11 @@
 import os
 import sys
-import webview
+import time
+import webbrowser
+from typing import Optional
 from api import Api
 from db import init_db
+from server import DEFAULT_PORT, is_server_already_running, start_http_server
 
 DEV_URL = "http://localhost:5173"
 
@@ -15,18 +18,17 @@ def is_dev() -> bool:
         return False
     if "--dev" in sys.argv:
         return True
-    return True
+    # Se não houver build gerado em frontend/dist, assume modo dev
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    dist_index = os.path.join(base_dir, "frontend", "dist", "index.html")
+    return not os.path.exists(dist_index)
 
 
-def get_entry_url() -> str:
-    """Retorna a URL ou caminho do index.html para carregar na janela pywebview."""
+def get_entry_url(port: int = DEFAULT_PORT) -> str:
+    """Retorna a URL do aplicativo para carregar no navegador ou na janela pywebview."""
     if is_dev():
         return DEV_URL
-
-    # Em modo empacotado (PyInstaller), os assets ficam embutidos em sys._MEIPASS
-    base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
-    dist_file = os.path.join(base_dir, "frontend", "dist", "index.html")
-    return dist_file
+    return f"http://127.0.0.1:{port}"
 
 
 def confirm_closing() -> bool:
@@ -49,24 +51,94 @@ def confirm_closing() -> bool:
         return True
 
 
+def parse_port() -> int:
+    """Obtém a porta a partir dos argumentos da linha de comando, se informada."""
+    for i, arg in enumerate(sys.argv):
+        if arg in ("--port", "-p") and i + 1 < len(sys.argv):
+            try:
+                return int(sys.argv[i + 1])
+            except ValueError:
+                pass
+    return DEFAULT_PORT
+
+
 def main() -> None:
-    # Instancia a API que será exposta para o frontend (window.pywebview.api)
+    port = parse_port()
     api = Api()
 
-    url = get_entry_url()
+    # 1. CONTROLE DE INSTÂNCIA ÚNICA (SINGLE INSTANCE)
+    if is_server_already_running(port):
+        url = get_entry_url(port)
+        print(f"[Instância Ativa] O Mapa de Cotações já está em execução. Reabrindo no navegador: {url}")
+        webbrowser.open(url)
+        sys.exit(0)
 
-    window = webview.create_window(
-        title="Mapa Comparativo de Cotações",
-        url=url,
-        width=1280,
-        height=850,
-        min_size=(900, 600),
-        js_api=api,
+    # 2. DETERMINAÇÃO DO MODO DE EXECUÇÃO (JANELA vs NAVEGADOR)
+    if "--browser" in sys.argv:
+        modo = "navegador"
+    elif "--window" in sys.argv:
+        modo = "janela"
+    else:
+        try:
+            configs = api.obter_configuracoes()
+            modo = configs.get("app_modo_execucao", "janela")
+        except Exception:
+            modo = "janela"
+
+    # Inicia o micro-servidor HTTP local em background
+    start_http_server(
+        port=port,
+        api_instance=api,
+        modo_execucao=modo,
+        enable_watchdog=(modo == "navegador"),
     )
 
-    window.events.closing += confirm_closing
+    url = get_entry_url(port)
 
-    webview.start(debug=is_dev())
+    # 3. EXECUÇÃO EM MODO NAVEGADOR
+    if modo == "navegador":
+        print(f"[Servidor Local] Iniciado com sucesso em {url}. Abrindo navegador padrão...")
+        webbrowser.open(url)
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n[Servidor Local] Encerrado pelo usuário.")
+            sys.exit(0)
+        return
+
+    # 4. EXECUÇÃO EM MODO JANELA NATIVA (COM FALLBACK AUTOMÁTICO PARA O NAVEGADOR)
+    try:
+        import webview
+
+        # No pywebview, em modo empacotado podemos carregar diretamente o arquivo local ou a URL local
+        window_url = url if is_dev() else os.path.join(
+            getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))),
+            "frontend", "dist", "index.html"
+        )
+        if not os.path.exists(window_url):
+            window_url = url
+
+        window = webview.create_window(
+            title="Mapa Comparativo de Cotações",
+            url=window_url,
+            width=1280,
+            height=850,
+            min_size=(900, 600),
+            js_api=api,
+        )
+
+        window.events.closing += confirm_closing
+        webview.start(debug=is_dev())
+    except Exception as e:
+        print(f"[Aviso] Falha ao iniciar janela nativa ({e}). Executando fallback automático para o navegador padrão...")
+        webbrowser.open(url)
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n[Servidor Local] Encerrado.")
+            sys.exit(0)
 
 
 if __name__ == "__main__":

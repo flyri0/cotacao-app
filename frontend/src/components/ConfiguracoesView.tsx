@@ -27,6 +27,7 @@ import {
   IconAlertCircle,
   IconAlertTriangle,
   IconBriefcase,
+  IconBrowser,
   IconBuildingStore,
   IconCheck,
   IconCoins,
@@ -125,6 +126,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       app_color_scheme: (configuracoes?.app_color_scheme || colorScheme || 'light') as 'light' | 'dark' | 'auto',
       app_densidade: (configuracoes?.app_densidade || 'compacto') as 'compacto' | 'confortavel',
       app_tamanho_fonte: (configuracoes?.app_tamanho_fonte || 'medio') as 'pequeno' | 'medio' | 'grande',
+      app_modo_execucao: (configuracoes?.app_modo_execucao || 'janela') as 'janela' | 'navegador',
     },
   })
 
@@ -140,6 +142,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
         app_color_scheme: scheme,
         app_densidade: (configuracoes.app_densidade || 'compacto') as 'compacto' | 'confortavel',
         app_tamanho_fonte: (configuracoes.app_tamanho_fonte || 'medio') as 'pequeno' | 'medio' | 'grande',
+        app_modo_execucao: (configuracoes.app_modo_execucao || 'janela') as 'janela' | 'navegador',
       })
     }
   }, [configuracoes, colorScheme])
@@ -238,6 +241,29 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       await api.salvar_configuracoes(atualizadas)
     } catch (err) {
       console.error('Erro ao salvar preferência de tamanho de fonte:', err)
+    }
+  }
+
+  // Alteração de modo de execução (Janela vs Navegador)
+  const handleMudarModoExecucao = async (val: string) => {
+    const modo = (val === 'navegador' ? 'navegador' : 'janela') as 'janela' | 'navegador'
+    form.setFieldValue('app_modo_execucao', modo)
+    const atualizadas: ConfiguracoesApp = {
+      ...form.values,
+      app_modo_execucao: modo,
+    }
+    onConfiguracoesAlteradas?.(atualizadas)
+    try {
+      const api = await getApi()
+      await api.salvar_configuracoes(atualizadas)
+      notifications.show({
+        title: 'Modo de Execução Atualizado',
+        message: `O aplicativo será aberto no modo ${modo === 'navegador' ? 'Navegador Padrão' : 'Janela Nativa'} na próxima inicialização.`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      })
+    } catch (err) {
+      console.error('Erro ao salvar modo de execução:', err)
     }
   }
 
@@ -478,7 +504,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
           Ajuste a densidade de linhas e o tamanho da fonte para o seu estilo de uso. A aplicação atualiza instantaneamente.
         </Text>
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
           {/* Opção 1: Densidade */}
           <Paper withBorder p="xs" radius="sm">
             <Group gap={6} mb={4} align="center">
@@ -498,8 +524,8 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
               value={form.values.app_densidade}
               onChange={handleMudarDensidade}
               data={[
-                { label: 'Compacto (Padrão - Mais Dados)', value: 'compacto' },
-                { label: 'Confortável (Mais Espaço)', value: 'confortavel' },
+                { label: 'Compacto (Padrão)', value: 'compacto' },
+                { label: 'Confortável', value: 'confortavel' },
               ]}
             />
           </Paper>
@@ -511,7 +537,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
                 <IconTypography size={14} />
               </ThemeIcon>
               <Text fw={700} size="xs">
-                Tamanho da Fonte (Escala do Texto)
+                Tamanho da Fonte
               </Text>
             </Group>
             <Text size="11px" c="dimmed" mb="xs">
@@ -525,7 +551,32 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
               data={[
                 { label: 'Pequeno (12px)', value: 'pequeno' },
                 { label: 'Médio (13.5px)', value: 'medio' },
-                { label: 'Grande (15px - Idosos)', value: 'grande' },
+                { label: 'Grande (15px)', value: 'grande' },
+              ]}
+            />
+          </Paper>
+
+          {/* Opção 3: Modo de Inicialização (Desktop vs Navegador) */}
+          <Paper withBorder p="xs" radius="sm">
+            <Group gap={6} mb={4} align="center">
+              <ThemeIcon size={22} radius="xs" variant="light" color="teal">
+                <IconBrowser size={14} />
+              </ThemeIcon>
+              <Text fw={700} size="xs">
+                Modo de Inicialização
+              </Text>
+            </Group>
+            <Text size="11px" c="dimmed" mb="xs">
+              Janela própria ou Navegador padrão (recomendado p/ Windows 7 32-bit ou PCs leves).
+            </Text>
+            <SegmentedControl
+              fullWidth
+              size="xs"
+              value={form.values.app_modo_execucao}
+              onChange={handleMudarModoExecucao}
+              data={[
+                { label: 'Janela Nativa', value: 'janela' },
+                { label: 'Navegador Padrão', value: 'navegador' },
               ]}
             />
           </Paper>
