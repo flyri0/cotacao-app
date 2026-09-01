@@ -114,7 +114,7 @@ export function ProdutosView() {
     try {
       setLoading(true)
       const api = await getApi()
-      const data = await api.listar_produtos(false)
+      const data = await api.list_products(false)
       setProdutos(data)
     } catch (error) {
       console.error('Erro ao carregar produtos:', error)
@@ -138,7 +138,7 @@ export function ProdutosView() {
     try {
       setSubmitting(true)
       const api = await getApi()
-      const novoProduto = await api.criar_produto(
+      const novoProduto = await api.create_product(
         values.nome,
         values.categoria || null,
       )
@@ -184,7 +184,7 @@ export function ProdutosView() {
     try {
       setSalvandoEdicao(true)
       const api = await getApi()
-      await api.atualizar_produto(
+      await api.update_product(
         produtoEmEdicao.id,
         values.nome,
         values.categoria || null,
@@ -252,7 +252,7 @@ export function ProdutosView() {
     try {
       setExportandoExcel(true)
       const api = await getApi()
-      const res = await api.exportar_produtos_excel()
+      const res = await api.export_products_excel()
 
       if (res.cancelado) {
         return
@@ -305,7 +305,7 @@ export function ProdutosView() {
           const result = reader.result as string
           const base64Content = result.split(',')[1] || result
           const api = await getApi()
-          const res = await api.importar_produtos_excel(base64Content)
+          const res = await api.import_products_excel(base64Content)
 
           notifications.show({
             title: 'Importação Concluída',
@@ -354,7 +354,7 @@ export function ProdutosView() {
         try {
           setDeletingId(id)
           const api = await getApi()
-          const res = await api.remover_produto(id)
+          const res = await api.remove_product(id)
 
           notifications.show({
             title: 'Produto Excluído',

@@ -49,7 +49,7 @@ export function BoasVindasView({
     try {
       setLoading(true)
       const api = await getApi()
-      await api.inicializar_banco_em_branco()
+      await api.initialize_empty_db()
       notifications.show({
         title: 'Banco Criado',
         message: 'Banco de dados em branco inicializado com sucesso.',
@@ -96,8 +96,8 @@ export function BoasVindasView({
           const base64 = window.btoa(binary)
 
           const api = await getApi()
-          await api.importar_banco_dados(base64)
-          await api.inicializar_banco_em_branco() // Marca como inicializado
+          await api.import_database(base64)
+          await api.initialize_empty_db() // Marca como inicializado
 
           notifications.show({
             title: 'Backup Restaurado com Sucesso',
@@ -134,7 +134,7 @@ export function BoasVindasView({
     try {
       setLoading(true)
       const api = await getApi()
-      await api.popular_banco_demo_completo()
+      await api.populate_demo_db()
       notifications.show({
         title: 'Banco Populado para Testes',
         message: '12 produtos, 5 fornecedores, 3 rodadas fechadas e 1 aberta carregadas.',

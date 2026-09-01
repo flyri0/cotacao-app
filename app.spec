@@ -16,7 +16,6 @@ datas = [
 # Módulos adicionais para garantir que pywebview e pythonnet carreguem corretamente no Windows
 hidden_imports = [
     'webview',
-    'bottle',
     'clr_loader',
     'pythonnet',
     'sqlite3',

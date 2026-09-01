@@ -119,7 +119,7 @@ export function FornecedoresView() {
     try {
       setLoading(true)
       const api = await getApi()
-      const data = await api.listar_fornecedores(false)
+      const data = await api.list_suppliers(false)
       setFornecedores(data)
     } catch (error) {
       console.error('Erro ao carregar fornecedores:', error)
@@ -142,7 +142,7 @@ export function FornecedoresView() {
     try {
       setSubmitting(true)
       const api = await getApi()
-      const novoFornecedor = await api.criar_fornecedor(
+      const novoFornecedor = await api.create_supplier(
         values.nome,
         values.contato || null,
         values.telefone || null,
@@ -191,7 +191,7 @@ export function FornecedoresView() {
     try {
       setSalvandoEdicao(true)
       const api = await getApi()
-      await api.atualizar_fornecedor(
+      await api.update_supplier(
         fornecedorEmEdicao.id,
         values.nome,
         values.contato || null,
@@ -264,7 +264,7 @@ export function FornecedoresView() {
     try {
       setExportandoExcel(true)
       const api = await getApi()
-      const res = await api.exportar_fornecedores_excel()
+      const res = await api.export_suppliers_excel()
 
       if (res.cancelado) {
         return
@@ -318,7 +318,7 @@ export function FornecedoresView() {
           const result = reader.result as string
           const base64Content = result.split(',')[1] || result
           const api = await getApi()
-          const res = await api.importar_fornecedores_excel(base64Content)
+          const res = await api.import_suppliers_excel(base64Content)
 
           notifications.show({
             title: 'Importação Concluída',
@@ -367,7 +367,7 @@ export function FornecedoresView() {
         try {
           setDeletingId(id)
           const api = await getApi()
-          const res = await api.remover_fornecedor(id)
+          const res = await api.remove_supplier(id)
 
           notifications.show({
             title: 'Fornecedor Removido',

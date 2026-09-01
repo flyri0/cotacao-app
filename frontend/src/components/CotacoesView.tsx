@@ -236,7 +236,7 @@ export function CotacoesView({
     const buscarHistorico = async () => {
       try {
         const api = await getApi()
-        const stats = await api.obter_estatisticas_produto(produtoSelecionado.id)
+        const stats = await api.get_product_statistics(produtoSelecionado.id)
         if (isMounted) {
           setStatsProduto(stats)
         }
@@ -266,9 +266,9 @@ export function CotacoesView({
       setLoading(true)
       const api = await getApi()
       const [listaRodadas, listaProdutos, listaFornecedores] = await Promise.all([
-        api.listar_rodadas(),
-        api.listar_produtos(false),
-        api.listar_fornecedores(true),
+        api.list_rounds(),
+        api.list_products(false),
+        api.list_suppliers(true),
       ])
 
       setRodadas(listaRodadas)
@@ -304,8 +304,8 @@ export function CotacoesView({
       setLoading(true)
       const api = await getApi()
       const [listaCotacoes, listaNecessidades] = await Promise.all([
-        api.listar_cotacoes(idRodada),
-        api.listar_necessidades(idRodada),
+        api.list_quotes(idRodada),
+        api.list_needs(idRodada),
       ])
       setCotacoes(listaCotacoes)
       setNecessidades(listaNecessidades)
@@ -330,7 +330,7 @@ export function CotacoesView({
     try {
       setSalvandoEdicaoProduto(true)
       const api = await getApi()
-      await api.atualizar_produto(
+      await api.update_product(
         produtoParaEditar.id,
         values.nome,
         values.categoria || null,
@@ -395,7 +395,7 @@ export function CotacoesView({
     try {
       setSubmitting(true)
       const api = await getApi()
-      const salva = await api.criar_cotacao(
+      const salva = await api.create_quote(
         selectedRodadaId,
         forn.id,
         null,
@@ -471,7 +471,7 @@ export function CotacoesView({
         try {
           setDeletingId(id)
           const api = await getApi()
-          await api.remover_cotacao(id)
+          await api.remove_quote(id)
 
           notifications.show({
             title: 'Cotação Removida',
@@ -518,7 +518,7 @@ export function CotacoesView({
           f.nome.trim().toLowerCase() ===
           form.values.fornecedorNome.trim().toLowerCase(),
       )
-      const res = await api.exportar_planilha_cotacao(
+      const res = await api.export_quote_spreadsheet(
         selectedRodadaId,
         forn ? forn.id : null,
       )
@@ -585,7 +585,7 @@ export function CotacoesView({
           const result = reader.result as string
           const base64Content = result.split(',')[1] || result
           const api = await getApi()
-          const res = await api.importar_planilha_cotacao(
+          const res = await api.import_quote_spreadsheet(
             selectedRodadaId,
             parseInt(fornecedorImportarId, 10),
             base64Content,

@@ -77,7 +77,7 @@ export interface ConfiguracoesApp {
   app_theme_color?: string
   app_color_scheme?: 'light' | 'dark' | 'auto'
   app_densidade?: 'compacto' | 'confortavel'
-  app_tamanho_fonte?: 'pequeno' | 'medio' | 'grande'
+  app_tamanho_fonte?: string
   app_modo_execucao?: 'janela' | 'navegador'
   [key: string]: string | undefined
 }
@@ -169,44 +169,44 @@ export interface StatusBanco {
 }
 
 export interface PywebviewApi {
-  verificar_status_banco: () => Promise<StatusBanco>
-  inicializar_banco_em_branco: () => Promise<{ sucesso: boolean; tipo: string }>
-  popular_banco_demo_completo: () => Promise<{ sucesso: boolean; tipo: string }>
+  check_db_status: () => Promise<StatusBanco>
+  initialize_empty_db: () => Promise<{ sucesso: boolean; tipo: string }>
+  populate_demo_db: () => Promise<{ sucesso: boolean; tipo: string }>
 
-  obter_configuracoes: () => Promise<ConfiguracoesApp>
-  salvar_configuracoes: (configs: Record<string, any>) => Promise<ConfiguracoesApp>
-  formatar_banco_dados: (com_seed?: boolean) => Promise<{ sucesso: boolean; com_seed: boolean }>
-  exportar_banco_dados: () => Promise<{ sucesso: boolean; nome_arquivo: string; conteudo_base64: string }>
-  selecionar_local_e_salvar_backup: (nome_sugerido?: string) => Promise<RespostaBackup>
+  get_settings: () => Promise<ConfiguracoesApp>
+  save_settings: (configs: Record<string, any>) => Promise<ConfiguracoesApp>
+  format_database: (com_seed?: boolean) => Promise<{ sucesso: boolean; com_seed: boolean }>
+  export_database: () => Promise<{ sucesso: boolean; nome_arquivo: string; conteudo_base64: string }>
+  select_location_and_save_backup: (nome_sugerido?: string) => Promise<RespostaBackup>
   salvar_backup_em_caminho: (caminho_completo: string) => Promise<RespostaBackup>
-  importar_banco_dados: (conteudo_base64: string) => Promise<{ sucesso: boolean; mensagem: string }>
+  import_database: (conteudo_base64: string) => Promise<{ sucesso: boolean; mensagem: string }>
 
-  listar_produtos: (apenas_ativos?: boolean) => Promise<Produto[]>
+  list_products: (apenas_ativos?: boolean) => Promise<Produto[]>
   alternar_status_produto: (id_produto: number, ativo?: boolean) => Promise<{ sucesso: boolean; produto: Produto }>
-  criar_produto: (
+  create_product: (
     nome: string,
     categoria?: string | null,
   ) => Promise<Produto>
-  atualizar_produto: (
+  update_product: (
     id_produto: number,
     nome: string,
     categoria?: string | null,
   ) => Promise<Produto>
-  remover_produto: (id_produto: number) => Promise<{ sucesso: boolean; id: number; mensagem: string }>
-  obter_estatisticas_produto: (id_produto: number) => Promise<EstatisticasProduto>
-  obter_estatisticas_fornecedor: (id_fornecedor: number) => Promise<EstatisticasFornecedor>
-  obter_historico_global_cotacoes: () => Promise<HistoricoGlobalCotacaoItem[]>
+  remove_product: (id_produto: number) => Promise<{ sucesso: boolean; id: number; mensagem: string }>
+  get_product_statistics: (id_produto: number) => Promise<EstatisticasProduto>
+  get_supplier_statistics: (id_fornecedor: number) => Promise<EstatisticasFornecedor>
+  get_global_quotes_history: () => Promise<HistoricoGlobalCotacaoItem[]>
 
-  listar_fornecedores: (apenas_ativos?: boolean) => Promise<Fornecedor[]>
+  list_suppliers: (apenas_ativos?: boolean) => Promise<Fornecedor[]>
   alternar_status_fornecedor: (id_fornecedor: number, ativo?: boolean) => Promise<{ sucesso: boolean; fornecedor: Fornecedor }>
-  criar_fornecedor: (
+  create_supplier: (
     nome: string,
     contato?: string | null,
     telefone?: string | null,
     email?: string | null,
     pedido_minimo?: number,
   ) => Promise<Fornecedor>
-  atualizar_fornecedor: (
+  update_supplier: (
     id_fornecedor: number,
     nome: string,
     contato?: string | null,
@@ -214,36 +214,36 @@ export interface PywebviewApi {
     email?: string | null,
     pedido_minimo?: number,
   ) => Promise<Fornecedor>
-  remover_fornecedor: (id_fornecedor: number) => Promise<{ sucesso: boolean; id: number; mensagem: string }>
+  remove_supplier: (id_fornecedor: number) => Promise<{ sucesso: boolean; id: number; mensagem: string }>
 
-  listar_rodadas: () => Promise<Rodada[]>
-  listar_rodadas_com_metricas: () => Promise<RodadaComMetricas[]>
-  criar_rodada: (
+  list_rounds: () => Promise<Rodada[]>
+  list_rounds_with_metrics: () => Promise<RodadaComMetricas[]>
+  create_round: (
     descricao: string,
     status?: string,
     duplicar_de_id?: number | null,
   ) => Promise<Rodada>
-  atualizar_rodada: (
+  update_round: (
     id_rodada: number,
     descricao: string,
     status?: string,
   ) => Promise<Rodada>
-  remover_rodada: (id_rodada: number) => Promise<{ sucesso: boolean; id: number; mensagem?: string }>
-  duplicar_necessidades_rodada: (
+  remove_round: (id_rodada: number) => Promise<{ sucesso: boolean; id: number; mensagem?: string }>
+  duplicate_round_needs: (
     id_origem: number,
     id_destino: number,
   ) => Promise<{ sucesso: boolean; itens_copiados: number }>
 
-  listar_necessidades: (id_rodada: number) => Promise<Necessidade[]>
-  criar_necessidade: (
+  list_needs: (id_rodada: number) => Promise<Necessidade[]>
+  create_need: (
     id_rodada: number,
     id_produto: number,
     quantidade?: number,
   ) => Promise<Necessidade>
-  remover_necessidade: (id_necessidade: number) => Promise<{ sucesso: boolean; id: number }>
+  remove_need: (id_necessidade: number) => Promise<{ sucesso: boolean; id: number }>
 
-  listar_cotacoes: (id_rodada: number) => Promise<Cotacao[]>
-  criar_cotacao: (
+  list_quotes: (id_rodada: number) => Promise<Cotacao[]>
+  create_quote: (
     id_rodada: number,
     id_fornecedor: number,
     id_produto?: number | null,
@@ -254,10 +254,10 @@ export interface PywebviewApi {
     unidade?: string,
     preco_embalagem?: number,
   ) => Promise<Cotacao>
-  remover_cotacao: (id_cotacao: number) => Promise<{ sucesso: boolean; id: number }>
+  remove_quote: (id_cotacao: number) => Promise<{ sucesso: boolean; id: number }>
 
-  listar_alocacoes: (id_rodada: number) => Promise<Alocacao[]>
-  salvar_alocacoes: (
+  list_allocations: (id_rodada: number) => Promise<Alocacao[]>
+  save_allocations: (
     id_rodada: number,
     alocacoes: {
       id_produto: number
@@ -265,10 +265,10 @@ export interface PywebviewApi {
       quantidade: number
     }[],
   ) => Promise<{ sucesso: boolean; total_alocacoes: number }>
-  remover_alocacao: (id_alocacao: number) => Promise<{ sucesso: boolean; id: number }>
+  remove_allocation: (id_alocacao: number) => Promise<{ sucesso: boolean; id: number }>
 
   // Integração Excel (XLSX)
-  exportar_planilha_cotacao: (
+  export_quote_spreadsheet: (
     id_rodada: number,
     id_fornecedor?: number | null,
   ) => Promise<{
@@ -282,7 +282,7 @@ export interface PywebviewApi {
     total?: number
     mensagem?: string
   }>
-  importar_planilha_cotacao: (
+  import_quote_spreadsheet: (
     id_rodada: number,
     id_fornecedor: number,
     conteudo_base64: string,
@@ -293,7 +293,7 @@ export interface PywebviewApi {
     erros: string[]
     fornecedor_nome: string
   }>
-  exportar_produtos_excel: () => Promise<{
+  export_products_excel: () => Promise<{
     sucesso: boolean
     cancelado?: boolean
     salvo_em_disco?: boolean
@@ -303,13 +303,13 @@ export interface PywebviewApi {
     total?: number
     mensagem?: string
   }>
-  importar_produtos_excel: (conteudo_base64: string) => Promise<{
+  import_products_excel: (conteudo_base64: string) => Promise<{
     sucesso: boolean
     importados: number
     ignorados: number
     erros: string[]
   }>
-  exportar_fornecedores_excel: () => Promise<{
+  export_suppliers_excel: () => Promise<{
     sucesso: boolean
     cancelado?: boolean
     salvo_em_disco?: boolean
@@ -319,7 +319,7 @@ export interface PywebviewApi {
     total?: number
     mensagem?: string
   }>
-  importar_fornecedores_excel: (conteudo_base64: string) => Promise<{
+  import_suppliers_excel: (conteudo_base64: string) => Promise<{
     sucesso: boolean
     importados: number
     ignorados: number

@@ -88,8 +88,8 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
       setLoading(true)
       const api = await getApi()
       const [rods, forns] = await Promise.all([
-        api.listar_rodadas(),
-        api.listar_fornecedores(),
+        api.list_rounds(),
+        api.list_suppliers(),
       ])
       setRodadas(rods)
       setFornecedores(forns)
@@ -118,8 +118,8 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
       setLoading(true)
       const api = await getApi()
       const [cots, alocs] = await Promise.all([
-        api.listar_cotacoes(idRodada),
-        api.listar_alocacoes(idRodada),
+        api.list_quotes(idRodada),
+        api.list_allocations(idRodada),
       ])
       setCotacoes(cots)
       setAlocacoes(alocs)

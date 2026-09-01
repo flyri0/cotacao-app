@@ -3,6 +3,7 @@ import os
 import sqlite3
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import contextlib
 
 from db import (
     DB_PATH,
@@ -11,22 +12,22 @@ from db import (
     get_last_db_path,
     set_last_db_path,
     create_schema,
-    seed_configuracoes,
-    obter_configuracoes_db,
-    salvar_todas_configuracoes_db,
-    formatar_banco_dados_db,
-    verificar_status_banco_db,
-    inicializar_banco_em_branco_db,
-    popular_banco_demo_completo_db,
-    obter_estatisticas_produto_db,
-    obter_estatisticas_fornecedor_db,
-    obter_historico_global_cotacoes_db,
-    listar_rodadas_com_metricas_db,
-    atualizar_rodada_db,
-    remover_rodada_db,
-    duplicar_necessidades_rodada_db,
-    atualizar_produto_db,
-    atualizar_fornecedor_db,
+    seed_settings,
+    get_db_settings,
+    save_all_db_settings,
+    format_database_db,
+    check_db_status_db,
+    initialize_empty_db_db,
+    populate_demo_db_db,
+    get_product_statistics_db,
+    get_supplier_statistics_db,
+    get_global_quotes_history_db,
+    list_rounds_with_metrics_db,
+    update_round_db,
+    remove_round_db,
+    duplicate_round_needs_db,
+    update_product_db,
+    update_supplier_db,
     verificar_historico_produto_db,
     verificar_historico_fornecedor_db,
     verificar_historico_rodada_db,
@@ -34,12 +35,12 @@ from db import (
     alternar_status_fornecedor_db,
 )
 from excel_service import (
-    gerar_planilha_modelo_cotacao_db,
-    processar_planilha_cotacao_db,
-    exportar_produtos_excel_db,
-    importar_produtos_excel_db,
-    exportar_fornecedores_excel_db,
-    importar_fornecedores_excel_db,
+    generate_quote_template_excel,
+    process_quote_excel,
+    export_products_excel_db,
+    import_products_excel_db,
+    export_suppliers_excel_db,
+    import_suppliers_excel_db,
 )
 
 
@@ -79,20 +80,25 @@ class Api:
                 pass
             self._file_lock_handle = None
 
-    def _get_connection(self) -> sqlite3.Connection:
-        return get_connection(self.db_path)
+    @contextlib.contextmanager
+    def _get_connection(self):
+        conn = get_connection(self.db_path)
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     # -------------------------------------------------------------------------
     # STATUS DE INICIALIZAÇÃO & SETUP INICIAL
     # -------------------------------------------------------------------------
-    def verificar_status_banco(self) -> Dict[str, Any]:
+    def check_db_status(self) -> Dict[str, Any]:
         """
         Verifica se o banco de dados já foi inicializado pelo usuário e se o arquivo existe.
         Caso o arquivo do último banco não exista no disco, retorna inicializado=False.
         """
         if self._explicit_db_path == ":memory:":
             with self._get_connection() as conn:
-                return verificar_status_banco_db(conn, db_path=":memory:")
+                return check_db_status_db(conn, db_path=":memory:")
 
         last_path = get_last_db_path()
         if not last_path or not os.path.exists(last_path):
@@ -106,31 +112,31 @@ class Api:
 
         with self._get_connection() as conn:
             create_schema(conn)
-            seed_configuracoes(conn)
-            status = verificar_status_banco_db(conn, db_path=last_path)
+            seed_settings(conn)
+            status = check_db_status_db(conn, db_path=last_path)
             self._ensure_lock()
             return status
 
-    def inicializar_banco_em_branco(self) -> Dict[str, Any]:
+    def initialize_empty_db(self) -> Dict[str, Any]:
         """Inicializa um banco 100% limpo para produção e salva seu caminho como ativo."""
         self._release_lock()
         path = self.db_path
         set_last_db_path(path)
         with self._get_connection() as conn:
             create_schema(conn)
-            seed_configuracoes(conn)
-            res = inicializar_banco_em_branco_db(conn)
+            seed_settings(conn)
+            res = initialize_empty_db_db(conn)
         self._ensure_lock()
         res["caminho"] = path
         return res
 
-    def popular_banco_demo_completo(self) -> Dict[str, Any]:
+    def populate_demo_db(self) -> Dict[str, Any]:
         """Popula o banco com catálogo rico de teste e salva seu caminho como ativo."""
         self._release_lock()
         path = self.db_path
         set_last_db_path(path)
         with self._get_connection() as conn:
-            res = popular_banco_demo_completo_db(conn)
+            res = populate_demo_db_db(conn)
         self._ensure_lock()
         res["caminho"] = path
         return res
@@ -138,30 +144,30 @@ class Api:
     # -------------------------------------------------------------------------
     # CONFIGURAÇÕES DO APLICATIVO
     # -------------------------------------------------------------------------
-    def obter_configuracoes(self) -> Dict[str, str]:
+    def get_settings(self) -> Dict[str, str]:
         """Retorna todas as configurações da aplicação como dicionário."""
         with self._get_connection() as conn:
-            return obter_configuracoes_db(conn)
+            return get_db_settings(conn)
 
-    def salvar_configuracoes(self, configs: Dict[str, Any]) -> Dict[str, str]:
+    def save_settings(self, configs: Dict[str, Any]) -> Dict[str, str]:
         """Salva as configurações (nome, subtítulo, ícone, tema) e retorna o estado atualizado."""
         with self._get_connection() as conn:
-            return salvar_todas_configuracoes_db(conn, {k: str(v) for k, v in configs.items()})
+            return save_all_db_settings(conn, {k: str(v) for k, v in configs.items()})
 
     # -------------------------------------------------------------------------
     # GERENCIAMENTO SEGURO DE BANCO DE DADOS
     # -------------------------------------------------------------------------
-    def formatar_banco_dados(self, com_seed: bool = False) -> Dict[str, Any]:
+    def format_database(self, com_seed: bool = False) -> Dict[str, Any]:
         """Formata o banco de dados (recria tabelas limpas ou popula com seed inicial)."""
         self._release_lock()
         path = self.db_path
         set_last_db_path(path)
         with self._get_connection() as conn:
-            sucesso = formatar_banco_dados_db(conn, com_seed=com_seed)
+            sucesso = format_database_db(conn, com_seed=com_seed)
         self._ensure_lock()
         return {"sucesso": sucesso, "com_seed": com_seed, "caminho": path}
 
-    def exportar_banco_dados(self) -> Dict[str, Any]:
+    def export_database(self) -> Dict[str, Any]:
         """Exporta o arquivo do banco SQLite codificado em base64 para download/backup."""
         if not os.path.exists(self.db_path):
             raise FileNotFoundError("Arquivo de banco de dados não encontrado.")
@@ -173,7 +179,7 @@ class Api:
         nome_arquivo = f"backup_cotacao_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
         return {"sucesso": True, "nome_arquivo": nome_arquivo, "conteudo_base64": encoded}
 
-    def selecionar_local_e_salvar_backup(self, nome_sugerido: str = "") -> Dict[str, Any]:
+    def select_location_and_save_backup(self, nome_sugerido: str = "") -> Dict[str, Any]:
         """
         Abre o diálogo nativo do sistema operacional para o usuário escolher o local/pasta
         e salva a cópia de segurança do banco SQLite no destino selecionado.
@@ -205,7 +211,7 @@ class Api:
                 return self._salvar_backup_em_caminho(destino)
             else:
                 # Caso esteja em ambiente sem janela nativa (ex: dev server puro)
-                export_res = self.exportar_banco_dados()
+                export_res = self.export_database()
                 export_res["mensagem"] = "Download via navegador disponibilizado."
                 return export_res
         except Exception as e:
@@ -238,7 +244,7 @@ class Api:
             "mensagem": f"Backup gravado com sucesso em: {caminho_completo}",
         }
 
-    def importar_banco_dados(self, conteudo_base64: str) -> Dict[str, Any]:
+    def import_database(self, conteudo_base64: str) -> Dict[str, Any]:
         """Importa e substitui o arquivo do banco de dados a partir de uma string base64 de forma segura."""
         import tempfile
         import shutil
@@ -293,7 +299,7 @@ class Api:
     # -------------------------------------------------------------------------
     # PRODUTOS
     # -------------------------------------------------------------------------
-    def listar_produtos(self, apenas_ativos: bool = False) -> List[Dict[str, Any]]:
+    def list_products(self, apenas_ativos: bool = False) -> List[Dict[str, Any]]:
         """Retorna produtos ordenados por nome, opcionalmente filtrando apenas ativos."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -317,7 +323,7 @@ class Api:
             row = cursor.fetchone()
             return {"sucesso": sucesso, "produto": dict(row) if row else None}
 
-    def criar_produto(
+    def create_product(
         self,
         nome: str,
         categoria: Optional[str] = None,
@@ -347,7 +353,7 @@ class Api:
             )
             return dict(cursor.fetchone())
 
-    def atualizar_produto(
+    def update_product(
         self,
         id_produto: int,
         nome: str,
@@ -355,9 +361,9 @@ class Api:
     ) -> Dict[str, Any]:
         """Atualiza os dados de um produto existente (nome e categoria)."""
         with self._get_connection() as conn:
-            return atualizar_produto_db(conn, id_produto, nome, categoria)
+            return update_product_db(conn, id_produto, nome, categoria)
 
-    def remover_produto(self, id_produto: int) -> Dict[str, Any]:
+    def remove_product(self, id_produto: int) -> Dict[str, Any]:
         """Remove um produto fisicamente se não possuir nenhum histórico, senão bloqueia com mensagem explicativa."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -391,15 +397,15 @@ class Api:
                 "mensagem": f"Produto '{nome}' excluído permanentemente com sucesso.",
             }
 
-    def obter_estatisticas_produto(self, id_produto: int) -> Dict[str, Any]:
+    def get_product_statistics(self, id_produto: int) -> Dict[str, Any]:
         """Retorna histórico completo e métricas analíticas de preços de um produto."""
         with self._get_connection() as conn:
-            return obter_estatisticas_produto_db(conn, id_produto)
+            return get_product_statistics_db(conn, id_produto)
 
     # -------------------------------------------------------------------------
     # FORNECEDORES
     # -------------------------------------------------------------------------
-    def listar_fornecedores(self, apenas_ativos: bool = False) -> List[Dict[str, Any]]:
+    def list_suppliers(self, apenas_ativos: bool = False) -> List[Dict[str, Any]]:
         """Retorna fornecedores ordenados por nome, opcionalmente filtrando apenas ativos."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -423,7 +429,7 @@ class Api:
             row = cursor.fetchone()
             return {"sucesso": sucesso, "fornecedor": dict(row) if row else None}
 
-    def criar_fornecedor(
+    def create_supplier(
         self,
         nome: str,
         contato: Optional[str] = None,
@@ -462,7 +468,7 @@ class Api:
             )
             return dict(cursor.fetchone())
 
-    def atualizar_fornecedor(
+    def update_supplier(
         self,
         id_fornecedor: int,
         nome: str,
@@ -473,11 +479,11 @@ class Api:
     ) -> Dict[str, Any]:
         """Atualiza os dados de um fornecedor existente."""
         with self._get_connection() as conn:
-            return atualizar_fornecedor_db(
+            return update_supplier_db(
                 conn, id_fornecedor, nome, contato, telefone, email, pedido_minimo
             )
 
-    def remover_fornecedor(self, id_fornecedor: int) -> Dict[str, Any]:
+    def remove_supplier(self, id_fornecedor: int) -> Dict[str, Any]:
         """Remove um fornecedor fisicamente se não possuir nenhum histórico, senão bloqueia com mensagem explicativa."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -509,23 +515,23 @@ class Api:
                 "mensagem": f"Fornecedor '{nome}' excluído permanentemente com sucesso.",
             }
 
-    def obter_estatisticas_fornecedor(self, id_fornecedor: int) -> Dict[str, Any]:
+    def get_supplier_statistics(self, id_fornecedor: int) -> Dict[str, Any]:
         """Retorna histórico comercial, volume financeiro alocado e taxa de competitividade do fornecedor."""
         with self._get_connection() as conn:
-            return obter_estatisticas_fornecedor_db(conn, id_fornecedor)
+            return get_supplier_statistics_db(conn, id_fornecedor)
 
     # -------------------------------------------------------------------------
     # HISTÓRICO GLOBAL MULTIDIMENSIONAL DE COTAÇÕES
     # -------------------------------------------------------------------------
-    def obter_historico_global_cotacoes(self) -> List[Dict[str, Any]]:
+    def get_global_quotes_history(self) -> List[Dict[str, Any]]:
         """Retorna todas as cotações de todas as rodadas com joins completos e status de compra alocada."""
         with self._get_connection() as conn:
-            return obter_historico_global_cotacoes_db(conn)
+            return get_global_quotes_history_db(conn)
 
     # -------------------------------------------------------------------------
     # RODADAS
     # -------------------------------------------------------------------------
-    def listar_rodadas(self) -> List[Dict[str, Any]]:
+    def list_rounds(self) -> List[Dict[str, Any]]:
         """Retorna todas as rodadas ordenadas da mais recente para a mais antiga."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -538,12 +544,12 @@ class Api:
             )
             return [dict(row) for row in cursor.fetchall()]
 
-    def listar_rodadas_com_metricas(self) -> List[Dict[str, Any]]:
+    def list_rounds_with_metrics(self) -> List[Dict[str, Any]]:
         """Retorna todas as rodadas com indicadores de necessidades, cotações, alocações e total financeiro."""
         with self._get_connection() as conn:
-            return listar_rodadas_com_metricas_db(conn)
+            return list_rounds_with_metrics_db(conn)
 
-    def criar_rodada(
+    def create_round(
         self,
         descricao: str,
         status: str = "aberta",
@@ -569,7 +575,7 @@ class Api:
             conn.commit()
 
             if duplicar_de_id:
-                duplicar_necessidades_rodada_db(conn, duplicar_de_id, id_rodada)
+                duplicate_round_needs_db(conn, duplicar_de_id, id_rodada)
 
             cursor.execute(
                 "SELECT id, descricao, status, data_criacao FROM rodadas WHERE id = ?",
@@ -577,7 +583,7 @@ class Api:
             )
             return dict(cursor.fetchone())
 
-    def atualizar_rodada(
+    def update_round(
         self,
         id_rodada: int,
         descricao: str,
@@ -585,9 +591,9 @@ class Api:
     ) -> Dict[str, Any]:
         """Atualiza a descrição e o status de uma rodada existente."""
         with self._get_connection() as conn:
-            return atualizar_rodada_db(conn, id_rodada, descricao, status)
+            return update_round_db(conn, id_rodada, descricao, status)
 
-    def remover_rodada(self, id_rodada: int) -> Dict[str, Any]:
+    def remove_round(self, id_rodada: int) -> Dict[str, Any]:
         """Remove uma rodada permanentemente se não possuir histórico de cotações ou compras. Caso contrário, bloqueia a exclusão."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -613,14 +619,14 @@ class Api:
                     f"altere o status da rodada para 'cancelada'."
                 )
 
-            sucesso = remover_rodada_db(conn, id_rodada)
+            sucesso = remove_round_db(conn, id_rodada)
             return {
                 "sucesso": sucesso,
                 "id": id_rodada,
                 "mensagem": f"Rodada #{id_rodada} excluída permanentemente com sucesso.",
             }
 
-    def duplicar_necessidades_rodada(
+    def duplicate_round_needs(
         self,
         id_origem: int,
         id_destino: int,
@@ -628,13 +634,13 @@ class Api:
         """Copia a lista de produtos/necessidades de uma rodada de origem para outra."""
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_id(conn, id_destino)
-            qtd = duplicar_necessidades_rodada_db(conn, id_origem, id_destino)
+            qtd = duplicate_round_needs_db(conn, id_origem, id_destino)
             return {"sucesso": True, "itens_copiados": qtd}
 
     # -------------------------------------------------------------------------
     # NECESSIDADES (Itens que compõem a rodada)
     # -------------------------------------------------------------------------
-    def listar_necessidades(self, id_rodada: int) -> List[Dict[str, Any]]:
+    def list_needs(self, id_rodada: int) -> List[Dict[str, Any]]:
         """Retorna os produtos selecionados para cotação na rodada com dados mestres do produto."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -656,7 +662,7 @@ class Api:
             )
             return [dict(row) for row in cursor.fetchall()]
 
-    def criar_necessidade(
+    def create_need(
         self,
         id_rodada: int,
         id_produto: int,
@@ -696,7 +702,7 @@ class Api:
             )
             return dict(cursor.fetchone())
 
-    def remover_necessidade(self, id_necessidade: int) -> Dict[str, Any]:
+    def remove_need(self, id_necessidade: int) -> Dict[str, Any]:
         """Remove uma necessidade pelo ID."""
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_entidade(conn, "necessidades", id_necessidade)
@@ -708,7 +714,7 @@ class Api:
     # -------------------------------------------------------------------------
     # COTAÇÕES
     # -------------------------------------------------------------------------
-    def listar_cotacoes(self, id_rodada: int) -> List[Dict[str, Any]]:
+    def list_quotes(self, id_rodada: int) -> List[Dict[str, Any]]:
         """Retorna todas as cotações de uma rodada com joins e preço unitário calculado dinamicamente."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -737,7 +743,7 @@ class Api:
             )
             return [dict(row) for row in cursor.fetchall()]
 
-    def criar_cotacao(
+    def create_quote(
         self,
         id_rodada: int,
         id_fornecedor: int,
@@ -867,7 +873,7 @@ class Api:
             row["produto_novo"] = produto_novo
             return row
 
-    def remover_cotacao(self, id_cotacao: int) -> Dict[str, Any]:
+    def remove_quote(self, id_cotacao: int) -> Dict[str, Any]:
         """Remove uma cotação pelo ID."""
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_entidade(conn, "cotacoes", id_cotacao)
@@ -879,7 +885,7 @@ class Api:
     # -------------------------------------------------------------------------
     # ALOCAÇÕES (Decisões de Compra)
     # -------------------------------------------------------------------------
-    def listar_alocacoes(self, id_rodada: int) -> List[Dict[str, Any]]:
+    def list_allocations(self, id_rodada: int) -> List[Dict[str, Any]]:
         """Retorna as linhas de alocação da rodada com joins de produtos, fornecedores e cotação correspondente."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -914,7 +920,7 @@ class Api:
             )
             return [dict(row) for row in cursor.fetchall()]
 
-    def salvar_alocacoes(
+    def save_allocations(
         self,
         id_rodada: int,
         alocacoes: List[Dict[str, Any]],
@@ -932,12 +938,9 @@ class Api:
                     id_fornecedor = int(item.get("id_fornecedor", 0))
                     
                     qtd_str = item.get("quantidade", 0)
-                    if not qtd_str:
-                        quantidade = 0.0
-                    else:
-                        quantidade = float(qtd_str)
-                except (ValueError, TypeError):
-                    continue # Pula itens com dados inválidos em vez de dar crash 500
+                    quantidade = float(qtd_str) if qtd_str else 0.0
+                except (ValueError, TypeError) as e:
+                    raise ValueError(f"Dados inválidos na alocação: {e}")
 
                 if quantidade > 0 and id_fornecedor > 0 and id_produto > 0:
                     linhas_para_inserir.append(
@@ -957,7 +960,7 @@ class Api:
             conn.commit()
             return {"sucesso": True, "total_alocacoes": len(linhas_para_inserir)}
 
-    def remover_alocacao(self, id_alocacao: int) -> Dict[str, Any]:
+    def remove_allocation(self, id_alocacao: int) -> Dict[str, Any]:
         """Remove uma linha de alocação específica."""
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_entidade(conn, "alocacoes", id_alocacao)
@@ -1033,44 +1036,44 @@ class Api:
             resultado_geracao["aviso"] = str(e)
             return resultado_geracao
 
-    def exportar_planilha_cotacao(
+    def export_quote_spreadsheet(
         self, id_rodada: int, id_fornecedor: Optional[int] = None
     ) -> Dict[str, Any]:
         """Exporta a planilha modelo de cotação da rodada com diálogo de seleção de local."""
         with self._get_connection() as conn:
-            gerado = gerar_planilha_modelo_cotacao_db(conn, id_rodada, id_fornecedor)
+            gerado = generate_quote_template_excel(conn, id_rodada, id_fornecedor)
             return self._salvar_excel_com_dialogo_ou_base64(gerado)
 
-    def importar_planilha_cotacao(
+    def import_quote_spreadsheet(
         self, id_rodada: int, id_fornecedor: int, conteudo_base64: str
     ) -> Dict[str, Any]:
         """Importa cotações em lote a partir do arquivo Excel fornecido."""
         with self._get_connection() as conn:
-            return processar_planilha_cotacao_db(
+            return process_quote_excel(
                 conn, id_rodada, id_fornecedor, conteudo_base64
             )
 
-    def exportar_produtos_excel(self) -> Dict[str, Any]:
+    def export_products_excel(self) -> Dict[str, Any]:
         """Exporta o catálogo mestre de produtos para Excel com diálogo de seleção de local."""
         with self._get_connection() as conn:
-            gerado = exportar_produtos_excel_db(conn)
+            gerado = export_products_excel_db(conn)
             return self._salvar_excel_com_dialogo_ou_base64(gerado)
 
-    def importar_produtos_excel(self, conteudo_base64: str) -> Dict[str, Any]:
+    def import_products_excel(self, conteudo_base64: str) -> Dict[str, Any]:
         """Importa produtos em lote a partir de uma planilha Excel."""
         with self._get_connection() as conn:
-            return importar_produtos_excel_db(conn, conteudo_base64)
+            return import_products_excel_db(conn, conteudo_base64)
 
-    def exportar_fornecedores_excel(self) -> Dict[str, Any]:
+    def export_suppliers_excel(self) -> Dict[str, Any]:
         """Exporta o catálogo mestre de fornecedores para Excel com diálogo de seleção de local."""
         with self._get_connection() as conn:
-            gerado = exportar_fornecedores_excel_db(conn)
+            gerado = export_suppliers_excel_db(conn)
             return self._salvar_excel_com_dialogo_ou_base64(gerado)
 
-    def importar_fornecedores_excel(self, conteudo_base64: str) -> Dict[str, Any]:
+    def import_suppliers_excel(self, conteudo_base64: str) -> Dict[str, Any]:
         """Importa fornecedores em lote a partir de uma planilha Excel."""
         with self._get_connection() as conn:
-            return importar_fornecedores_excel_db(conn, conteudo_base64)
+            return import_suppliers_excel_db(conn, conteudo_base64)
 
     def encerrar_sistema(self) -> Dict[str, Any]:
         """Solicita o encerramento seguro do backend e do aplicativo."""

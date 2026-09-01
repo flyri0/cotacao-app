@@ -89,9 +89,9 @@ export function EstatisticasView() {
     try {
       const api = await getApi()
       const [prods, forns, rods] = await Promise.all([
-        api.listar_produtos(),
-        api.listar_fornecedores(),
-        api.listar_rodadas(),
+        api.list_products(),
+        api.list_suppliers(),
+        api.list_rounds(),
       ])
       setProdutos(prods)
       setFornecedores(forns)
@@ -118,7 +118,7 @@ export function EstatisticasView() {
     try {
       setLoadingProdStats(true)
       const api = await getApi()
-      const stats = await api.obter_estatisticas_produto(idProduto)
+      const stats = await api.get_product_statistics(idProduto)
       setEstatisticasProduto(stats)
     } catch (error: any) {
       console.error('Erro ao obter estatísticas do produto:', error)
@@ -131,7 +131,7 @@ export function EstatisticasView() {
     try {
       setLoadingFornStats(true)
       const api = await getApi()
-      const stats = await api.obter_estatisticas_fornecedor(idFornecedor)
+      const stats = await api.get_supplier_statistics(idFornecedor)
       setEstatisticasFornecedor(stats)
     } catch (error: any) {
       console.error('Erro ao obter estatísticas do fornecedor:', error)
@@ -144,7 +144,7 @@ export function EstatisticasView() {
     try {
       setLoadingGlobal(true)
       const api = await getApi()
-      const lista = await api.obter_historico_global_cotacoes()
+      const lista = await api.get_global_quotes_history()
       setHistoricoGlobal(lista)
     } catch (error: any) {
       console.error('Erro ao obter histórico global:', error)

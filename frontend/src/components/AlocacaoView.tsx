@@ -7,7 +7,6 @@ import {
   Group,
   Kbd,
   Loader,
-  NumberInput,
   SimpleGrid,
   Stack,
   Text,
@@ -39,6 +38,7 @@ import { EmptyState } from './common/EmptyState'
 import { AppSelect } from './common/AppSelect'
 import { getApi } from '../services/api'
 import type { Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
+import { QuantityInput } from './common/QuantityInput'
 
 // Formatação inteligente: mínimo 2 casas (R$ 5,00) e máximo 4 casas (R$ 0,043)
 function formatMoney(valor: number, maxDigits = 4): string {
@@ -101,7 +101,7 @@ export function AlocacaoView({
           quantidade: Number(l.quantidade_alocada),
         }))
 
-      await api.salvar_alocacoes(rodadaId, payload)
+      await api.save_allocations(rodadaId, payload)
     } catch (err) {
       console.error('Erro no autosave:', err)
     }
@@ -113,8 +113,8 @@ export function AlocacaoView({
         setLoading(true)
         const api = await getApi()
         const [listaRodadas, listaFornecedores] = await Promise.all([
-          api.listar_rodadas(),
-          api.listar_fornecedores(),
+          api.list_rounds(),
+          api.list_suppliers(),
         ])
         setRodadas(listaRodadas)
         setFornecedores(listaFornecedores)
@@ -128,9 +128,9 @@ export function AlocacaoView({
 
         if (idAlvo) {
           const [listaNec, listaCot, listaAloc] = await Promise.all([
-            api.listar_necessidades(idAlvo),
-            api.listar_cotacoes(idAlvo),
-            api.listar_alocacoes(idAlvo),
+            api.list_needs(idAlvo),
+            api.list_quotes(idAlvo),
+            api.list_allocations(idAlvo),
           ])
 
           setNecessidades(listaNec)
@@ -336,7 +336,7 @@ export function AlocacaoView({
           quantidade: Number(l.quantidade_alocada),
         }))
 
-      await api.salvar_alocacoes(selectedRodadaId, payload)
+      await api.save_allocations(selectedRodadaId, payload)
 
       notifications.show({
         title: 'Alocações Salvas com Sucesso',
@@ -453,19 +453,10 @@ export function AlocacaoView({
         Cell: ({ row }) => {
           const item = row.original
           return (
-            <NumberInput
-              value={item.quantidade_alocada}
-              onChange={(val) => handleUpdateQtd(item.key, val)}
+            <QuantityInput
+              initialValue={item.quantidade_alocada}
+              onBlur={(val) => handleUpdateQtd(item.key, val)}
               disabled={isFechada}
-              min={0}
-              decimalScale={2}
-              size="xs"
-              styles={{
-                input: {
-                  fontWeight: 600,
-                  textAlign: 'right',
-                },
-              }}
             />
           )
         },

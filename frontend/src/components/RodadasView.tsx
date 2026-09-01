@@ -98,7 +98,7 @@ export function RodadasView({
     try {
       setLoading(true)
       const api = await getApi()
-      const lista = await api.listar_rodadas_com_metricas()
+      const lista = await api.list_rounds_with_metrics()
       setRodadas(lista)
     } catch (error) {
       console.error('Erro ao carregar rodadas:', error)
@@ -163,7 +163,7 @@ export function RodadasView({
       setSalvando(true)
       const api = await getApi()
       const duplicarId = values.duplicar_de_id ? parseInt(values.duplicar_de_id, 10) : null
-      const nova = await api.criar_rodada(values.descricao, values.status, duplicarId)
+      const nova = await api.create_round(values.descricao, values.status, duplicarId)
 
       notifications.show({
         title: 'Rodada Criada com Sucesso',
@@ -204,7 +204,7 @@ export function RodadasView({
     try {
       setSalvando(true)
       const api = await getApi()
-      await api.atualizar_rodada(rodadaEmEdicao.id, values.descricao, values.status)
+      await api.update_round(rodadaEmEdicao.id, values.descricao, values.status)
 
       notifications.show({
         title: 'Rodada Atualizada',
@@ -233,7 +233,7 @@ export function RodadasView({
     const novoStatus = r.status === 'aberta' ? 'fechada' : 'aberta'
     try {
       const api = await getApi()
-      await api.atualizar_rodada(r.id, r.descricao, novoStatus)
+      await api.update_round(r.id, r.descricao, novoStatus)
 
       notifications.show({
         title: novoStatus === 'fechada' ? 'Rodada Concluída / Fechada' : 'Rodada Reaberta',
@@ -266,7 +266,7 @@ export function RodadasView({
     try {
       setSalvando(true)
       const api = await getApi()
-      const res = await api.remover_rodada(rodada.id)
+      const res = await api.remove_round(rodada.id)
 
       notifications.show({
         title: 'Rodada Excluída',
@@ -303,7 +303,7 @@ export function RodadasView({
                   modals.closeAll()
                   try {
                     const api = await getApi()
-                    await api.atualizar_rodada(rodada.id, rodada.descricao, 'cancelada')
+                    await api.update_round(rodada.id, rodada.descricao, 'cancelada')
                     notifications.show({
                       title: 'Rodada Cancelada',
                       message: `A rodada #${rodada.id} foi arquivada como cancelada sem perder o histórico comercial.`,

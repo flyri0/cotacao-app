@@ -27,7 +27,7 @@ ROW_EVEN_FILL = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type=
 ROW_ODD_FILL = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
 
-def gerar_planilha_modelo_cotacao_db(
+def generate_quote_template_excel(
     conn: sqlite3.Connection, id_rodada: int, id_fornecedor: Optional[int] = None
 ) -> Dict[str, Any]:
     """
@@ -218,7 +218,7 @@ def gerar_planilha_modelo_cotacao_db(
     }
 
 
-def processar_planilha_cotacao_db(
+def process_quote_excel(
     conn: sqlite3.Connection,
     id_rodada: int,
     id_fornecedor: int,
@@ -386,7 +386,7 @@ def processar_planilha_cotacao_db(
     }
 
 
-def exportar_produtos_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
+def export_products_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     """Exporta o catálogo mestre completo de produtos para Excel."""
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome, categoria FROM produtos ORDER BY categoria ASC, nome ASC")
@@ -423,7 +423,7 @@ def exportar_produtos_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     return {"sucesso": True, "nome_arquivo": "catalogo_produtos.xlsx", "conteudo_base64": b64, "total": len(produtos)}
 
 
-def importar_produtos_excel_db(conn: sqlite3.Connection, conteudo_base64: str) -> Dict[str, Any]:
+def import_products_excel_db(conn: sqlite3.Connection, conteudo_base64: str) -> Dict[str, Any]:
     """Importa produtos em lote a partir de uma planilha Excel."""
     raw = base64.b64decode(conteudo_base64)
     wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True)
@@ -469,7 +469,7 @@ def importar_produtos_excel_db(conn: sqlite3.Connection, conteudo_base64: str) -
     return {"sucesso": True, "importados": importados, "ignorados": ignorados, "erros": erros}
 
 
-def exportar_fornecedores_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
+def export_suppliers_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     """Exporta o catálogo completo de fornecedores para uma planilha Excel estilizada."""
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome, contato, telefone, email, pedido_minimo FROM fornecedores ORDER BY nome ASC")
@@ -523,7 +523,7 @@ def exportar_fornecedores_excel_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     }
 
 
-def importar_fornecedores_excel_db(conn: sqlite3.Connection, conteudo_base64: str) -> Dict[str, Any]:
+def import_suppliers_excel_db(conn: sqlite3.Connection, conteudo_base64: str) -> Dict[str, Any]:
     """Importa fornecedores em lote a partir de uma planilha Excel."""
     raw = base64.b64decode(conteudo_base64)
     wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True)

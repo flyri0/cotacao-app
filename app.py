@@ -80,7 +80,7 @@ def main() -> None:
         modo = "janela"
     else:
         try:
-            configs = api.obter_configuracoes()
+            configs = api.get_settings()
             modo = configs.get("app_modo_execucao", "janela")
         except Exception:
             modo = "janela"

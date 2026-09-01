@@ -93,7 +93,7 @@ export default function App() {
     app_theme_color: 'blue',
     app_color_scheme: 'light',
     app_densidade: 'compacto',
-    app_tamanho_fonte: 'medio',
+    app_tamanho_fonte: '13.5',
   })
   const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false)
   const [modalEncerrarOpened, { open: openModalEncerrar, close: closeModalEncerrar }] = useDisclosure(false)
@@ -104,9 +104,18 @@ export default function App() {
   // Sincroniza densidade e tamanho de fonte com o documento HTML
   useEffect(() => {
     const density = configuracoes.app_densidade || 'compacto'
-    const fontSize = configuracoes.app_tamanho_fonte || 'medio'
     document.documentElement.setAttribute('data-density', density)
-    document.documentElement.setAttribute('data-font-size', fontSize)
+    
+    // Tratamento dinâmico de fonte
+    const fontSize = configuracoes.app_tamanho_fonte || '13.5'
+    let fontSizeNum = parseFloat(fontSize)
+    if (isNaN(fontSizeNum)) fontSizeNum = 13.5
+    
+    document.documentElement.style.setProperty('font-size', `${fontSizeNum}px`)
+    document.documentElement.style.setProperty('--app-font-base', `${fontSizeNum}px`)
+    document.documentElement.style.setProperty('--app-font-sm', `${Math.round(fontSizeNum * 0.88)}px`)
+    document.documentElement.style.setProperty('--app-font-xs', `${Math.round(fontSizeNum * 0.81)}px`)
+    document.documentElement.removeAttribute('data-font-size')
   }, [configuracoes.app_densidade, configuracoes.app_tamanho_fonte])
 
   // Verifica se o banco já passou pelo setup inicial e carrega preferências
@@ -114,8 +123,8 @@ export default function App() {
     try {
       const api = await getApi()
       const [status, dados] = await Promise.all([
-        api.verificar_status_banco(),
-        api.obter_configuracoes(),
+        api.check_db_status(),
+        api.get_settings(),
       ])
 
       setBancoInicializado(status.inicializado)
@@ -126,9 +135,16 @@ export default function App() {
           setColorScheme(dados.app_color_scheme as 'light' | 'dark' | 'auto')
         }
         const density = dados.app_densidade || 'compacto'
-        const fontSize = dados.app_tamanho_fonte || 'medio'
         document.documentElement.setAttribute('data-density', density)
-        document.documentElement.setAttribute('data-font-size', fontSize)
+        
+        const fontSize = dados.app_tamanho_fonte || '13.5'
+        let fontSizeNum = parseFloat(fontSize)
+        if (isNaN(fontSizeNum)) fontSizeNum = 13.5
+        document.documentElement.style.setProperty('font-size', `${fontSizeNum}px`)
+        document.documentElement.style.setProperty('--app-font-base', `${fontSizeNum}px`)
+        document.documentElement.style.setProperty('--app-font-sm', `${Math.round(fontSizeNum * 0.88)}px`)
+        document.documentElement.style.setProperty('--app-font-xs', `${Math.round(fontSizeNum * 0.81)}px`)
+        document.documentElement.removeAttribute('data-font-size')
       }
     } catch (error) {
       console.error('Erro ao inicializar aplicativo:', error)
@@ -148,7 +164,7 @@ export default function App() {
     setConfiguracoes(novasConfigs)
     try {
       const api = await getApi()
-      await api.salvar_configuracoes(novasConfigs)
+      await api.save_settings(novasConfigs)
     } catch (err) {
       console.error('Erro ao salvar preferência de tema:', err)
     }

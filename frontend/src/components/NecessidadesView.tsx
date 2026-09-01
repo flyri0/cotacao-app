@@ -82,7 +82,7 @@ export function NecessidadesView({
       setSalvandoRodada(true)
       const api = await getApi()
       const duplicarId = values.duplicar_de_id ? parseInt(values.duplicar_de_id, 10) : null
-      const nova = await api.criar_rodada(values.descricao, values.status, duplicarId)
+      const nova = await api.create_round(values.descricao, values.status, duplicarId)
 
       notifications.show({
         title: 'Rodada Criada',
@@ -94,7 +94,7 @@ export function NecessidadesView({
       closeModalNovaRodada()
       formNovaRodada.reset()
 
-      const listaRodadas = await api.listar_rodadas()
+      const listaRodadas = await api.list_rounds()
       setRodadas(listaRodadas)
       setSelectedRodadaId(nova.id)
       onRodadaChange?.(nova.id)
@@ -136,8 +136,8 @@ export function NecessidadesView({
       setLoading(true)
       const api = await getApi()
       const [listaRodadas, listaProdutos] = await Promise.all([
-        api.listar_rodadas(),
-        api.listar_produtos(true),
+        api.list_rounds(),
+        api.list_products(true),
       ])
 
       setRodadas(listaRodadas)
@@ -151,7 +151,7 @@ export function NecessidadesView({
       }
 
       if (rodadaId) {
-        const nec = await api.listar_necessidades(rodadaId)
+        const nec = await api.list_needs(rodadaId)
         setNecessidades(nec)
       }
     } catch (error) {
@@ -171,7 +171,7 @@ export function NecessidadesView({
     try {
       setLoading(true)
       const api = await getApi()
-      const nec = await api.listar_necessidades(rodadaId)
+      const nec = await api.list_needs(rodadaId)
       setNecessidades(nec)
     } catch (error) {
       console.error('Erro ao carregar necessidades:', error)
@@ -219,7 +219,7 @@ export function NecessidadesView({
     try {
       setSubmitting(true)
       const api = await getApi()
-      const salva = await api.criar_necessidade(selectedRodadaId, prod.id, 0)
+      const salva = await api.create_need(selectedRodadaId, prod.id, 0)
 
       notifications.show({
         title: 'Produto Incluído',
@@ -269,7 +269,7 @@ export function NecessidadesView({
         try {
           setDeletingId(id)
           const api = await getApi()
-          await api.remover_necessidade(id)
+          await api.remove_need(id)
 
           notifications.show({
             title: 'Item Removido',

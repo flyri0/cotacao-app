@@ -81,8 +81,8 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       setLoading(true)
       const api = await getApi()
       const [listaRodadas, listaFornecedores] = await Promise.all([
-        api.listar_rodadas(),
-        api.listar_fornecedores(),
+        api.list_rounds(),
+        api.list_suppliers(),
       ])
 
       setRodadas(listaRodadas)
@@ -97,8 +97,8 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
 
       if (idAlvo) {
         const [listaCot, listaAloc] = await Promise.all([
-          api.listar_cotacoes(idAlvo),
-          api.listar_alocacoes(idAlvo),
+          api.list_quotes(idAlvo),
+          api.list_allocations(idAlvo),
         ])
 
         setCotacoes(listaCot)

@@ -11,6 +11,7 @@ import {
   Paper,
   SegmentedControl,
   SimpleGrid,
+  Slider,
   Stack,
   Table,
   Text,
@@ -125,15 +126,16 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       app_theme_color: configuracoes?.app_theme_color || 'blue',
       app_color_scheme: (configuracoes?.app_color_scheme || colorScheme || 'light') as 'light' | 'dark' | 'auto',
       app_densidade: (configuracoes?.app_densidade || 'compacto') as 'compacto' | 'confortavel',
-      app_tamanho_fonte: (configuracoes?.app_tamanho_fonte || 'medio') as 'pequeno' | 'medio' | 'grande',
+      app_tamanho_fonte: configuracoes?.app_tamanho_fonte || '13.5',
       app_modo_execucao: (configuracoes?.app_modo_execucao || 'janela') as 'janela' | 'navegador',
     },
   })
 
-  // Sincroniza o formulário sempre que as configurações ou tema do App mudarem
+  // Sincroniza form quando configuracoes globais carregarem
   useEffect(() => {
     if (configuracoes) {
-      const scheme = (configuracoes.app_color_scheme as 'light' | 'dark' | 'auto') || colorScheme || 'light'
+      const scheme = (configuracoes.app_color_scheme || colorScheme || 'light') as 'light' | 'dark' | 'auto'
+      
       form.setValues({
         app_nome: configuracoes.app_nome || 'Mapa de Cotações',
         app_subtitulo: configuracoes.app_subtitulo || 'Comparativo e Alocação Inteligente',
@@ -141,7 +143,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
         app_theme_color: configuracoes.app_theme_color || 'blue',
         app_color_scheme: scheme,
         app_densidade: (configuracoes.app_densidade || 'compacto') as 'compacto' | 'confortavel',
-        app_tamanho_fonte: (configuracoes.app_tamanho_fonte || 'medio') as 'pequeno' | 'medio' | 'grande',
+        app_tamanho_fonte: configuracoes.app_tamanho_fonte || '13.5',
         app_modo_execucao: (configuracoes.app_modo_execucao || 'janela') as 'janela' | 'navegador',
       })
     }
@@ -201,7 +203,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       onConfiguracoesAlteradas?.(atualizadas)
       try {
         const api = await getApi()
-        await api.salvar_configuracoes(atualizadas)
+        await api.save_settings(atualizadas)
       } catch (err) {
         console.error('Erro ao salvar preferência de tema:', err)
       }
@@ -220,25 +222,30 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
     onConfiguracoesAlteradas?.(atualizadas)
     try {
       const api = await getApi()
-      await api.salvar_configuracoes(atualizadas)
+      await api.save_settings(atualizadas)
     } catch (err) {
       console.error('Erro ao salvar preferência de densidade:', err)
     }
   }
 
   // Alteração imediata de tamanho de fonte com aplicação instantânea
-  const handleMudarTamanhoFonte = async (val: string) => {
-    const tamanho = (val === 'pequeno' || val === 'grande' ? val : 'medio') as 'pequeno' | 'medio' | 'grande'
-    form.setFieldValue('app_tamanho_fonte', tamanho)
-    document.documentElement.setAttribute('data-font-size', tamanho)
+  const handleMudarTamanhoFonte = async (numVal: number) => {
+    const tamanhoStr = String(numVal)
+    form.setFieldValue('app_tamanho_fonte', tamanhoStr)
+    
+    document.documentElement.style.setProperty('font-size', `${numVal}px`)
+    document.documentElement.style.setProperty('--app-font-base', `${numVal}px`)
+    document.documentElement.style.setProperty('--app-font-sm', `${Math.round(numVal * 0.88)}px`)
+    document.documentElement.style.setProperty('--app-font-xs', `${Math.round(numVal * 0.81)}px`)
+    document.documentElement.removeAttribute('data-font-size')
     const atualizadas: ConfiguracoesApp = {
       ...form.values,
-      app_tamanho_fonte: tamanho,
+      app_tamanho_fonte: tamanhoStr,
     }
     onConfiguracoesAlteradas?.(atualizadas)
     try {
       const api = await getApi()
-      await api.salvar_configuracoes(atualizadas)
+      await api.save_settings(atualizadas)
     } catch (err) {
       console.error('Erro ao salvar preferência de tamanho de fonte:', err)
     }
@@ -255,7 +262,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
     onConfiguracoesAlteradas?.(atualizadas)
     try {
       const api = await getApi()
-      await api.salvar_configuracoes(atualizadas)
+      await api.save_settings(atualizadas)
       notifications.show({
         title: 'Modo de Execução Atualizado',
         message: `O aplicativo será aberto no modo ${modo === 'navegador' ? 'Navegador Padrão' : 'Janela Nativa'} na próxima inicialização.`,
@@ -272,7 +279,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
     try {
       setSalvandoConfig(true)
       const api = await getApi()
-      const atualizadas = await api.salvar_configuracoes(values)
+      const atualizadas = await api.save_settings(values)
       setColorScheme(values.app_color_scheme)
       if (values.app_densidade) {
         document.documentElement.setAttribute('data-density', values.app_densidade)
@@ -307,7 +314,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
     try {
       setLoadingAcaoBanco(true)
       const api = await getApi()
-      const res = await api.selecionar_local_e_salvar_backup(nomeArquivoBackup)
+      const res = await api.select_location_and_save_backup(nomeArquivoBackup)
 
       if (res.cancelado) {
         notifications.show({
@@ -356,7 +363,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
     try {
       setLoadingAcaoBanco(true)
       const api = await getApi()
-      const res = await api.exportar_banco_dados()
+      const res = await api.export_database()
 
       const linkSource = `data:application/octet-stream;base64,${res.conteudo_base64}`
       const downloadLink = document.createElement('a')
@@ -410,7 +417,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
           const base64 = window.btoa(binary)
 
           const api = await getApi()
-          await api.importar_banco_dados(base64)
+          await api.import_database(base64)
 
           notifications.show({
             title: 'Banco Restaurado com Sucesso',
@@ -420,7 +427,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
           })
 
           closeModalImportar()
-          const dados = await api.obter_configuracoes()
+          const dados = await api.get_settings()
           onConfiguracoesAlteradas?.(dados)
         } catch (err: any) {
           notifications.show({
@@ -460,7 +467,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
     try {
       setLoadingAcaoBanco(true)
       const api = await getApi()
-      await api.formatar_banco_dados(false)
+      await api.format_database(false)
 
       notifications.show({
         title: 'Banco de Dados Formatado',
@@ -470,7 +477,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       })
 
       closeModalFormatar2()
-      const dados = await api.obter_configuracoes()
+      const dados = await api.get_settings()
       onConfiguracoesAlteradas?.(dados)
     } catch (error: any) {
       notifications.show({
@@ -543,16 +550,20 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
             <Text size="11px" c="dimmed" mb="xs">
               Altere o tamanho geral das fontes para facilitar a leitura sem distorcer o layout.
             </Text>
-            <SegmentedControl
-              fullWidth
-              size="xs"
-              value={form.values.app_tamanho_fonte}
-              onChange={handleMudarTamanhoFonte}
-              data={[
-                { label: 'Pequeno (12px)', value: 'pequeno' },
-                { label: 'Médio (13.5px)', value: 'medio' },
-                { label: 'Grande (15px)', value: 'grande' },
+            <Slider
+              mt="md"
+              mb="xl"
+              min={10}
+              max={20}
+              step={0.5}
+              marks={[
+                { value: 10, label: '10px' },
+                { value: 13.5, label: '13.5px' },
+                { value: 16, label: '16px' },
+                { value: 20, label: '20px' },
               ]}
+              value={parseFloat(form.values.app_tamanho_fonte) || 13.5}
+              onChange={handleMudarTamanhoFonte}
             />
           </Paper>
 

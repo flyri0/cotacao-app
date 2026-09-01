@@ -58,8 +58,8 @@ export function ComparacaoView({
       setLoading(true)
       const api = await getApi()
       const [listaRodadas, listaFornecedores] = await Promise.all([
-        api.listar_rodadas(),
-        api.listar_fornecedores(),
+        api.list_rounds(),
+        api.list_suppliers(),
       ])
 
       setRodadas(listaRodadas)
@@ -74,8 +74,8 @@ export function ComparacaoView({
 
       if (idAlvo) {
         const [listaNec, listaCot] = await Promise.all([
-          api.listar_necessidades(idAlvo),
-          api.listar_cotacoes(idAlvo),
+          api.list_needs(idAlvo),
+          api.list_quotes(idAlvo),
         ])
         setNecessidades(listaNec)
         setCotacoes(listaCot)
