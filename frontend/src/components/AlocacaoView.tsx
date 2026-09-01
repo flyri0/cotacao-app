@@ -455,7 +455,7 @@ export function AlocacaoView({
           return (
             <QuantityInput
               initialValue={item.quantidade_alocada}
-              onBlur={(val) => handleUpdateQtd(item.key, val)}
+              onChangeLive={(val) => handleUpdateQtd(item.key, val)}
               disabled={isFechada}
             />
           )
@@ -701,6 +701,7 @@ export function AlocacaoView({
   const table = useMantineReactTable({
     columns,
     data: linhas,
+    memoMode: 'rows',
     localization: MRT_Localization_PT_BR,
     enableRowActions: false,
     enablePagination: false,

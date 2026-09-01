@@ -3,27 +3,36 @@ import { NumberInput, Text } from '@mantine/core'
 
 interface QuantityInputProps {
   initialValue: number
-  onBlur: (value: number) => void
+  onBlur?: (value: number) => void
+  onChangeLive?: (value: number) => void
   disabled?: boolean
   unit?: string
 }
 
-export function QuantityInput({ initialValue, onBlur, disabled, unit }: QuantityInputProps) {
+export function QuantityInput({ initialValue, onBlur, onChangeLive, disabled, unit }: QuantityInputProps) {
   const [value, setValue] = useState<number | string>(initialValue)
 
   useEffect(() => {
     setValue(initialValue)
   }, [initialValue])
 
+  const handleChange = (val: number | string) => {
+    setValue(val)
+    if (onChangeLive) {
+      const num = typeof val === 'number' ? val : parseFloat(val) || 0
+      onChangeLive(num)
+    }
+  }
+
   const handleBlur = () => {
     const num = typeof value === 'number' ? value : parseFloat(value) || 0
-    onBlur(num)
+    if (onBlur) onBlur(num)
   }
 
   return (
     <NumberInput
       value={value}
-      onChange={setValue}
+      onChange={handleChange}
       onBlur={handleBlur}
       disabled={disabled}
       min={0}
