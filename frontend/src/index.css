@@ -61,14 +61,6 @@ html {
   --app-font-xs: 12px;
 }
 
-/* Aplicação de padding e compactação em tabelas */
-.mantine-Table-td,
-.mantine-Table-th {
-  padding-top: var(--app-table-cell-py, 4px);
-  padding-bottom: var(--app-table-cell-py, 4px);
-  padding-left: var(--app-table-cell-px, 8px);
-  padding-right: var(--app-table-cell-px, 8px);
-}
 
 /* MRT Table Rows compactos */
 .mrt-table-row {
