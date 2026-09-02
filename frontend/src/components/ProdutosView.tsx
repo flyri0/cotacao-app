@@ -551,7 +551,7 @@ export function ProdutosView() {
               loading={exportandoExcel}
               onClick={handleExportarExcel}
             >
-              Exportar Excel
+              Exportar para Excel
             </Button>
             <Button
               variant="outline"
