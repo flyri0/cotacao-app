@@ -431,8 +431,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'nome',
         header: 'Fornecedor',
         size: 220,
-        minSize: 160,
-        maxSize: 450,
         Cell: ({ cell, row }) => (
           <Text fw={600} size="xs" c={row.original.ativo === 0 ? 'dimmed' : undefined} truncate="end">
             {cell.getValue<string>()}
@@ -443,8 +441,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'contato',
         header: 'Contato',
         size: 140,
-        minSize: 120,
-        maxSize: 250,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end" c={!cell.getValue() ? 'dimmed' : undefined}>
             {cell.getValue<string | null>() || '-'}
@@ -455,8 +451,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'telefone',
         header: 'Telefone / WhatsApp',
         size: 180,
-        minSize: 175,
-        maxSize: 260,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end" c={!cell.getValue() ? 'dimmed' : undefined}>
             {cell.getValue<string | null>() || '-'}
@@ -467,8 +461,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'email',
         header: 'E-mail',
         size: 180,
-        minSize: 120,
-        maxSize: 300,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
           return (
@@ -482,8 +474,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'pedido_minimo',
         header: 'Pedido Mínimo',
         size: 150,
-        minSize: 145,
-        maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => {
@@ -499,8 +489,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'ativo',
         header: 'Status',
         size: 100,
-        minSize: 95,
-        maxSize: 140,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => (
@@ -517,9 +505,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         id: 'acoes',
         header: 'Ações',
         size: 110,
-        minSize: 100,
-        maxSize: 130,
-        enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
@@ -570,8 +555,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns,
     data: fornecedores,
     localization: MRT_Localization_PT_BR,

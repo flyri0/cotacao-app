@@ -647,8 +647,6 @@ export function CotacoesView({
         accessorKey: 'produto_nome',
         header: 'Produto',
         size: 220,
-        minSize: 150,
-        maxSize: 450,
         Cell: ({ cell }) => (
           <Text fw={600} size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -659,8 +657,6 @@ export function CotacoesView({
         accessorKey: 'marca',
         header: 'Marca',
         size: 110,
-        minSize: 95,
-        maxSize: 200,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
           return (
@@ -674,8 +670,6 @@ export function CotacoesView({
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 160,
-        minSize: 135,
-        maxSize: 300,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -686,8 +680,6 @@ export function CotacoesView({
         accessorKey: 'embalagem',
         header: 'Embalagem',
         size: 140,
-        minSize: 125,
-        maxSize: 250,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -698,8 +690,6 @@ export function CotacoesView({
         accessorKey: 'qtd_por_embalagem',
         header: 'Qtd / Emb.',
         size: 110,
-        minSize: 105,
-        maxSize: 150,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => (
@@ -712,8 +702,6 @@ export function CotacoesView({
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb.',
         size: 130,
-        minSize: 125,
-        maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
@@ -726,8 +714,6 @@ export function CotacoesView({
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário',
         size: 150,
-        minSize: 145,
-        maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => (
@@ -740,9 +726,6 @@ export function CotacoesView({
         id: 'acoes',
         header: 'Ações',
         size: 85,
-        minSize: 85,
-        maxSize: 100,
-        enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
@@ -791,8 +774,6 @@ export function CotacoesView({
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns,
     data: cotacoes,
     localization: MRT_Localization_PT_BR,

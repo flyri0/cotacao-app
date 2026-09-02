@@ -418,8 +418,6 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         accessorKey: 'nome',
         header: 'Produto',
         size: 260,
-        minSize: 150,
-        maxSize: 600,
         Cell: ({ cell, row }) => (
           <Text fw={600} size="xs" c={row.original.ativo === 0 ? 'dimmed' : undefined} truncate="end">
             {cell.getValue<string>()}
@@ -430,8 +428,6 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         accessorKey: 'categoria',
         header: 'Categoria',
         size: 160,
-        minSize: 130,
-        maxSize: 300,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
           return (
@@ -445,8 +441,6 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         accessorKey: 'ativo',
         header: 'Status',
         size: 100,
-        minSize: 95,
-        maxSize: 140,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => (
@@ -463,9 +457,6 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         id: 'acoes',
         header: 'Ações',
         size: 110,
-        minSize: 110,
-        maxSize: 130,
-        enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
@@ -516,8 +507,6 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns,
     data: produtos,
     localization: MRT_Localization_PT_BR,

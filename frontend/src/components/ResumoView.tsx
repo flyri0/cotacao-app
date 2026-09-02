@@ -220,8 +220,6 @@ export function ResumoView({
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 200,
-        minSize: 150,
-        maxSize: 400,
         Cell: ({ cell, row }) => (
           <div style={{ width: '100%', overflow: 'hidden' }}>
             <Text fw={600} size="xs" truncate="end">
@@ -238,8 +236,6 @@ export function ResumoView({
         accessorKey: 'total_alocado',
         header: 'Total Alocado',
         size: 140,
-        minSize: 135,
-        maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
@@ -262,8 +258,6 @@ export function ResumoView({
         accessorKey: 'pedido_minimo',
         header: 'Pedido Mínimo',
         size: 140,
-        minSize: 135,
-        maxSize: 200,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
@@ -278,8 +272,6 @@ export function ResumoView({
         id: 'progresso',
         header: 'Meta Mínima',
         size: 180,
-        minSize: 130,
-        maxSize: 300,
         Cell: ({ row }) => {
           const { pedido_minimo, total_alocado, percentual_atingido, status } =
             row.original
@@ -321,8 +313,6 @@ export function ResumoView({
         id: 'status_minimo',
         header: 'Status do Mínimo',
         size: 180,
-        minSize: 155,
-        maxSize: 280,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
@@ -367,8 +357,6 @@ export function ResumoView({
 
   const tableFornecedores = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns: columnsFornecedores,
     data: dadosFornecedores,
     localization: MRT_Localization_PT_BR,

@@ -195,8 +195,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'rodada_descricao',
         header: 'Rodada',
         size: 160,
-        minSize: 120,
-        maxSize: 250,
         Cell: ({ row }) => (
           <div style={{ width: '100%', overflow: 'hidden' }}>
             <Text fw={600} size="xs" truncate="end">
@@ -212,8 +210,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 160,
-        minSize: 135,
-        maxSize: 300,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -224,8 +220,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'marca',
         header: 'Marca',
         size: 110,
-        minSize: 95,
-        maxSize: 200,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
           return (
@@ -239,8 +233,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'embalagem',
         header: 'Embalagem',
         size: 140,
-        minSize: 125,
-        maxSize: 250,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -251,8 +243,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'qtd_por_embalagem',
         header: 'Qtd / Emb.',
         size: 110,
-        minSize: 105,
-        maxSize: 150,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
@@ -265,8 +255,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb.',
         size: 130,
-        minSize: 125,
-        maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
@@ -279,8 +267,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário',
         size: 150,
-        minSize: 145,
-        maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
@@ -299,8 +285,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 200,
-        minSize: 140,
-        maxSize: 350,
         Cell: ({ cell }) => (
           <Text fw={600} size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -311,8 +295,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'total_ofertas',
         header: 'Cotações Enviadas',
         size: 160,
-        minSize: 155,
-        maxSize: 220,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ cell }) => (
@@ -325,8 +307,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'menor_preco_oferecido',
         header: 'Menor Preço',
         size: 140,
-        minSize: 135,
-        maxSize: 200,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
@@ -339,8 +319,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'preco_medio_oferecido',
         header: 'Preço Médio',
         size: 140,
-        minSize: 135,
-        maxSize: 200,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
@@ -355,8 +333,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
 
   const tableHistoricoProd = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns: columnsHistoricoProd,
     data: estatisticasProduto?.cotacoes_historico || [],
     localization: MRT_Localization_PT_BR,
@@ -384,8 +360,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
 
   const tableRankingProd = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns: columnsRankingProd,
     data: estatisticasProduto?.ranking_fornecedores || [],
     localization: MRT_Localization_PT_BR,
@@ -420,8 +394,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'produto_nome',
         header: 'Produto Ofertado',
         size: 200,
-        minSize: 155,
-        maxSize: 350,
         Cell: ({ row }) => (
           <div style={{ width: '100%', overflow: 'hidden' }}>
             <Text fw={600} size="xs" truncate="end">
@@ -439,8 +411,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'rodada_descricao',
         header: 'Rodada',
         size: 160,
-        minSize: 120,
-        maxSize: 250,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -451,8 +421,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'embalagem',
         header: 'Embalagem',
         size: 140,
-        minSize: 125,
-        maxSize: 220,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -463,8 +431,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb.',
         size: 130,
-        minSize: 125,
-        maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
@@ -477,8 +443,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário',
         size: 150,
-        minSize: 145,
-        maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
@@ -493,8 +457,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
 
   const tableHistoricoForn = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns: columnsHistoricoForn,
     data: estatisticasFornecedor?.cotacoes_historico || [],
     localization: MRT_Localization_PT_BR,
@@ -552,8 +514,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'rodada_descricao',
         header: 'Rodada',
         size: 160,
-        minSize: 120,
-        maxSize: 250,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -564,8 +524,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'produto_nome',
         header: 'Produto',
         size: 200,
-        minSize: 140,
-        maxSize: 350,
         Cell: ({ row }) => (
           <div style={{ width: '100%', overflow: 'hidden' }}>
             <Text fw={600} size="xs" truncate="end">
@@ -583,8 +541,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 160,
-        minSize: 135,
-        maxSize: 300,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -595,8 +551,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'embalagem',
         header: 'Embalagem',
         size: 140,
-        minSize: 125,
-        maxSize: 220,
         Cell: ({ row }) => (
           <Text size="xs" truncate="end">
             {row.original.marca ? `[${row.original.marca}] ` : ''}{row.original.embalagem}
@@ -607,8 +561,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb.',
         size: 130,
-        minSize: 125,
-        maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
@@ -621,8 +573,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário',
         size: 150,
-        minSize: 145,
-        maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
@@ -635,8 +585,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'foi_alocado',
         header: 'Status Compra',
         size: 140,
-        minSize: 135,
-        maxSize: 180,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ cell }) => {
@@ -658,8 +606,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
 
   const tableGlobal = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns: columnsGlobal,
     data: dadosFiltradosGlobal,
     localization: MRT_Localization_PT_BR,

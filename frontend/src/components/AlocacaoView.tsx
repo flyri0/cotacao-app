@@ -390,8 +390,6 @@ export function AlocacaoView({
         accessorKey: 'produto_nome',
         header: 'Produto',
         size: 220,
-        minSize: 150,
-        maxSize: 450,
         Cell: ({ row }) => {
           const item = row.original
           return (
@@ -405,8 +403,6 @@ export function AlocacaoView({
         accessorKey: 'quantidade_alocada',
         header: 'Qtd a Comprar',
         size: 140,
-        minSize: 135,
-        maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
@@ -424,8 +420,6 @@ export function AlocacaoView({
         accessorKey: 'id_fornecedor',
         header: 'Fornecedor',
         size: 220,
-        minSize: 160,
-        maxSize: 400,
         Cell: ({ row }) => {
           const item = row.original
           const cotsDoProd = cotacoes.filter(
@@ -469,8 +463,6 @@ export function AlocacaoView({
         id: 'preco_unitario',
         header: 'Preço Unitário',
         size: 150,
-        minSize: 145,
-        maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
@@ -514,8 +506,6 @@ export function AlocacaoView({
         id: 'embalagem_cotada',
         header: 'Embalagem',
         size: 160,
-        minSize: 135,
-        maxSize: 300,
         Cell: ({ row }) => {
           const item = row.original
           const cot = cotacoes.find(
@@ -548,8 +538,6 @@ export function AlocacaoView({
         id: 'embalagens_comprar',
         header: 'Compra Efetiva',
         size: 160,
-        minSize: 145,
-        maxSize: 300,
         Cell: ({ row }) => {
           const item = row.original
           const cot = cotacoes.find(
@@ -594,8 +582,6 @@ export function AlocacaoView({
         id: 'subtotal',
         header: 'Subtotal',
         size: 130,
-        minSize: 115,
-        maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
@@ -630,9 +616,6 @@ export function AlocacaoView({
         id: 'acoes',
         header: 'Ações',
         size: 85,
-        minSize: 85,
-        maxSize: 100,
-        enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
@@ -674,8 +657,6 @@ export function AlocacaoView({
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns,
     data: linhas,
     memoMode: 'rows',

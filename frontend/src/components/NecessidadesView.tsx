@@ -319,8 +319,6 @@ export function NecessidadesView({
         accessorKey: 'produto_nome',
         header: 'Produto em Falta',
         size: 280,
-        minSize: 180,
-        maxSize: 600,
         Cell: ({ cell }) => (
           <Text fw={600} size="xs" truncate="end">
             {cell.getValue<string>()}
@@ -331,8 +329,6 @@ export function NecessidadesView({
         accessorKey: 'produto_categoria',
         header: 'Categoria',
         size: 160,
-        minSize: 130,
-        maxSize: 300,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
           return (
@@ -346,9 +342,6 @@ export function NecessidadesView({
         id: 'acoes',
         header: 'Ações',
         size: 80,
-        minSize: 80,
-        maxSize: 100,
-        enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => (
@@ -374,8 +367,6 @@ export function NecessidadesView({
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
     columns,
     data: necessidades,
     localization: MRT_Localization_PT_BR,
