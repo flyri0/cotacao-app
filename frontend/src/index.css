@@ -62,6 +62,15 @@ html {
 }
 
 
+/* Aplicação de padding global em tabelas (exceto MRT) */
+tr:not([class*='mrt-table']) > .mantine-Table-td,
+tr:not([class*='mrt-table']) > .mantine-Table-th {
+  padding-top: var(--app-table-cell-py, 4px);
+  padding-bottom: var(--app-table-cell-py, 4px);
+  padding-left: var(--app-table-cell-px, 8px);
+  padding-right: var(--app-table-cell-px, 8px);
+}
+
 /* MRT Table Rows compactos */
 .mrt-table-row {
   min-height: 32px;
