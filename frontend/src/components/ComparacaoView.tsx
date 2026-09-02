@@ -443,7 +443,10 @@ export function ComparacaoView({
       placeholder: 'Pesquisar produto ou marca...',
     },
     mantineTableContainerProps: {
-      style: { maxHeight: 'calc(100vh - 240px)' },
+      style: {
+        maxHeight: 'calc(100vh - 240px)',
+        borderTop: '1px solid var(--mantine-color-default-border)',
+      },
     },
     mantineTableHeadCellProps: {
       style: {
@@ -459,8 +462,9 @@ export function ComparacaoView({
     },
     mantineTopToolbarProps: {
       style: {
-        minHeight: 40,
-        padding: '4px 8px',
+        minHeight: 46,
+        padding: 'var(--mantine-spacing-xs) var(--mantine-spacing-sm)',
+        alignItems: 'center',
       },
     },
     mantineTableProps: {
