@@ -716,7 +716,7 @@ export default function App() {
                   <Kbd>Ctrl</Kbd> + <Kbd>S</Kbd>
                 </Group>
               </Table.Td>
-              <Table.Td>Salvar alocações de compras no banco</Table.Td>
+              <Table.Td>Forçar sincronização das compras (já salvo automaticamente)</Table.Td>
             </Table.Tr>
             <Table.Tr>
               <Table.Td>

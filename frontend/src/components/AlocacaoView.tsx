@@ -5,7 +5,6 @@ import {
   Button,
   Center,
   Group,
-  Kbd,
   Loader,
   SimpleGrid,
   Stack,
@@ -15,9 +14,9 @@ import {
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
 import {
+  IconAlertCircle,
   IconArrowsSplit,
   IconCheck,
-  IconDeviceFloppy,
   IconListCheck,
   IconScale,
   IconSparkles,
@@ -78,7 +77,7 @@ export function AlocacaoView({
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
   const [linhas, setLinhas] = useState<LinhaAlocacao[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [statusAutosave, setStatusAutosave] = useState<'salvo' | 'salvando' | 'erro'>('salvo')
 
   const initialLoadDone = useRef(false)
   const autosaveTimeoutRef = useRef<number | null>(null)
@@ -92,6 +91,7 @@ export function AlocacaoView({
   const executarSalvarSilencioso = useCallback(async (linhasParaSalvar: LinhaAlocacao[], rodadaId: number | null) => {
     if (!rodadaId || isFechada) return
     try {
+      setStatusAutosave('salvando')
       const api = await getApi()
       const payload = linhasParaSalvar
         .filter((l) => Number(l.quantidade_alocada) > 0 && Number(l.id_fornecedor) > 0)
@@ -102,8 +102,10 @@ export function AlocacaoView({
         }))
 
       await api.save_allocations(rodadaId, payload)
+      setStatusAutosave('salvo')
     } catch (err) {
       console.error('Erro no autosave:', err)
+      setStatusAutosave('erro')
     }
   }, [isFechada])
 
@@ -321,55 +323,19 @@ export function AlocacaoView({
     })
   }
 
-  // Salvar manual no backend SQLite
-  const handleSalvar = useCallback(async () => {
-    if (!selectedRodadaId) return
-
-    try {
-      setSaving(true)
-      const api = await getApi()
-      const payload = linhas
-        .filter((l) => Number(l.quantidade_alocada) > 0 && Number(l.id_fornecedor) > 0)
-        .map((l) => ({
-          id_produto: Number(l.id_produto),
-          id_fornecedor: Number(l.id_fornecedor),
-          quantidade: Number(l.quantidade_alocada),
-        }))
-
-      await api.save_allocations(selectedRodadaId, payload)
-
-      notifications.show({
-        title: 'Alocações Salvas com Sucesso',
-        message: `${payload.length} decisões de compra foram salvas para a rodada.`,
-        color: 'green',
-        icon: <IconCheck size={16} />,
-      })
-
-      await carregarDados(selectedRodadaId)
-    } catch (error: any) {
-      console.error('Erro ao salvar alocações:', error)
-      notifications.show({
-        title: 'Erro ao salvar',
-        message: error?.message || 'Não foi possível gravar as alocações.',
-        color: 'red',
-        icon: <IconX size={16} />,
-      })
-    } finally {
-      setSaving(false)
-    }
-  }, [selectedRodadaId, linhas, carregarDados])
-
-  // Atalho de teclado global Ctrl+S / Cmd+S para salvar
+  // Atalho de teclado global Ctrl+S / Cmd+S para forçar sincronização imediata
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
-        handleSalvar()
+        if (selectedRodadaId && !isFechada) {
+          executarSalvarSilencioso(linhasRef.current, selectedRodadaId)
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleSalvar])
+  }, [selectedRodadaId, isFechada, executarSalvarSilencioso])
 
   // Mapa de menor preço unitário por produto na rodada
   const menoresPrecosPorProduto = useMemo(() => {
@@ -758,17 +724,21 @@ export function AlocacaoView({
               Sugerir Menor Preço
             </Button>
 
-            <Button
-              variant="filled"
-              color="teal"
-              size="xs"
-              leftSection={<IconDeviceFloppy size={14} />}
-              onClick={handleSalvar}
-              loading={saving}
-              disabled={isFechada}
-            >
-              Salvar <Kbd ml={4} size="xs">Ctrl+S</Kbd>
-            </Button>
+            {!isFechada && (
+              statusAutosave === 'salvando' ? (
+                <Badge variant="light" color="blue" size="sm" leftSection={<Loader size={10} color="blue" />}>
+                  Salvando...
+                </Badge>
+              ) : statusAutosave === 'erro' ? (
+                <Badge variant="light" color="red" size="sm" leftSection={<IconAlertCircle size={12} />}>
+                  Erro ao salvar
+                </Badge>
+              ) : (
+                <Badge variant="subtle" color="gray" size="sm" leftSection={<IconCheck size={12} />}>
+                  Salvo automaticamente
+                </Badge>
+              )
+            )}
           </Group>
         }
       />
