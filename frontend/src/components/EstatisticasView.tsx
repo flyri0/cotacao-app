@@ -327,6 +327,7 @@ export function EstatisticasView() {
   )
 
   const tableHistoricoProd = useMantineReactTable({
+    enableDensityToggle: false,
     columns: columnsHistoricoProd,
     data: estatisticasProduto?.cotacoes_historico || [],
     localization: MRT_Localization_PT_BR,
@@ -340,6 +341,7 @@ export function EstatisticasView() {
   })
 
   const tableRankingProd = useMantineReactTable({
+    enableDensityToggle: false,
     columns: columnsRankingProd,
     data: estatisticasProduto?.ranking_fornecedores || [],
     localization: MRT_Localization_PT_BR,
@@ -406,6 +408,7 @@ export function EstatisticasView() {
   )
 
   const tableHistoricoForn = useMantineReactTable({
+    enableDensityToggle: false,
     columns: columnsHistoricoForn,
     data: estatisticasFornecedor?.cotacoes_historico || [],
     localization: MRT_Localization_PT_BR,
@@ -533,6 +536,7 @@ export function EstatisticasView() {
   )
 
   const tableGlobal = useMantineReactTable({
+    enableDensityToggle: false,
     columns: columnsGlobal,
     data: dadosFiltradosGlobal,
     localization: MRT_Localization_PT_BR,

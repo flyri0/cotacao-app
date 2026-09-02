@@ -510,6 +510,7 @@ export function ProdutosView() {
   )
 
   const table = useMantineReactTable({
+    enableDensityToggle: false,
     columns,
     data: produtos,
     localization: MRT_Localization_PT_BR,

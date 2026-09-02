@@ -548,6 +548,7 @@ export function FornecedoresView() {
   )
 
   const table = useMantineReactTable({
+    enableDensityToggle: false,
     columns,
     data: fornecedores,
     localization: MRT_Localization_PT_BR,

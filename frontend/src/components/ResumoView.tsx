@@ -345,6 +345,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
   )
 
   const tableFornecedores = useMantineReactTable({
+    enableDensityToggle: false,
     columns: columnsFornecedores,
     data: dadosFornecedores,
     localization: MRT_Localization_PT_BR,

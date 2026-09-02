@@ -699,6 +699,7 @@ export function AlocacaoView({
   )
 
   const table = useMantineReactTable({
+    enableDensityToggle: false,
     columns,
     data: linhas,
     memoMode: 'rows',

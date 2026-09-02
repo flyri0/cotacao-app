@@ -754,6 +754,7 @@ export function CotacoesView({
   )
 
   const table = useMantineReactTable({
+    enableDensityToggle: false,
     columns,
     data: cotacoes,
     localization: MRT_Localization_PT_BR,

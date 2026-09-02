@@ -352,6 +352,7 @@ export function NecessidadesView({
   )
 
   const table = useMantineReactTable({
+    enableDensityToggle: false,
     columns,
     data: necessidades,
     localization: MRT_Localization_PT_BR,
