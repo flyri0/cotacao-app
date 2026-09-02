@@ -646,21 +646,26 @@ export function CotacoesView({
       {
         accessorKey: 'produto_nome',
         header: 'Produto',
-        Cell: ({ cell }) => <Text fw={600}>{cell.getValue<string>()}</Text>,
+        size: 220,
+        minSize: 150,
+        maxSize: 450,
+        Cell: ({ cell }) => (
+          <Text fw={600} size="xs" truncate="end">
+            {cell.getValue<string>()}
+          </Text>
+        ),
       },
       {
         accessorKey: 'marca',
         header: 'Marca',
-        size: 130,
+        size: 110,
+        minSize: 80,
+        maxSize: 200,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
-          return val ? (
-            <Badge variant="light" color="indigo">
-              {val}
-            </Badge>
-          ) : (
-            <Text size="sm" c="dimmed">
-              -
+          return (
+            <Text size="xs" truncate="end" c={!val ? 'dimmed' : undefined}>
+              {val || '-'}
             </Text>
           )
         },
@@ -668,23 +673,37 @@ export function CotacoesView({
       {
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
+        size: 160,
+        minSize: 120,
+        maxSize: 300,
         Cell: ({ cell }) => (
-          <Badge variant="outline" color="cyan">
+          <Text size="xs" truncate="end">
             {cell.getValue<string>()}
-          </Badge>
+          </Text>
         ),
       },
       {
         accessorKey: 'embalagem',
         header: 'Embalagem Cotada',
-        Cell: ({ cell }) => <Text size="sm">{cell.getValue<string>()}</Text>,
+        size: 140,
+        minSize: 100,
+        maxSize: 250,
+        Cell: ({ cell }) => (
+          <Text size="xs" truncate="end">
+            {cell.getValue<string>()}
+          </Text>
+        ),
       },
       {
         accessorKey: 'qtd_por_embalagem',
         header: 'Qtd / Emb.',
-        size: 130,
+        size: 100,
+        minSize: 75,
+        maxSize: 150,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => (
-          <Text size="sm" style={{ textAlign: 'right' }}>
+          <Text size="xs">
             {row.original.qtd_por_embalagem} {row.original.unidade || 'UN'}
           </Text>
         ),
@@ -692,9 +711,13 @@ export function CotacoesView({
       {
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb. (R$)',
-        size: 150,
+        size: 120,
+        minSize: 90,
+        maxSize: 180,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
-          <Text fw={500} style={{ textAlign: 'right' }}>
+          <Text size="xs">
             {formatMoney(cell.getValue<number>(), 2)}
           </Text>
         ),
@@ -702,19 +725,26 @@ export function CotacoesView({
       {
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário Normalizado',
-        size: 210,
+        size: 145,
+        minSize: 110,
+        maxSize: 220,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => (
-          <Badge variant="filled" color="teal" size="md">
-            {formatMoney(row.original.preco_unitario)} /{' '}
-            {row.original.unidade || 'UN'}
-          </Badge>
+          <Text fw={700} size="xs" c="teal">
+            {formatMoney(row.original.preco_unitario)} / {row.original.unidade || 'UN'}
+          </Text>
         ),
       },
       {
         id: 'acoes',
         header: 'Ações',
-        size: 100,
+        size: 85,
+        minSize: 75,
+        maxSize: 100,
         enableResizing: false,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
           const item = row.original
           const prod = produtos.find((p) => p.id === item.id_produto)
@@ -755,7 +785,7 @@ export function CotacoesView({
         },
       },
     ],
-    [deletingId, produtos, isFechada],
+    [deletingId, produtos, isFechada, themeColor],
   )
 
   const table = useMantineReactTable({
@@ -770,6 +800,18 @@ export function CotacoesView({
     enableBottomToolbar: true,
     enableTopToolbar: true,
     initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,

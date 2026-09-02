@@ -219,32 +219,38 @@ export function ResumoView({
       {
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
-        size: 220,
+        size: 200,
+        minSize: 140,
+        maxSize: 400,
         Cell: ({ cell, row }) => (
-          <Stack gap={2}>
-            <Text fw={700} size="sm">
+          <div style={{ width: '100%', overflow: 'hidden' }}>
+            <Text fw={600} size="xs" truncate="end">
               {cell.getValue<string>()}
             </Text>
-            <Text size="xs" c="dimmed">
+            <Text size="10px" c="dimmed" truncate="end">
               {row.original.itens_comprados_count}{' '}
               {row.original.itens_comprados_count === 1 ? 'item alocado' : 'itens alocados'}
             </Text>
-          </Stack>
+          </div>
         ),
       },
       {
         accessorKey: 'total_alocado',
         header: 'Total Alocado (R$)',
-        size: 170,
+        size: 140,
+        minSize: 100,
+        maxSize: 220,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
           <Text
             fw={700}
-            size="sm"
+            size="xs"
             c={
               row.original.status === 'ok'
-                ? 'teal.8'
+                ? 'teal'
                 : row.original.status === 'abaixo'
-                ? 'red.7'
+                ? 'red'
                 : 'dimmed'
             }
           >
@@ -255,9 +261,13 @@ export function ResumoView({
       {
         accessorKey: 'pedido_minimo',
         header: 'Pedido Mínimo (R$)',
-        size: 160,
+        size: 140,
+        minSize: 100,
+        maxSize: 200,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
-          <Text size="sm">
+          <Text size="xs" c={cell.getValue<number>() > 0 ? undefined : 'dimmed'}>
             {cell.getValue<number>() > 0
               ? formatMoney(cell.getValue<number>())
               : 'Sem mínimo'}
@@ -267,14 +277,16 @@ export function ResumoView({
       {
         id: 'progresso',
         header: 'Meta Mínima',
-        size: 220,
+        size: 180,
+        minSize: 120,
+        maxSize: 300,
         Cell: ({ row }) => {
           const { pedido_minimo, total_alocado, percentual_atingido, status } =
             row.original
 
           if (pedido_minimo === 0) {
             return (
-              <Badge variant="light" color="gray" size="sm">
+              <Badge variant="light" color="gray" size="xs">
                 Livre
               </Badge>
             )
@@ -284,19 +296,19 @@ export function ResumoView({
             status === 'ok' ? 'teal' : status === 'abaixo' ? 'red' : 'gray'
 
           return (
-            <Stack gap={4} style={{ width: '100%' }}>
+            <Stack gap={2} style={{ width: '100%', overflow: 'hidden' }}>
               <Group justify="space-between" gap="xs">
-                <Text size="11px" fw={600} c={`${color}.8`}>
+                <Text size="10px" fw={600} c={`${color}.8`}>
                   {percentual_atingido.toFixed(0)}%
                 </Text>
-                <Text size="11px" c="dimmed">
+                <Text size="10px" c="dimmed">
                   {formatMoney(total_alocado)} / {formatMoney(pedido_minimo)}
                 </Text>
               </Group>
               <Progress
                 value={percentual_atingido}
                 color={color}
-                size="sm"
+                size="xs"
                 radius="xl"
                 striped={status === 'abaixo'}
                 animated={status === 'abaixo'}
@@ -308,19 +320,23 @@ export function ResumoView({
       {
         id: 'status_minimo',
         header: 'Status Pedido Mínimo',
-        size: 240,
+        size: 180,
+        minSize: 140,
+        maxSize: 280,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
           const { status, diferenca } = row.original
 
           if (status === 'ok') {
             return (
               <Badge
-                leftSection={<IconCheck size={12} />}
+                leftSection={<IconCheck size={10} />}
                 color="teal"
-                variant="filled"
+                variant="light"
                 size="xs"
               >
-                Bateu Mínimo {diferenca > 0 && `(+${formatMoney(diferenca)})`}
+                Atingido
               </Badge>
             )
           }
@@ -328,12 +344,12 @@ export function ResumoView({
           if (status === 'abaixo') {
             return (
               <Badge
-                leftSection={<IconAlertTriangle size={12} />}
+                leftSection={<IconAlertTriangle size={10} />}
                 color="red"
-                variant="filled"
+                variant="light"
                 size="xs"
               >
-                Abaixo do Mínimo (Falta {formatMoney(Math.abs(diferenca))})
+                Falta {formatMoney(Math.abs(diferenca))}
               </Badge>
             )
           }
@@ -361,6 +377,18 @@ export function ResumoView({
     enableBottomToolbar: false,
     enableTopToolbar: false,
     initialState: { density: 'xs' },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     renderDetailPanel: ({ row }) => {
       const { itens_detalhes, fornecedor_nome } = row.original
       if (!itens_detalhes || itens_detalhes.length === 0) {
@@ -370,17 +398,18 @@ export function ResumoView({
           </Text>
         )
       }
+
       return (
-        <Paper p="xs" withBorder radius="sm" bg="var(--mantine-color-body)" m="xs">
-          <Text size="11px" fw={700} mb={4} c="dimmed" tt="uppercase">
-            Itens alocados para {fornecedor_nome} ({itens_detalhes.length})
+        <Paper p="xs" withBorder radius="xs" bg="var(--mantine-color-default-hover)">
+          <Text size="xs" fw={700} mb="xs">
+            Itens Alocados para {fornecedor_nome}:
           </Text>
-          <Table striped highlightOnHover withTableBorder verticalSpacing={2} horizontalSpacing={6}>
+          <Table striped highlightOnHover withTableBorder>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Produto</Table.Th>
-                <Table.Th>Qtd Alocada</Table.Th>
-                <Table.Th>Embalagens</Table.Th>
+                <Table.Th>Qtd Solicitada</Table.Th>
+                <Table.Th>Compra Efetiva (Embalagem)</Table.Th>
                 <Table.Th>Subtotal</Table.Th>
               </Table.Tr>
             </Table.Thead>

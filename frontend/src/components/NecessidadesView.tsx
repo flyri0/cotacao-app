@@ -318,21 +318,26 @@ export function NecessidadesView({
       {
         accessorKey: 'produto_nome',
         header: 'Produto em Falta na Rodada',
-        Cell: ({ cell }) => <Text fw={600}>{cell.getValue<string>()}</Text>,
+        size: 280,
+        minSize: 180,
+        maxSize: 600,
+        Cell: ({ cell }) => (
+          <Text fw={600} size="xs" truncate="end">
+            {cell.getValue<string>()}
+          </Text>
+        ),
       },
       {
         accessorKey: 'produto_categoria',
         header: 'Categoria',
-        size: 180,
+        size: 160,
+        minSize: 110,
+        maxSize: 300,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
-          return val ? (
-            <Badge variant="dot" color="teal">
-              {val}
-            </Badge>
-          ) : (
-            <Text size="sm" c="dimmed">
-              -
+          return (
+            <Text size="xs" truncate="end" c={!val ? 'dimmed' : undefined}>
+              {val || '-'}
             </Text>
           )
         },
@@ -340,20 +345,27 @@ export function NecessidadesView({
       {
         id: 'acoes',
         header: 'Ações',
-        size: 90,
+        size: 80,
+        minSize: 70,
+        maxSize: 100,
         enableResizing: false,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => (
-          <Tooltip label="Remover produto da rodada">
-            <ActionIcon
-              color="red"
-              variant="subtle"
-              loading={deletingId === row.original.id}
-              disabled={isFechada}
-              onClick={() => handleRemover(row.original.id, row.original.produto_nome)}
-            >
-              <IconTrash size={18} />
-            </ActionIcon>
-          </Tooltip>
+          <Group justify="center">
+            <Tooltip label="Remover produto da rodada">
+              <ActionIcon
+                color="red"
+                variant="subtle"
+                size="sm"
+                loading={deletingId === row.original.id}
+                disabled={isFechada}
+                onClick={() => handleRemover(row.original.id, row.original.produto_nome)}
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
         ),
       },
     ],
@@ -372,6 +384,18 @@ export function NecessidadesView({
     enableBottomToolbar: true,
     enableTopToolbar: true,
     initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,

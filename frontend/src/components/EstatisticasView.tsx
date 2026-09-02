@@ -194,41 +194,43 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'rodada_descricao',
         header: 'Rodada de Cotação',
-        size: 220,
+        size: 180,
+        minSize: 130,
+        maxSize: 300,
         Cell: ({ row }) => (
-          <Stack gap={2}>
-            <Text fw={600} size="sm">
+          <div style={{ width: '100%', overflow: 'hidden' }}>
+            <Text fw={600} size="xs" truncate="end">
               {row.original.rodada_descricao}
             </Text>
-            <Text size="11px" c="dimmed">
+            <Text size="10px" c="dimmed" truncate="end">
               Data: {row.original.rodada_data}
             </Text>
-          </Stack>
+          </div>
         ),
       },
       {
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
-        size: 180,
+        size: 160,
+        minSize: 120,
+        maxSize: 300,
         Cell: ({ cell }) => (
-          <Badge variant="outline" color="cyan" size="md">
+          <Text size="xs" truncate="end">
             {cell.getValue<string>()}
-          </Badge>
+          </Text>
         ),
       },
       {
         accessorKey: 'marca',
         header: 'Marca',
-        size: 130,
+        size: 110,
+        minSize: 80,
+        maxSize: 200,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
-          return val ? (
-            <Badge variant="light" color="indigo">
-              {val}
-            </Badge>
-          ) : (
-            <Text size="sm" c="dimmed">
-              -
+          return (
+            <Text size="xs" truncate="end" c={!val ? 'dimmed' : undefined}>
+              {val || '-'}
             </Text>
           )
         },
@@ -236,25 +238,39 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'embalagem',
         header: 'Embalagem Cotada',
-        size: 160,
+        size: 140,
+        minSize: 100,
+        maxSize: 250,
+        Cell: ({ cell }) => (
+          <Text size="xs" truncate="end">
+            {cell.getValue<string>()}
+          </Text>
+        ),
       },
       {
         accessorKey: 'qtd_por_embalagem',
         header: 'Qtd / Emb.',
-        size: 120,
+        size: 100,
+        minSize: 75,
+        maxSize: 150,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
-          <Text size="sm">
-            {cell.getValue<number>()}{' '}
-            {row.original.unidade || 'UN'}
+          <Text size="xs">
+            {cell.getValue<number>()} {row.original.unidade || 'UN'}
           </Text>
         ),
       },
       {
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb. (R$)',
-        size: 140,
+        size: 120,
+        minSize: 90,
+        maxSize: 180,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
-          <Text size="sm" fw={500}>
+          <Text size="xs">
             {formatMoney(cell.getValue<number>(), 2)}
           </Text>
         ),
@@ -262,12 +278,15 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário Normalizado',
-        size: 200,
+        size: 145,
+        minSize: 110,
+        maxSize: 220,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
-          <Badge color="teal" variant="filled" size="md">
-            {formatMoney(cell.getValue<number>())} /{' '}
-            {row.original.unidade || 'UN'}
-          </Badge>
+          <Text fw={700} size="xs" c="teal">
+            {formatMoney(cell.getValue<number>())} / {row.original.unidade || 'UN'}
+          </Text>
         ),
       },
     ],
@@ -279,45 +298,53 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
-        size: 240,
+        size: 200,
+        minSize: 140,
+        maxSize: 350,
         Cell: ({ cell }) => (
-          <Group gap="xs">
-            <ThemeIcon color="cyan" variant="light" size="sm">
-              <IconTruck size={14} />
-            </ThemeIcon>
-            <Text fw={600} size="sm">
-              {cell.getValue<string>()}
-            </Text>
-          </Group>
+          <Text fw={600} size="xs" truncate="end">
+            {cell.getValue<string>()}
+          </Text>
         ),
       },
       {
         accessorKey: 'total_ofertas',
         header: 'Cotações Enviadas',
-        size: 160,
+        size: 130,
+        minSize: 100,
+        maxSize: 180,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ cell }) => (
-          <Badge variant="light" color="blue" size="sm">
-            {cell.getValue<number>()}{' '}
-            {cell.getValue<number>() === 1 ? 'rodada' : 'rodadas'}
-          </Badge>
+          <Text size="xs">
+            {cell.getValue<number>()} {cell.getValue<number>() === 1 ? 'rodada' : 'rodadas'}
+          </Text>
         ),
       },
       {
         accessorKey: 'menor_preco_oferecido',
         header: 'Menor Preço Ofertado',
-        size: 190,
+        size: 140,
+        minSize: 100,
+        maxSize: 200,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
-          <Badge variant="filled" color="teal" size="md">
+          <Text fw={700} size="xs" c="teal">
             {formatMoney(cell.getValue<number>())}
-          </Badge>
+          </Text>
         ),
       },
       {
         accessorKey: 'preco_medio_oferecido',
         header: 'Preço Médio Praticado',
-        size: 190,
+        size: 140,
+        minSize: 100,
+        maxSize: 200,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => (
-          <Text fw={600} size="sm" c="dimmed">
+          <Text size="xs" c="dimmed">
             {formatMoney(cell.getValue<number>())}
           </Text>
         ),
@@ -338,6 +365,18 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     enableBottomToolbar: true,
     enableTopToolbar: true,
     initialState: { density: 'xs', pagination: { pageSize: 10, pageIndex: 0 } },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
     mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
@@ -354,6 +393,18 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     enableBottomToolbar: false,
     enableTopToolbar: false,
     initialState: { density: 'xs' },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
     mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
@@ -366,45 +417,72 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'produto_nome',
         header: 'Produto Ofertado',
-        size: 220,
+        size: 200,
+        minSize: 140,
+        maxSize: 350,
         Cell: ({ row }) => (
-          <Stack gap={2}>
-            <Text fw={600} size="sm">
+          <div style={{ width: '100%', overflow: 'hidden' }}>
+            <Text fw={600} size="xs" truncate="end">
               {row.original.produto_nome}
             </Text>
             {row.original.produto_categoria && (
-              <Text size="11px" c="dimmed">
+              <Text size="10px" c="dimmed" truncate="end">
                 {row.original.produto_categoria}
               </Text>
             )}
-          </Stack>
+          </div>
         ),
       },
       {
         accessorKey: 'rodada_descricao',
         header: 'Rodada de Cotação',
-        size: 200,
+        size: 160,
+        minSize: 120,
+        maxSize: 250,
+        Cell: ({ cell }) => (
+          <Text size="xs" truncate="end">
+            {cell.getValue<string>()}
+          </Text>
+        ),
       },
       {
         accessorKey: 'embalagem',
         header: 'Embalagem',
-        size: 150,
+        size: 140,
+        minSize: 100,
+        maxSize: 220,
+        Cell: ({ cell }) => (
+          <Text size="xs" truncate="end">
+            {cell.getValue<string>()}
+          </Text>
+        ),
       },
       {
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb. (R$)',
-        size: 140,
-        Cell: ({ cell }) => <Text size="sm">{formatMoney(cell.getValue<number>(), 2)}</Text>,
+        size: 120,
+        minSize: 90,
+        maxSize: 180,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
+        Cell: ({ cell }) => (
+          <Text size="xs">
+            {formatMoney(cell.getValue<number>(), 2)}
+          </Text>
+        ),
       },
       {
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário Normalizado',
-        size: 190,
+        size: 145,
+        minSize: 110,
+        maxSize: 220,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
-          <Badge color="teal" variant="filled" size="md">
-            {formatMoney(cell.getValue<number>())} /{' '}
-            {row.original.unidade || 'UN'}
-          </Badge>
+          <Text fw={700} size="xs" c="teal">
+            {formatMoney(cell.getValue<number>())} / {row.original.unidade || 'UN'}
+          </Text>
         ),
       },
     ],
@@ -423,6 +501,18 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     enableBottomToolbar: true,
     enableTopToolbar: true,
     initialState: { density: 'xs', pagination: { pageSize: 10, pageIndex: 0 } },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
     mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
@@ -435,19 +525,13 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       if (filtroCategoria && item.produto_categoria !== filtroCategoria) {
         return false
       }
-      if (
-        filtroFornecedor &&
-        item.id_fornecedor.toString() !== filtroFornecedor
-      ) {
+      if (filtroFornecedor && item.fornecedor_nome !== filtroFornecedor) {
         return false
       }
-      if (filtroRodada && item.id_rodada.toString() !== filtroRodada) {
+      if (filtroStatusAlocacao === 'comprados' && !item.foi_alocado) {
         return false
       }
-      if (filtroStatusAlocacao === 'comprado' && !item.foi_alocado) {
-        return false
-      }
-      if (filtroStatusAlocacao === 'apenas_cotado' && item.foi_alocado) {
+      if (filtroStatusAlocacao === 'apenas_cotados' && item.foi_alocado) {
         return false
       }
       return true
@@ -456,7 +540,6 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     historicoGlobal,
     filtroCategoria,
     filtroFornecedor,
-    filtroRodada,
     filtroStatusAlocacao,
   ])
 
@@ -465,41 +548,54 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'rodada_descricao',
         header: 'Rodada',
-        size: 180,
+        size: 160,
+        minSize: 120,
+        maxSize: 250,
+        Cell: ({ cell }) => (
+          <Text size="xs" truncate="end">
+            {cell.getValue<string>()}
+          </Text>
+        ),
       },
       {
         accessorKey: 'produto_nome',
         header: 'Produto',
-        size: 220,
+        size: 200,
+        minSize: 140,
+        maxSize: 350,
         Cell: ({ row }) => (
-          <Stack gap={2}>
-            <Text fw={600} size="sm">
+          <div style={{ width: '100%', overflow: 'hidden' }}>
+            <Text fw={600} size="xs" truncate="end">
               {row.original.produto_nome}
             </Text>
             {row.original.produto_categoria && (
-              <Badge size="xs" color="gray" variant="light">
+              <Text size="10px" c="dimmed" truncate="end">
                 {row.original.produto_categoria}
-              </Badge>
+              </Text>
             )}
-          </Stack>
+          </div>
         ),
       },
       {
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
-        size: 180,
+        size: 160,
+        minSize: 120,
+        maxSize: 300,
         Cell: ({ cell }) => (
-          <Badge color="cyan" variant="outline" size="sm">
+          <Text size="xs" truncate="end">
             {cell.getValue<string>()}
-          </Badge>
+          </Text>
         ),
       },
       {
         accessorKey: 'embalagem',
         header: 'Embalagem',
-        size: 150,
+        size: 140,
+        minSize: 100,
+        maxSize: 220,
         Cell: ({ row }) => (
-          <Text size="sm">
+          <Text size="xs" truncate="end">
             {row.original.marca ? `[${row.original.marca}] ` : ''}{row.original.embalagem}
           </Text>
         ),
@@ -507,15 +603,27 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb.',
-        size: 130,
-        Cell: ({ cell }) => <Text size="sm">{formatMoney(cell.getValue<number>(), 2)}</Text>,
+        size: 120,
+        minSize: 90,
+        maxSize: 180,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
+        Cell: ({ cell }) => (
+          <Text size="xs">
+            {formatMoney(cell.getValue<number>(), 2)}
+          </Text>
+        ),
       },
       {
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário',
-        size: 160,
+        size: 145,
+        minSize: 110,
+        maxSize: 220,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell, row }) => (
-          <Text fw={700} size="sm" c="teal.8">
+          <Text fw={700} size="xs" c="teal">
             {formatMoney(cell.getValue<number>())} / {row.original.unidade || 'UN'}
           </Text>
         ),
@@ -523,15 +631,19 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'foi_alocado',
         header: 'Status Compra',
-        size: 150,
+        size: 130,
+        minSize: 100,
+        maxSize: 180,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ cell }) => {
           const comprado = !!cell.getValue<boolean>()
           return comprado ? (
-            <Badge color="teal" variant="filled" size="sm">
+            <Badge color="teal" variant="filled" size="xs">
               ✓ Comprado
             </Badge>
           ) : (
-            <Badge color="gray" variant="light" size="sm">
+            <Badge color="gray" variant="light" size="xs">
               Cotado
             </Badge>
           )
@@ -551,6 +663,18 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     enableRowActions: false,
     enablePagination: true,
     initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
     mantinePaperProps: {
       withBorder: true,

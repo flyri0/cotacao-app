@@ -389,11 +389,13 @@ export function AlocacaoView({
       {
         accessorKey: 'produto_nome',
         header: 'Produto',
-        size: 240,
+        size: 220,
+        minSize: 150,
+        maxSize: 450,
         Cell: ({ row }) => {
           const item = row.original
           return (
-            <Text fw={600} size="sm">
+            <Text fw={600} size="xs" truncate="end">
               {item.produto_nome}
             </Text>
           )
@@ -402,7 +404,11 @@ export function AlocacaoView({
       {
         accessorKey: 'quantidade_alocada',
         header: 'Qtd a Comprar',
-        size: 150,
+        size: 130,
+        minSize: 90,
+        maxSize: 180,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
           const item = row.original
           return (
@@ -417,7 +423,9 @@ export function AlocacaoView({
       {
         accessorKey: 'id_fornecedor',
         header: 'Fornecedor Final',
-        size: 240,
+        size: 220,
+        minSize: 150,
+        maxSize: 400,
         Cell: ({ row }) => {
           const item = row.original
           const cotsDoProd = cotacoes.filter(
@@ -452,6 +460,7 @@ export function AlocacaoView({
               searchable
               disabled={isFechada}
               clearable={false}
+              style={{ width: '100%' }}
             />
           )
         },
@@ -459,7 +468,11 @@ export function AlocacaoView({
       {
         id: 'preco_unitario',
         header: 'Preço Unitário',
-        size: 150,
+        size: 140,
+        minSize: 110,
+        maxSize: 220,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
           const item = row.original
           const cot = cotacoes.find(
@@ -480,32 +493,29 @@ export function AlocacaoView({
           const isMenor = menorPreco !== undefined && cot.preco_unitario <= menorPreco
 
           return (
-            <Stack gap={2}>
-              <Text fw={700} size="sm" c={isMenor ? 'teal.7' : undefined}>
+            <div style={{ textAlign: 'right', width: '100%', overflow: 'hidden' }}>
+              <Text fw={700} size="xs" c={isMenor ? 'teal' : undefined} style={{ whiteSpace: 'nowrap' }}>
                 {formatMoney(cot.preco_unitario)} / {cot.unidade || 'UN'}
               </Text>
               {isMenor ? (
-                <Badge
-                  color="teal"
-                  variant="light"
-                  size="xs"
-                  leftSection={<IconSparkles size={10} />}
-                >
-                  Menor Preço
-                </Badge>
+                <Text size="10px" c="teal" fw={600} style={{ whiteSpace: 'nowrap' }}>
+                  ⭐ Menor Preço
+                </Text>
               ) : menorPreco && menorPreco > 0 ? (
-                <Text size="xs" c="dimmed">
-                  +{(((cot.preco_unitario - menorPreco) / menorPreco) * 100).toFixed(1)}% vs menor
+                <Text size="10px" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                  +{(((cot.preco_unitario - menorPreco) / menorPreco) * 100).toFixed(0)}% vs menor
                 </Text>
               ) : null}
-            </Stack>
+            </div>
           )
         },
       },
       {
         id: 'embalagem_cotada',
         header: 'Embalagem Cotada',
-        size: 180,
+        size: 160,
+        minSize: 120,
+        maxSize: 300,
         Cell: ({ row }) => {
           const item = row.original
           const cot = cotacoes.find(
@@ -523,21 +533,23 @@ export function AlocacaoView({
           }
 
           return (
-            <Stack gap={2}>
-              <Badge color="indigo" variant="outline" size="sm">
+            <div style={{ width: '100%', overflow: 'hidden' }}>
+              <Text size="xs" fw={600} truncate="end">
                 {cot.marca ? `[${cot.marca}] ` : ''}{cot.embalagem}
-              </Badge>
-              <Text size="xs" c="dimmed">
+              </Text>
+              <Text size="10px" c="dimmed" truncate="end">
                 {formatMoney(cot.preco_embalagem)} ({cot.qtd_por_embalagem} {cot.unidade || 'UN'})
               </Text>
-            </Stack>
+            </div>
           )
         },
       },
       {
         id: 'embalagens_comprar',
         header: 'Compra Efetiva',
-        size: 190,
+        size: 160,
+        minSize: 120,
+        maxSize: 300,
         Cell: ({ row }) => {
           const item = row.original
           const cot = cotacoes.find(
@@ -561,11 +573,11 @@ export function AlocacaoView({
           const diferenca = totalEfetivo - item.quantidade_alocada
 
           return (
-            <Stack gap={2}>
-              <Badge color="teal" variant="light" size="sm">
+            <div style={{ width: '100%', overflow: 'hidden' }}>
+              <Text size="xs" fw={600} truncate="end">
                 {embComprar} {embComprar === 1 ? 'embalagem' : 'embalagens'}
-              </Badge>
-              <Text size="xs" c="dimmed">
+              </Text>
+              <Text size="10px" c="dimmed" truncate="end">
                 Total: <b>{totalEfetivo}</b> {cot.unidade || 'UN'}
                 {diferenca > 0 && (
                   <Text span c={themeColor} fw={600}>
@@ -574,14 +586,18 @@ export function AlocacaoView({
                   </Text>
                 )}
               </Text>
-            </Stack>
+            </div>
           )
         },
       },
       {
         id: 'subtotal',
         header: 'Subtotal (R$)',
-        size: 140,
+        size: 120,
+        minSize: 90,
+        maxSize: 180,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
           const item = row.original
           const cot = cotacoes.find(
@@ -592,7 +608,7 @@ export function AlocacaoView({
 
           if (!item.id_fornecedor || item.quantidade_alocada <= 0 || !cot) {
             return (
-              <Text size="sm" c="dimmed">
+              <Text size="xs" c="dimmed">
                 R$ 0,00
               </Text>
             )
@@ -604,7 +620,7 @@ export function AlocacaoView({
           const subtotal = embComprar * cot.preco_embalagem
 
           return (
-            <Text fw={700} size="sm" c="teal">
+            <Text fw={700} size="xs" c="teal">
               {formatMoney(subtotal)}
             </Text>
           )
@@ -613,8 +629,12 @@ export function AlocacaoView({
       {
         id: 'acoes',
         header: 'Ações',
-        size: 90,
+        size: 85,
+        minSize: 75,
+        maxSize: 100,
         enableResizing: false,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
           const index = row.index
           const item = row.original
@@ -649,7 +669,7 @@ export function AlocacaoView({
         },
       },
     ],
-    [cotacoes, fornecedores, menoresPrecosPorProduto, isFechada],
+    [cotacoes, fornecedores, menoresPrecosPorProduto, isFechada, themeColor],
   )
 
   const table = useMantineReactTable({
@@ -665,6 +685,18 @@ export function AlocacaoView({
     enableBottomToolbar: false,
     enableTopToolbar: true,
     initialState: { density: 'xs' },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,

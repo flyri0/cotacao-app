@@ -190,6 +190,8 @@ export function ComparacaoView({
         accessorKey: 'produto_nome',
         header: 'Produto',
         size: 200,
+        minSize: 140,
+        maxSize: 500,
         enablePinning: true,
         enableColumnFilter: true,
         mantineFilterTextInputProps: {
@@ -206,6 +208,8 @@ export function ComparacaoView({
         accessorKey: 'produto_categoria',
         header: 'Categoria',
         size: 130,
+        minSize: 95,
+        maxSize: 250,
         enablePinning: true,
         enableColumnFilter: true,
         filterVariant: 'select',
@@ -217,13 +221,9 @@ export function ComparacaoView({
         },
         Cell: ({ cell }) => {
           const cat = cell.getValue<string | null>()
-          return cat ? (
-            <Badge size="xs" variant="dot" color="teal" style={{ height: 18 }}>
-              {cat}
-            </Badge>
-          ) : (
-            <Text size="xs" c="dimmed">
-              -
+          return (
+            <Text size="xs" truncate="end" c={!cat ? 'dimmed' : undefined}>
+              {cat || '-'}
             </Text>
           )
         },
@@ -236,15 +236,17 @@ export function ComparacaoView({
         id: `forn_${forn.id}`,
         header: forn.nome,
         size: 155,
+        minSize: 130,
+        maxSize: 350,
         enableColumnFilter: false,
         enableColumnActions: false,
         Header: () => (
-          <div style={{ lineHeight: 1.15 }}>
-            <Text fw={700} size="xs" lineClamp={1}>
+          <div style={{ lineHeight: 1.15, width: '100%', overflow: 'hidden' }}>
+            <Text fw={700} size="xs" truncate="end">
               {forn.nome}
             </Text>
             {forn.pedido_minimo > 0 && (
-              <Text size="10px" c="dimmed" fw={400}>
+              <Text size="10px" c="dimmed" fw={400} truncate="end">
                 Mín: {formatMoney(forn.pedido_minimo)}
               </Text>
             )}
@@ -278,6 +280,8 @@ export function ComparacaoView({
           return (
             <div
               style={{
+                width: '100%',
+                overflow: 'hidden',
                 backgroundColor: isVencedor
                   ? 'var(--mantine-color-teal-light)'
                   : undefined,
@@ -287,7 +291,7 @@ export function ComparacaoView({
               }}
             >
               {/* Preço Unitário + Marca em destaque na mesma linha */}
-              <Group gap={4} justify="space-between" wrap="nowrap" align="center">
+              <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ width: '100%', overflow: 'hidden' }}>
                 <Text
                   fw={isVencedor ? 700 : 500}
                   size="xs"
@@ -319,7 +323,7 @@ export function ComparacaoView({
               </Group>
 
               {/* Embalagem e Preço Fechado */}
-              <Text size="10px" c="dimmed" lineClamp={1} style={{ marginTop: 1 }}>
+              <Text size="10px" c="dimmed" truncate="end" style={{ marginTop: 1 }}>
                 {cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
               </Text>
             </div>
@@ -333,6 +337,8 @@ export function ComparacaoView({
       id: 'menor_preco',
       header: '🏆 Menor Preço',
       size: 155,
+      minSize: 130,
+      maxSize: 300,
       enablePinning: true,
       enableColumnFilter: false,
       enableColumnActions: false,
@@ -361,13 +367,15 @@ export function ComparacaoView({
         return (
           <div
             style={{
+              width: '100%',
+              overflow: 'hidden',
               backgroundColor: 'var(--mantine-color-teal-light)',
               borderRadius: 'var(--mantine-radius-xs)',
               padding: '2px 4px',
               lineHeight: 1.2,
             }}
           >
-            <Group gap={4} justify="space-between" wrap="nowrap" align="center">
+            <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ width: '100%', overflow: 'hidden' }}>
               <Text fw={700} size="xs" c="teal" style={{ whiteSpace: 'nowrap' }}>
                 {formatMoney(melhorCotacao.preco_unitario)}
               </Text>
@@ -391,8 +399,8 @@ export function ComparacaoView({
                 </Badge>
               )}
             </Group>
-            <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ marginTop: 1 }}>
-              <Text size="10px" fw={600} lineClamp={1} style={{ flex: 1 }}>
+            <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ marginTop: 1, width: '100%', overflow: 'hidden' }}>
+              <Text size="10px" fw={600} truncate="end" style={{ flex: 1 }}>
                 {melhorCotacao.fornecedor_nome}
               </Text>
               {economiaPct !== null && economiaPct > 0.1 ? (

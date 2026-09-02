@@ -417,32 +417,26 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
       {
         accessorKey: 'nome',
         header: 'Nome do Produto',
+        size: 260,
+        minSize: 150,
+        maxSize: 600,
         Cell: ({ cell, row }) => (
-          <Group gap="xs">
-            <Text fw={600} c={row.original.ativo === 0 ? 'dimmed' : undefined}>
-              {cell.getValue<string>()}
-            </Text>
-            {row.original.ativo === 0 && (
-              <Badge size="xs" color="gray" variant="outline">
-                Inativo
-              </Badge>
-            )}
-          </Group>
+          <Text fw={600} size="xs" c={row.original.ativo === 0 ? 'dimmed' : undefined} truncate="end">
+            {cell.getValue<string>()}
+          </Text>
         ),
       },
       {
         accessorKey: 'categoria',
         header: 'Categoria',
-        size: 180,
-        Cell: ({ cell, row }) => {
+        size: 160,
+        minSize: 100,
+        maxSize: 300,
+        Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
-          return val ? (
-            <Badge variant="dot" color={row.original.ativo === 0 ? 'gray' : 'teal'}>
-              {val}
-            </Badge>
-          ) : (
-            <Text size="sm" c="dimmed">
-              -
+          return (
+            <Text size="xs" c={!val ? 'dimmed' : undefined} truncate="end">
+              {val || '-'}
             </Text>
           )
         },
@@ -450,27 +444,34 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
       {
         accessorKey: 'ativo',
         header: 'Status',
-        size: 120,
-        Cell: ({ row }) =>
-          row.original.ativo === 0 ? (
-            <Badge color="gray" variant="light" size="sm">
-              Inativo
-            </Badge>
-          ) : (
-            <Badge color="teal" variant="filled" size="sm">
-              Ativo
-            </Badge>
-          ),
+        size: 100,
+        minSize: 80,
+        maxSize: 140,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
+        Cell: ({ row }) => (
+          <Badge
+            color={row.original.ativo === 0 ? 'gray' : 'teal'}
+            variant={row.original.ativo === 0 ? 'light' : 'filled'}
+            size="xs"
+          >
+            {row.original.ativo === 0 ? 'Inativo' : 'Ativo'}
+          </Badge>
+        ),
       },
       {
         id: 'acoes',
         header: 'Ações',
-        size: 130,
+        size: 110,
+        minSize: 100,
+        maxSize: 130,
         enableResizing: false,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
           const isAtivo = row.original.ativo !== 0
           return (
-            <Group gap={4} wrap="nowrap">
+            <Group gap={4} wrap="nowrap" justify="center">
               <Tooltip label={isAtivo ? 'Desativar produto' : 'Ativar produto'}>
                 <ActionIcon
                   color={isAtivo ? 'teal' : 'gray'}
@@ -510,7 +511,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         },
       },
     ],
-    [deletingId, togglingId],
+    [deletingId, togglingId, themeColor],
   )
 
   const table = useMantineReactTable({
@@ -525,6 +526,18 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
     enableBottomToolbar: true,
     enableTopToolbar: true,
     initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '6px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '4px 8px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
     mantineTableProps: {
       striped: true,
       highlightOnHover: true,
