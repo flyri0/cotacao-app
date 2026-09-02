@@ -29,8 +29,9 @@ pessoa/equipe de compras.
 - **Fornecedor**: cadastro mestre, tem `pedido_minimo`.
 - **Rodada**: um ciclo de cotação. Necessidades/Cotações/Alocações sempre
   se referem a uma rodada (`id_rodada`).
-- **Necessidade**: quanto de um produto é preciso numa rodada — é a
-  "lista de produtos em falta" do processo original que este app substitui.
+- **Necessidade**: itens em falta selecionados para a rodada — é a
+  "lista de produtos em falta" do processo que este app gerencia (sem definição
+  prévia de volume; quantidades são definidas diretamente na tela de Alocação).
 - **Cotação**: um preço recebido de um fornecedor pra um produto numa
   rodada. Guarda `marca` (marca ofertada pelo fornecedor), `embalagem`
   (descrição da embalagem comercial), `qtd_por_embalagem`, `unidade` (unidade
@@ -56,8 +57,8 @@ pessoa/equipe de compras.
   central do app.
 - Quantidade em Alocação é arredondada pra cima pro múltiplo da embalagem
   na hora de calcular quanto efetivamente comprar (não dá pra comprar meia
-  caixa) — a diferença entre o necessário e o comprado deve ficar visível
-  na UI, não escondida.
+  caixa) — a sobra por arredondamento da embalagem cotada fica visível
+  na UI (+X sobra).
 - **Configurações & Acessibilidade**: tela de Configurações permite ajustar
   a identidade visual (nome, subtítulo, ícone, tema claro/escuro, cor de destaque)
   e a experiência de exibição:
@@ -73,15 +74,13 @@ pessoa/equipe de compras.
 1. **Comparação**: preço unitário normalizado de cada fornecedor por
    produto, com destaque visual pro menor.
 2. **Alocação**: permitir adicionar quantas linhas quiser pro mesmo
-   produto (dividir/mover), recalculando subtotal em tempo real.
+   produto (dividir/mover), recalculando subtotal e sobras de embalagens
+   em tempo real com salvamento contínuo (autosave).
 3. **Resumo por fornecedor**: soma o total alocado e compara com
    `pedido_minimo` — sinalizar claramente quando não bateu.
-4. **Conferência de necessidade**: soma todas as linhas de Alocação de um
-   produto (mesmo divididas) e compara com a Necessidade da rodada —
-   sinalizar "Falta cobrir" / "Excedente" / "Ok".
-5. **Pedido**: gerar texto por fornecedor, agrupando as linhas de
-   Alocação daquele fornecedor na rodada ativa, com botão de copiar.
-6. **Configurações**: gerenciar backup/restauração/formatação do SQLite
+4. **Pedido**: gerar texto por fornecedor, agrupando as linhas de
+   Alocação daquele fornecedor na rodada ativa, com botão de copiar e DANFE.
+5. **Configurações**: gerenciar backup/restauração/formatação do SQLite
    e preferências visuais/acessibilidade com live preview em tempo real.
 
 ## Convenções de código

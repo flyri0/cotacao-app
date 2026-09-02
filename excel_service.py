@@ -57,8 +57,7 @@ def generate_quote_template_excel(
         SELECT 
             n.id_produto,
             p.nome AS produto_nome,
-            p.categoria AS produto_categoria,
-            n.quantidade AS quantidade_solicitada
+            p.categoria AS produto_categoria
         FROM necessidades n
         JOIN produtos p ON p.id = n.id_produto
         WHERE n.id_rodada = ?
@@ -157,10 +156,9 @@ def generate_quote_template_excel(
         c_cat = ws.cell(row=current_row, column=3, value=nec["produto_categoria"] or "-")
         c_cat.alignment = Alignment(horizontal="center", vertical="center")
 
-        # Coluna D: Quantidade Solicitada
-        c_qtd = ws.cell(row=current_row, column=4, value=nec["quantidade_solicitada"])
-        c_qtd.alignment = Alignment(horizontal="right", vertical="center")
-        c_qtd.number_format = "#,##0.00"
+        # Coluna D: Quantidade Solicitada (opcional/não definida)
+        c_qtd = ws.cell(row=current_row, column=4, value=nec.get("quantidade_solicitada") or "-")
+        c_qtd.alignment = Alignment(horizontal="center", vertical="center")
 
         # Coluna E: Marca Ofertada (Preenchimento)
         c_marca = ws.cell(row=current_row, column=5, value=marca_val)
@@ -337,8 +335,8 @@ def process_quote_excel(
         # Garante que o produto conste nas necessidades da rodada
         cursor.execute(
             """
-            INSERT INTO necessidades (id_rodada, id_produto, quantidade)
-            VALUES (?, ?, 0.0)
+            INSERT INTO necessidades (id_rodada, id_produto)
+            VALUES (?, ?)
             ON CONFLICT(id_rodada, id_produto) DO NOTHING
             """,
             (id_rodada, id_produto),

@@ -140,7 +140,6 @@ def create_schema(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             id_rodada INTEGER NOT NULL,
             id_produto INTEGER NOT NULL,
-            quantidade REAL NOT NULL DEFAULT 0.0,
             FOREIGN KEY (id_rodada) REFERENCES rodadas (id) ON DELETE CASCADE,
             FOREIGN KEY (id_produto) REFERENCES produtos (id),
             UNIQUE (id_rodada, id_produto)
@@ -340,15 +339,15 @@ def populate_demo_db_db(conn: sqlite3.Connection) -> Dict[str, Any]:
 
     # NECESSIDADES NAS RODADAS
     # Rodada 1 (Janeiro)
-    nec_r1 = [(r1, 1, 100.0), (r1, 2, 20.0), (r1, 5, 40.0), (r1, 6, 4000.0), (r1, 9, 30.0), (r1, 11, 15.0)]
+    nec_r1 = [(r1, 1), (r1, 2), (r1, 5), (r1, 6), (r1, 9), (r1, 11)]
     # Rodada 2 (Fevereiro)
-    nec_r2 = [(r2, 1, 120.0), (r2, 2, 25.0), (r2, 3, 30.0), (r2, 5, 50.0), (r2, 6, 5000.0), (r2, 7, 20.0), (r2, 9, 35.0), (r2, 12, 10.0)]
+    nec_r2 = [(r2, 1), (r2, 2), (r2, 3), (r2, 5), (r2, 6), (r2, 7), (r2, 9), (r2, 12)]
     # Rodada 3 (Março)
-    nec_r3 = [(r3, 1, 150.0), (r3, 2, 30.0), (r3, 3, 40.0), (r3, 4, 20.0), (r3, 5, 60.0), (r3, 6, 6000.0), (r3, 8, 25.0), (r3, 9, 40.0), (r3, 10, 50.0), (r3, 11, 20.0)]
+    nec_r3 = [(r3, 1), (r3, 2), (r3, 3), (r3, 4), (r3, 5), (r3, 6), (r3, 8), (r3, 9), (r3, 10), (r3, 11)]
     # Rodada 4 (Atual - Abril)
-    nec_r4 = [(r4, 1, 140.0), (r4, 2, 24.0), (r4, 3, 35.0), (r4, 5, 55.0), (r4, 6, 5000.0), (r4, 9, 45.0), (r4, 11, 18.0), (r4, 12, 12.0)]
+    nec_r4 = [(r4, 1), (r4, 2), (r4, 3), (r4, 5), (r4, 6), (r4, 9), (r4, 11), (r4, 12)]
 
-    cursor.executemany("INSERT INTO necessidades (id_rodada, id_produto, quantidade) VALUES (?, ?, ?)", nec_r1 + nec_r2 + nec_r3 + nec_r4)
+    cursor.executemany("INSERT INTO necessidades (id_rodada, id_produto) VALUES (?, ?)", nec_r1 + nec_r2 + nec_r3 + nec_r4)
 
     # COTAÇÕES HISTÓRICAS (Evolução de preços para gráficos e estatísticas)
     cotacoes_seed = [
@@ -910,7 +909,7 @@ def duplicate_round_needs_db(
     """Copia todas as necessidades de uma rodada de origem para uma rodada de destino que ainda não as possua."""
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id_produto, quantidade FROM necessidades WHERE id_rodada = ?",
+        "SELECT id_produto FROM necessidades WHERE id_rodada = ?",
         (id_origem,),
     )
     itens_origem = cursor.fetchall()
@@ -922,8 +921,8 @@ def duplicate_round_needs_db(
         )
         if not cursor.fetchone():
             cursor.execute(
-                "INSERT INTO necessidades (id_rodada, id_produto, quantidade) VALUES (?, ?, ?)",
-                (id_destino, item["id_produto"], item["quantidade"]),
+                "INSERT INTO necessidades (id_rodada, id_produto) VALUES (?, ?)",
+                (id_destino, item["id_produto"]),
             )
             inseridos += 1
     conn.commit()

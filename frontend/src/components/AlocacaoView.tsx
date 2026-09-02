@@ -59,7 +59,6 @@ export interface LinhaAlocacao {
   id?: number
   id_produto: number
   produto_nome: string
-  quantidade_necessaria: number
   id_fornecedor: number
   quantidade_alocada: number
 }
@@ -140,15 +139,11 @@ export function AlocacaoView({
 
           // Se já existirem alocações salvas no banco para a rodada, carrega-as
           if (listaAloc.length > 0) {
-            const necMap = new Map<number, number>()
-            listaNec.forEach((n) => necMap.set(Number(n.id_produto), Number(n.quantidade)))
-
             const carregadas: LinhaAlocacao[] = listaAloc.map((a, idx) => ({
               key: `aloc-${a.id || idx}-${Math.random().toString(36).substring(2, 6)}`,
               id: a.id,
               id_produto: Number(a.id_produto),
               produto_nome: a.produto_nome,
-              quantidade_necessaria: necMap.get(Number(a.id_produto)) || 0,
               id_fornecedor: Number(a.id_fornecedor),
               quantidade_alocada: Number(a.quantidade) || 0,
             }))
@@ -167,7 +162,6 @@ export function AlocacaoView({
                 key: `init-${n.id_produto}-${idx}`,
                 id_produto: Number(n.id_produto),
                 produto_nome: n.produto_nome,
-                quantidade_necessaria: Number(n.quantidade) || 0,
                 id_fornecedor: melhorFornId,
                 quantidade_alocada: 0,
               }
@@ -255,7 +249,6 @@ export function AlocacaoView({
       id: undefined,
       id_produto: Number(linhaBase.id_produto),
       produto_nome: linhaBase.produto_nome,
-      quantidade_necessaria: Number(linhaBase.quantidade_necessaria),
       id_fornecedor: 0, // zerado
       quantidade_alocada: 0, // zerada para digitação
     }
@@ -308,7 +301,6 @@ export function AlocacaoView({
         key: `sug-${n.id_produto}-${idx}`,
         id_produto: Number(n.id_produto),
         produto_nome: n.produto_nome,
-        quantidade_necessaria: Number(n.quantidade) || 0,
         id_fornecedor: melhorFornId,
         quantidade_alocada: qtdAtual,
       }
@@ -399,16 +391,9 @@ export function AlocacaoView({
         Cell: ({ row }) => {
           const item = row.original
           return (
-            <Stack gap={2}>
-              <Text fw={600} size="sm">
-                {item.produto_nome}
-              </Text>
-              <Group gap={6}>
-                <Text size="xs" c="dimmed">
-                  Necessidade: <b>{item.quantidade_necessaria}</b>
-                </Text>
-              </Group>
-            </Stack>
+            <Text fw={600} size="sm">
+              {item.produto_nome}
+            </Text>
           )
         },
       },

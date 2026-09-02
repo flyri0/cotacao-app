@@ -651,8 +651,7 @@ class Api:
                     n.id_rodada,
                     n.id_produto,
                     p.nome AS produto_nome,
-                    p.categoria AS produto_categoria,
-                    n.quantidade
+                    p.categoria AS produto_categoria
                 FROM necessidades n
                 JOIN produtos p ON p.id = n.id_produto
                 WHERE n.id_rodada = ?
@@ -670,8 +669,6 @@ class Api:
         produto_nome: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Adiciona um produto à rodada de cotação. Auto-cadastra produto caso não exista no catálogo."""
-        quantidade = float(quantidade or 0.0)
-
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_id(conn, id_rodada)
             cursor = conn.cursor()
@@ -705,12 +702,11 @@ class Api:
 
             cursor.execute(
                 """
-                INSERT INTO necessidades (id_rodada, id_produto, quantidade)
-                VALUES (?, ?, ?)
-                ON CONFLICT(id_rodada, id_produto) DO UPDATE SET
-                    quantidade = excluded.quantidade
+                INSERT INTO necessidades (id_rodada, id_produto)
+                VALUES (?, ?)
+                ON CONFLICT(id_rodada, id_produto) DO NOTHING
                 """,
-                (id_rodada, prod_id, quantidade),
+                (id_rodada, prod_id),
             )
             conn.commit()
 
@@ -721,8 +717,7 @@ class Api:
                     n.id_rodada,
                     n.id_produto,
                     p.nome AS produto_nome,
-                    p.categoria AS produto_categoria,
-                    n.quantidade
+                    p.categoria AS produto_categoria
                 FROM necessidades n
                 JOIN produtos p ON p.id = n.id_produto
                 WHERE n.id_rodada = ? AND n.id_produto = ?
@@ -843,8 +838,8 @@ class Api:
             # 3. Garante que o produto conste nas necessidades da rodada ativa
             cursor.execute(
                 """
-                INSERT INTO necessidades (id_rodada, id_produto, quantidade)
-                VALUES (?, ?, 0.0)
+                INSERT INTO necessidades (id_rodada, id_produto)
+                VALUES (?, ?)
                 ON CONFLICT(id_rodada, id_produto) DO NOTHING
                 """,
                 (id_rodada, prod_id),

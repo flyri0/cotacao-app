@@ -35,7 +35,7 @@ export interface Necessidade {
   id_produto: number
   produto_nome: string
   produto_categoria?: string | null
-  quantidade: number
+  quantidade?: number
 }
 
 export interface Cotacao {
