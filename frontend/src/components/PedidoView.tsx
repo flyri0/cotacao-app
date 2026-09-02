@@ -7,10 +7,10 @@ import {
   Group,
   Loader,
   Paper,
+  SimpleGrid,
   Stack,
   Table,
   Text,
-  Textarea,
   ThemeIcon,
   Title,
 } from '@mantine/core'
@@ -414,7 +414,7 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
           description="Vá para a aba Alocação (Ctrl+6) para definir quais fornecedores receberão cada compra antes de gerar os pedidos."
         />
       ) : (
-        <Stack gap="sm">
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs" className="pedidos-grid">
           {pedidosAgrupados.map((pedido) => {
             const estaOculto =
               fornecedorIdImprimir !== null &&
@@ -716,121 +716,87 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                 </Group>
 
                 {/* Tabela dos Itens na Tela (NO-PRINT) */}
-                <Table withTableBorder striped highlightOnHover mb="xs" verticalSpacing={2} horizontalSpacing={6} className="no-print">
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Produto / Item</Table.Th>
-                      <Table.Th>Embalagem</Table.Th>
-                      <Table.Th style={{ textAlign: 'right' }}>Qtd Solicitada</Table.Th>
-                      <Table.Th style={{ textAlign: 'center' }}>Comprar</Table.Th>
-                      <Table.Th style={{ textAlign: 'right' }}>Qtd Total</Table.Th>
-                      <Table.Th style={{ textAlign: 'right' }}>Preço Emb.</Table.Th>
-                      <Table.Th style={{ textAlign: 'right' }}>Preço Unit.</Table.Th>
-                      <Table.Th style={{ textAlign: 'right' }}>Subtotal</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {pedido.itens.map((item) => (
-                      <Table.Tr key={item.id_produto}>
-                        <Table.Td>
-                          <Text fw={600} size="xs">
-                            {item.produto_nome}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Badge variant="light" color="cyan" size="xs">
-                            {item.marca ? `[${item.marca}] ` : ''}{item.embalagem}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="xs">
-                            {item.quantidade_solicitada} {item.unidade}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'center' }}>
-                          <Badge color="indigo" variant="filled" size="xs">
-                            {item.embalagens_comprar} cx/emb
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="xs" fw={600}>
-                            {item.quantidade_efetiva} {item.unidade}
-                          </Text>
-                          {item.sobra > 0 && (
-                            <Text size="10px" c="blue">
-                              (+{item.sobra} sobra)
+                <Table.ScrollContainer minWidth={520} className="no-print">
+                  <Table withTableBorder striped highlightOnHover verticalSpacing={2} horizontalSpacing={4}>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Produto / Item</Table.Th>
+                        <Table.Th>Embalagem</Table.Th>
+                        <Table.Th style={{ textAlign: 'right' }}>Qtd Solicitada</Table.Th>
+                        <Table.Th style={{ textAlign: 'center' }}>Comprar</Table.Th>
+                        <Table.Th style={{ textAlign: 'right' }}>Qtd Total</Table.Th>
+                        <Table.Th style={{ textAlign: 'right' }}>Preço Emb.</Table.Th>
+                        <Table.Th style={{ textAlign: 'right' }}>Preço Unit.</Table.Th>
+                        <Table.Th style={{ textAlign: 'right' }}>Subtotal</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {pedido.itens.map((item) => (
+                        <Table.Tr key={item.id_produto}>
+                          <Table.Td>
+                            <Text fw={600} size="xs">
+                              {item.produto_nome}
                             </Text>
-                          )}
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="xs">{formatMoney(item.preco_embalagem)}</Text>
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'right' }}>
-                          <Text size="xs" c="dimmed">
-                            {formatMoney(item.preco_unitario)} / {item.unidade}
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge variant="light" color="cyan" size="xs">
+                              {item.marca ? `[${item.marca}] ` : ''}{item.embalagem}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'right' }}>
+                            <Text size="xs">
+                              {item.quantidade_solicitada} {item.unidade}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'center' }}>
+                            <Badge color="indigo" variant="filled" size="xs">
+                              {item.embalagens_comprar} cx/emb
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'right' }}>
+                            <Text size="xs" fw={600}>
+                              {item.quantidade_efetiva} {item.unidade}
+                            </Text>
+                            {item.sobra > 0 && (
+                              <Text size="10px" c="blue">
+                                (+{item.sobra} sobra)
+                              </Text>
+                            )}
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'right' }}>
+                            <Text size="xs">{formatMoney(item.preco_embalagem)}</Text>
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'right' }}>
+                            <Text size="xs" c="dimmed">
+                              {formatMoney(item.preco_unitario)} / {item.unidade}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'right' }}>
+                            <Text fw={700} size="xs" c="teal.7">
+                              {formatMoney(item.subtotal)}
+                            </Text>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                      <Table.Tr>
+                        <Table.Td colSpan={7}>
+                          <Text fw={700} size="xs" ta="right">
+                            VALOR TOTAL DO PEDIDO:
                           </Text>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
-                          <Text fw={700} size="xs" c="teal.7">
-                            {formatMoney(item.subtotal)}
+                          <Text fw={800} size="sm" c="teal.7">
+                            {formatMoney(pedido.total_pedido)}
                           </Text>
                         </Table.Td>
                       </Table.Tr>
-                    ))}
-                    <Table.Tr>
-                      <Table.Td colSpan={7}>
-                        <Text fw={700} size="xs" ta="right">
-                          VALOR TOTAL DO PEDIDO:
-                        </Text>
-                      </Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }}>
-                        <Text fw={800} size="sm" c="teal.7">
-                          {formatMoney(pedido.total_pedido)}
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  </Table.Tbody>
-                </Table>
-
-                {/* Área de Texto Pré-formatado para Envio Rápido (Oculta na Impressão) */}
-                <Paper withBorder p="sm" radius="md" className="no-print">
-                  <Group justify="space-between" align="center" mb={4}>
-                    <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-                      Texto Formatado para WhatsApp / E-mail:
-                    </Text>
-                    <Button
-                      size="compact-xs"
-                      variant="subtle"
-                      color="teal"
-                      leftSection={<IconCopy size={12} />}
-                      onClick={() =>
-                        handleCopiarPedido(
-                          pedido.texto_formatado,
-                          pedido.fornecedor.nome,
-                        )
-                      }
-                    >
-                      Copiar
-                    </Button>
-                  </Group>
-                  <Textarea
-                    value={pedido.texto_formatado}
-                    readOnly
-                    autosize
-                    minRows={4}
-                    maxRows={10}
-                    styles={{
-                      input: {
-                        fontFamily: 'monospace',
-                        fontSize: '12px',
-                      },
-                    }}
-                  />
-                </Paper>
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
               </Card>
             )
           })}
-        </Stack>
+        </SimpleGrid>
       )}
     </Stack>
   )

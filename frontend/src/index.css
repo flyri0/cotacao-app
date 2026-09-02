@@ -166,6 +166,10 @@ body,
     background: #ffffff !important;
   }
 
+  .pedidos-grid {
+    display: block !important;
+  }
+
   .pedido-ordem-compra {
     border: none !important;
     box-shadow: none !important;
