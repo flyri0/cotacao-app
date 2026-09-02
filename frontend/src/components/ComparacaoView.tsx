@@ -189,10 +189,15 @@ export function ComparacaoView({
       {
         accessorKey: 'produto_nome',
         header: 'Produto',
-        size: 220,
+        size: 200,
         enablePinning: true,
+        enableColumnFilter: true,
+        mantineFilterTextInputProps: {
+          size: 'xs',
+          placeholder: 'Buscar produto...',
+        },
         Cell: ({ cell }) => (
-          <Text fw={600} size="xs" lineClamp={2}>
+          <Text fw={600} size="xs" lineClamp={2} style={{ lineHeight: 1.2 }}>
             {cell.getValue<string>()}
           </Text>
         ),
@@ -200,16 +205,20 @@ export function ComparacaoView({
       {
         accessorKey: 'produto_categoria',
         header: 'Categoria',
-        size: 140,
+        size: 130,
         enablePinning: true,
+        enableColumnFilter: true,
         filterVariant: 'select',
         mantineFilterSelectProps: {
           data: categoriasUnicas,
+          size: 'xs',
+          clearable: true,
+          placeholder: 'Todas as categorias',
         },
         Cell: ({ cell }) => {
           const cat = cell.getValue<string | null>()
           return cat ? (
-            <Badge size="xs" variant="dot" color="teal">
+            <Badge size="xs" variant="dot" color="teal" style={{ height: 18 }}>
               {cat}
             </Badge>
           ) : (
@@ -226,18 +235,20 @@ export function ComparacaoView({
       cols.push({
         id: `forn_${forn.id}`,
         header: forn.nome,
-        size: 190,
+        size: 155,
+        enableColumnFilter: false,
+        enableColumnActions: false,
         Header: () => (
-          <Stack gap={1} align="center" style={{ width: '100%' }}>
+          <div style={{ lineHeight: 1.15 }}>
             <Text fw={700} size="xs" lineClamp={1}>
               {forn.nome}
             </Text>
             {forn.pedido_minimo > 0 && (
-              <Text size="10px" c="dimmed">
+              <Text size="10px" c="dimmed" fw={400}>
                 Mín: {formatMoney(forn.pedido_minimo)}
               </Text>
             )}
-          </Stack>
+          </div>
         ),
         accessorFn: (row) => {
           const cot = row.cotacoesPorFornecedor[forn.id]
@@ -256,74 +267,62 @@ export function ComparacaoView({
           const cot = row.original.cotacoesPorFornecedor[forn.id]
           if (!cot) {
             return (
-              <Center>
-                <Text size="xs" c="dimmed">
-                  -
-                </Text>
-              </Center>
+              <Text size="xs" c="dimmed" ta="center">
+                -
+              </Text>
             )
           }
 
           const isVencedor = row.original.melhorCotacao?.id === cot.id
 
           return (
-            <Stack
-              gap={3}
-              align="center"
-              justify="center"
-              py={3}
-              px={4}
+            <div
               style={{
                 backgroundColor: isVencedor
                   ? 'var(--mantine-color-teal-light)'
                   : undefined,
                 borderRadius: 'var(--mantine-radius-xs)',
+                padding: '2px 4px',
+                lineHeight: 1.2,
               }}
             >
-              {/* Preço Unitário Normalizado */}
-              <Group gap={4} justify="center" align="center" wrap="nowrap">
-                {isVencedor && (
-                  <Text span size="xs">
-                    🏆
-                  </Text>
-                )}
+              {/* Preço Unitário + Marca em destaque na mesma linha */}
+              <Group gap={4} justify="space-between" wrap="nowrap" align="center">
                 <Text
-                  fw={isVencedor ? 700 : 600}
+                  fw={isVencedor ? 700 : 500}
                   size="xs"
                   c={isVencedor ? 'teal' : undefined}
-                  style={{ lineHeight: 1.2 }}
+                  style={{ whiteSpace: 'nowrap' }}
                 >
-                  {formatMoney(cot.preco_unitario)} / {cot.unidade || 'UN'}
+                  {isVencedor ? '🏆 ' : ''}{formatMoney(cot.preco_unitario)}
                 </Text>
+
+                {cot.marca && (
+                  <Badge
+                    size="xs"
+                    variant={isVencedor ? 'filled' : 'outline'}
+                    color={isVencedor ? 'teal' : 'gray'}
+                    radius="xs"
+                    style={{
+                      textTransform: 'uppercase',
+                      fontSize: '9px',
+                      padding: '0 4px',
+                      height: 16,
+                      lineHeight: '14px',
+                      flexShrink: 0,
+                      maxWidth: 70,
+                    }}
+                  >
+                    {cot.marca}
+                  </Badge>
+                )}
               </Group>
 
-              {/* Destaque Visual da Marca */}
-              {cot.marca ? (
-                <Badge
-                  size="xs"
-                  variant="outline"
-                  color={isVencedor ? 'teal' : 'gray'}
-                  radius="xs"
-                  fw={700}
-                  style={{
-                    textTransform: 'uppercase',
-                    fontSize: '10px',
-                    maxWidth: 170,
-                  }}
-                >
-                  {cot.marca}
-                </Badge>
-              ) : (
-                <Text size="10px" c="dimmed" fs="italic">
-                  (Sem marca)
-                </Text>
-              )}
-
               {/* Embalagem e Preço Fechado */}
-              <Text size="10px" c="dimmed" style={{ lineHeight: 1.1 }}>
+              <Text size="10px" c="dimmed" lineClamp={1} style={{ marginTop: 1 }}>
                 {cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
               </Text>
-            </Stack>
+            </div>
           )
         },
       })
@@ -333,14 +332,14 @@ export function ComparacaoView({
     cols.push({
       id: 'menor_preco',
       header: '🏆 Menor Preço',
-      size: 190,
+      size: 155,
       enablePinning: true,
+      enableColumnFilter: false,
+      enableColumnActions: false,
       Header: () => (
-        <Center style={{ width: '100%' }}>
-          <Text fw={700} size="xs" c="teal" tt="uppercase">
-            🏆 Menor Preço
-          </Text>
-        </Center>
+        <Text fw={700} size="xs" c="teal" tt="uppercase" style={{ lineHeight: 1.15 }}>
+          🏆 Menor Preço
+        </Text>
       ),
       accessorFn: (row) => row.melhorCotacao?.preco_unitario ?? null,
       sortingFn: (rowA, rowB) => {
@@ -353,47 +352,60 @@ export function ComparacaoView({
           row.original
         if (!melhorCotacao) {
           return (
-            <Center>
-              <Text size="xs" c="dimmed">
-                -
-              </Text>
-            </Center>
+            <Text size="xs" c="dimmed" ta="center">
+              -
+            </Text>
           )
         }
 
         return (
-          <Stack
-            gap={2}
-            align="center"
-            py={3}
-            px={4}
+          <div
             style={{
               backgroundColor: 'var(--mantine-color-teal-light)',
               borderRadius: 'var(--mantine-radius-xs)',
+              padding: '2px 4px',
+              lineHeight: 1.2,
             }}
           >
-            <Text fw={700} size="xs" c="teal" style={{ lineHeight: 1.2 }}>
-              {formatMoney(melhorCotacao.preco_unitario)} /{' '}
-              {melhorCotacao.unidade || 'UN'}
-            </Text>
-            <Text size="11px" fw={600} lineClamp={1}>
-              {melhorCotacao.fornecedor_nome}
-            </Text>
-            {melhorCotacao.marca && (
-              <Badge size="xs" variant="light" color="teal" radius="xs" fw={700}>
-                {melhorCotacao.marca}
-              </Badge>
-            )}
-            {economiaPct !== null && economiaPct > 0.1 ? (
-              <Badge size="xs" variant="light" color="teal" mt={1}>
-                -{economiaPct.toFixed(0)}% vs 2º lugar
-              </Badge>
-            ) : ranking.length === 1 ? (
-              <Badge size="xs" variant="light" color="gray" mt={1}>
-                Única oferta
-              </Badge>
-            ) : null}
-          </Stack>
+            <Group gap={4} justify="space-between" wrap="nowrap" align="center">
+              <Text fw={700} size="xs" c="teal" style={{ whiteSpace: 'nowrap' }}>
+                {formatMoney(melhorCotacao.preco_unitario)}
+              </Text>
+              {melhorCotacao.marca && (
+                <Badge
+                  size="xs"
+                  variant="filled"
+                  color="teal"
+                  radius="xs"
+                  style={{
+                    textTransform: 'uppercase',
+                    fontSize: '9px',
+                    padding: '0 4px',
+                    height: 16,
+                    lineHeight: '14px',
+                    flexShrink: 0,
+                    maxWidth: 70,
+                  }}
+                >
+                  {melhorCotacao.marca}
+                </Badge>
+              )}
+            </Group>
+            <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ marginTop: 1 }}>
+              <Text size="10px" fw={600} lineClamp={1} style={{ flex: 1 }}>
+                {melhorCotacao.fornecedor_nome}
+              </Text>
+              {economiaPct !== null && economiaPct > 0.1 ? (
+                <Text size="10px" fw={700} c="teal" style={{ whiteSpace: 'nowrap' }}>
+                  -{economiaPct.toFixed(0)}%
+                </Text>
+              ) : ranking.length === 1 ? (
+                <Text size="10px" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                  Única
+                </Text>
+              ) : null}
+            </Group>
+          </div>
         )
       },
     })
@@ -407,6 +419,9 @@ export function ComparacaoView({
     data: dadosLinhas,
     localization: MRT_Localization_PT_BR,
     enableDensityToggle: false,
+    enableFullScreenToggle: false,
+    enableHiding: false,
+    enableColumnActions: false,
     enablePagination: false,
     enableBottomToolbar: false,
     enableTopToolbar: true,
@@ -423,8 +438,30 @@ export function ComparacaoView({
       },
       showGlobalFilter: true,
     },
+    mantineSearchTextInputProps: {
+      size: 'xs',
+      placeholder: 'Pesquisar produto ou marca...',
+    },
     mantineTableContainerProps: {
       style: { maxHeight: 'calc(100vh - 240px)' },
+    },
+    mantineTableHeadCellProps: {
+      style: {
+        padding: '4px 6px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTableBodyCellProps: {
+      style: {
+        padding: '2px 4px',
+        fontSize: 'var(--app-font-base, 13px)',
+      },
+    },
+    mantineTopToolbarProps: {
+      style: {
+        minHeight: 40,
+        padding: '4px 8px',
+      },
     },
     mantineTableProps: {
       striped: true,
