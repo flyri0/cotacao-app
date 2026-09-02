@@ -3,12 +3,12 @@ import unittest
 from db import (
     create_schema,
     seed_data,
-    seed_configuracoes,
-    obter_configuracoes_db,
-    salvar_configuracao_db,
-    salvar_todas_configuracoes_db,
-    formatar_banco_dados_db,
-    obter_estatisticas_produto_db,
+    seed_settings,
+    get_db_settings,
+    save_db_setting,
+    save_all_db_settings,
+    format_database_db,
+    get_product_statistics_db,
 )
 
 
@@ -42,19 +42,19 @@ class TestDatabaseSchema(unittest.TestCase):
 
     def test_configuracoes_crud(self) -> None:
         """Testa inserção, atualização e leitura das configurações do sistema."""
-        seed_configuracoes(self.conn)
-        configs = obter_configuracoes_db(self.conn)
+        seed_settings(self.conn)
+        configs = get_db_settings(self.conn)
         self.assertEqual(configs.get("app_nome"), "Mapa de Cotações")
         self.assertEqual(configs.get("app_icone"), "Scale")
 
-        salvar_configuracao_db(self.conn, "app_nome", "Central de Compras")
-        configs_atualizadas = obter_configuracoes_db(self.conn)
+        save_db_setting(self.conn, "app_nome", "Central de Compras")
+        configs_atualizadas = get_db_settings(self.conn)
         self.assertEqual(configs_atualizadas.get("app_nome"), "Central de Compras")
 
     def test_estatisticas_produto(self) -> None:
         """Testa o cálculo de estatísticas históricas e ranking de um produto."""
         seed_data(self.conn)
-        stats = obter_estatisticas_produto_db(self.conn, 1)  # Detergente
+        stats = get_product_statistics_db(self.conn, 1)  # Detergente
 
         self.assertEqual(stats["produto"]["nome"], "Detergente Líquido Neutro 500ml")
         self.assertEqual(stats["total_cotacoes"], 13)
@@ -66,7 +66,7 @@ class TestDatabaseSchema(unittest.TestCase):
         """Testa a formatação segura do banco de dados."""
         seed_data(self.conn)
         # Formata sem seed
-        formatar_banco_dados_db(self.conn, com_seed=False)
+        format_database_db(self.conn, com_seed=False)
         cursor = self.conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM produtos")
         self.assertEqual(cursor.fetchone()[0], 0)
@@ -74,7 +74,7 @@ class TestDatabaseSchema(unittest.TestCase):
         self.assertEqual(cursor.fetchone()[0], 0)
 
         # Formata com seed
-        formatar_banco_dados_db(self.conn, com_seed=True)
+        format_database_db(self.conn, com_seed=True)
         cursor.execute("SELECT COUNT(*) FROM produtos")
         self.assertEqual(cursor.fetchone()[0], 12)
 

@@ -24,12 +24,12 @@ class TestApi(unittest.TestCase):
     # Testes de Configurações
     # -------------------------------------------------------------------------
     def test_configuracoes_api(self) -> None:
-        configs = self.api.obter_configuracoes()
+        configs = self.api.get_settings()
         self.assertIn("app_nome", configs)
         self.assertEqual(configs["app_nome"], "Mapa de Cotações")
         self.assertIn("app_color_scheme", configs)
 
-        novas = self.api.salvar_configuracoes(
+        novas = self.api.save_settings(
             {
                 "app_nome": "Central de Suprimentos",
                 "app_subtitulo": "Controle Inteligente",
@@ -84,30 +84,30 @@ class TestApi(unittest.TestCase):
     # Testes de Status e Setup Inicial do Banco
     # -------------------------------------------------------------------------
     def test_verificar_status_banco_api(self) -> None:
-        status = self.api.verificar_status_banco()
+        status = self.api.check_db_status()
         self.assertTrue(status["inicializado"])
         self.assertEqual(status["total_produtos"], 12)
         self.assertEqual(status["total_fornecedores"], 5)
         self.assertEqual(status["total_rodadas"], 4)
 
     def test_inicializar_banco_em_branco_api(self) -> None:
-        self.api.formatar_banco_dados(com_seed=False)
-        res = self.api.inicializar_banco_em_branco()
+        self.api.format_database(com_seed=False)
+        res = self.api.initialize_empty_db()
         self.assertTrue(res["sucesso"])
         self.assertEqual(res["tipo"], "em_branco")
 
     def test_popular_banco_demo_completo_api(self) -> None:
-        res = self.api.popular_banco_demo_completo()
+        res = self.api.populate_demo_db()
         self.assertTrue(res["sucesso"])
-        self.assertEqual(len(self.api.listar_produtos()), 12)
-        self.assertEqual(len(self.api.listar_fornecedores()), 5)
-        self.assertEqual(len(self.api.listar_rodadas()), 4)
+        self.assertEqual(len(self.api.list_products()), 12)
+        self.assertEqual(len(self.api.list_suppliers()), 5)
+        self.assertEqual(len(self.api.list_rounds()), 4)
 
     # -------------------------------------------------------------------------
     # Testes de Estatísticas de Produtos e Fornecedores
     # -------------------------------------------------------------------------
     def test_obter_estatisticas_produto_api(self) -> None:
-        stats = self.api.obter_estatisticas_produto(1)  # Detergente
+        stats = self.api.get_product_statistics(1)  # Detergente
         self.assertEqual(stats["produto"]["nome"], "Detergente Líquido Neutro 500ml")
         self.assertEqual(stats["total_cotacoes"], 13)
         self.assertEqual(stats["total_rodadas"], 4)
@@ -116,14 +116,14 @@ class TestApi(unittest.TestCase):
         self.assertGreater(len(stats["ranking_fornecedores"]), 0)
 
     def test_obter_estatisticas_fornecedor_api(self) -> None:
-        stats = self.api.obter_estatisticas_fornecedor(1)  # Distribuidora Alvorada
+        stats = self.api.get_supplier_statistics(1)  # Distribuidora Alvorada
         self.assertEqual(stats["fornecedor"]["nome"], "Distribuidora Alvorada")
         self.assertGreater(stats["total_cotacoes"], 0)
         self.assertGreater(stats["total_alocacoes"], 0)
         self.assertGreater(stats["volume_financeiro_alocado"], 0.0)
 
     def test_obter_historico_global_cotacoes_api(self) -> None:
-        historico = self.api.obter_historico_global_cotacoes()
+        historico = self.api.get_global_quotes_history()
         self.assertGreater(len(historico), 20)
         self.assertIn("foi_alocado", historico[0])
         self.assertIn("preco_unitario", historico[0])
@@ -132,26 +132,26 @@ class TestApi(unittest.TestCase):
     # Testes de Formatação do Banco
     # -------------------------------------------------------------------------
     def test_formatar_banco_dados_api(self) -> None:
-        res = self.api.formatar_banco_dados(com_seed=False)
+        res = self.api.format_database(com_seed=False)
         self.assertTrue(res["sucesso"])
-        self.assertEqual(len(self.api.listar_produtos()), 0)
+        self.assertEqual(len(self.api.list_products()), 0)
 
-        res_seed = self.api.formatar_banco_dados(com_seed=True)
+        res_seed = self.api.format_database(com_seed=True)
         self.assertTrue(res_seed["sucesso"])
-        self.assertEqual(len(self.api.listar_produtos()), 12)
+        self.assertEqual(len(self.api.list_products()), 12)
 
     # -------------------------------------------------------------------------
     # Testes de Produtos
     # -------------------------------------------------------------------------
     def test_listar_produtos(self) -> None:
-        produtos = self.api.listar_produtos()
+        produtos = self.api.list_products()
         self.assertEqual(len(produtos), 12)
         self.assertTrue(all(isinstance(p, dict) for p in produtos))
         self.assertIn("nome", produtos[0])
         self.assertIn("ativo", produtos[0])
 
     def test_criar_e_remover_produto(self) -> None:
-        novo = self.api.criar_produto(
+        novo = self.api.create_product(
             nome="Luva Nitrílica Descartável Tam M", categoria="Higiene"
         )
         self.assertIsNotNone(novo.get("id"))
@@ -159,22 +159,22 @@ class TestApi(unittest.TestCase):
         self.assertEqual(novo["categoria"], "Higiene")
 
         # Verifica se aparece na listagem
-        produtos = self.api.listar_produtos()
+        produtos = self.api.list_products()
         self.assertEqual(len(produtos), 13)
 
         # Remove o produto
-        res = self.api.remover_produto(novo["id"])
+        res = self.api.remove_product(novo["id"])
         self.assertTrue(res["sucesso"])
-        self.assertEqual(len(self.api.listar_produtos()), 12)
+        self.assertEqual(len(self.api.list_products()), 12)
 
     def test_criar_produto_invalido(self) -> None:
         with self.assertRaises(ValueError):
-            self.api.criar_produto(nome="   ")
+            self.api.create_product(nome="   ")
 
     def test_atualizar_produto_api(self) -> None:
-        produtos = self.api.listar_produtos()
+        produtos = self.api.list_products()
         prod = produtos[0]
-        atualizado = self.api.atualizar_produto(
+        atualizado = self.api.update_product(
             id_produto=prod["id"],
             nome="Produto Teste Atualizado",
             categoria="Nova Categoria",
@@ -185,19 +185,19 @@ class TestApi(unittest.TestCase):
 
         # Não deve permitir nome em branco
         with self.assertRaises(ValueError):
-            self.api.atualizar_produto(id_produto=prod["id"], nome="   ")
+            self.api.update_product(id_produto=prod["id"], nome="   ")
 
         # Não deve permitir ID inexistente
         with self.assertRaises(ValueError):
-            self.api.atualizar_produto(id_produto=999999, nome="Inexistente")
+            self.api.update_product(id_produto=999999, nome="Inexistente")
 
     def test_atualizar_produto_nome_duplicado_api(self) -> None:
-        produtos = self.api.listar_produtos()
+        produtos = self.api.list_products()
         prod1 = produtos[0]
         prod2 = produtos[1]
         # Tentar mudar o nome do prod1 para o nome do prod2
         with self.assertRaises(ValueError):
-            self.api.atualizar_produto(
+            self.api.update_product(
                 id_produto=prod1["id"],
                 nome=prod2["nome"],
             )
@@ -205,7 +205,7 @@ class TestApi(unittest.TestCase):
     def test_bloqueio_exclusao_produto_com_historico(self) -> None:
         # Produto 1 (Detergente) tem necessidades, cotações e alocações
         with self.assertRaises(ValueError) as ctx:
-            self.api.remover_produto(1)
+            self.api.remove_product(1)
         self.assertIn("possui vínculos históricos", str(ctx.exception))
         self.assertIn("Desativar", str(ctx.exception))
 
@@ -216,28 +216,28 @@ class TestApi(unittest.TestCase):
         self.assertEqual(res["produto"]["ativo"], 0)
 
         # Filtro de apenas ativos deve retornar 11
-        self.assertEqual(len(self.api.listar_produtos(apenas_ativos=True)), 11)
+        self.assertEqual(len(self.api.list_products(apenas_ativos=True)), 11)
         # Listagem total deve retornar 12
-        self.assertEqual(len(self.api.listar_produtos(apenas_ativos=False)), 12)
+        self.assertEqual(len(self.api.list_products(apenas_ativos=False)), 12)
 
         # Reativa produto 1
         res_ativar = self.api.alternar_status_produto(1, True)
         self.assertTrue(res_ativar["sucesso"])
         self.assertEqual(res_ativar["produto"]["ativo"], 1)
-        self.assertEqual(len(self.api.listar_produtos(apenas_ativos=True)), 12)
+        self.assertEqual(len(self.api.list_products(apenas_ativos=True)), 12)
 
     # -------------------------------------------------------------------------
     # Testes de Fornecedores
     # -------------------------------------------------------------------------
     def test_listar_fornecedores(self) -> None:
-        fornecedores = self.api.listar_fornecedores()
+        fornecedores = self.api.list_suppliers()
         self.assertEqual(len(fornecedores), 5)
         self.assertTrue(all("pedido_minimo" in f for f in fornecedores))
 
     def test_bloqueio_exclusao_fornecedor_com_historico(self) -> None:
         # Fornecedor 1 (Distribuidora Alvorada) tem cotações e alocações
         with self.assertRaises(ValueError) as ctx:
-            self.api.remover_fornecedor(1)
+            self.api.remove_supplier(1)
         self.assertIn("possui vínculos históricos", str(ctx.exception))
         self.assertIn("Desativar", str(ctx.exception))
 
@@ -248,18 +248,18 @@ class TestApi(unittest.TestCase):
         self.assertEqual(res["fornecedor"]["ativo"], 0)
 
         # Filtro de apenas ativos deve retornar 4
-        self.assertEqual(len(self.api.listar_fornecedores(apenas_ativos=True)), 4)
+        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=True)), 4)
         # Listagem total deve retornar 5
-        self.assertEqual(len(self.api.listar_fornecedores(apenas_ativos=False)), 5)
+        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=False)), 5)
 
         # Reativa fornecedor 1
         res_ativar = self.api.alternar_status_fornecedor(1, True)
         self.assertTrue(res_ativar["sucesso"])
         self.assertEqual(res_ativar["fornecedor"]["ativo"], 1)
-        self.assertEqual(len(self.api.listar_fornecedores(apenas_ativos=True)), 5)
+        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=True)), 5)
 
     def test_criar_e_remover_fornecedor(self) -> None:
-        novo = self.api.criar_fornecedor(
+        novo = self.api.create_supplier(
             nome="Distribuidora Alpha",
             contato="Roberto",
             telefone="1199999999",
@@ -270,17 +270,17 @@ class TestApi(unittest.TestCase):
         self.assertEqual(novo["nome"], "Distribuidora Alpha")
         self.assertEqual(novo["pedido_minimo"], 350.0)
 
-        fornecedores = self.api.listar_fornecedores()
+        fornecedores = self.api.list_suppliers()
         self.assertEqual(len(fornecedores), 6)
 
-        res = self.api.remover_fornecedor(novo["id"])
+        res = self.api.remove_supplier(novo["id"])
         self.assertTrue(res["sucesso"])
-        self.assertEqual(len(self.api.listar_fornecedores()), 5)
+        self.assertEqual(len(self.api.list_suppliers()), 5)
 
     def test_atualizar_fornecedor_api(self) -> None:
-        fornecedores = self.api.listar_fornecedores()
+        fornecedores = self.api.list_suppliers()
         forn = fornecedores[0]
-        atualizado = self.api.atualizar_fornecedor(
+        atualizado = self.api.update_supplier(
             id_fornecedor=forn["id"],
             nome="Fornecedor Beta Modificado",
             contato="Mariana Vendas",
@@ -297,19 +297,19 @@ class TestApi(unittest.TestCase):
 
         # Não deve permitir nome em branco
         with self.assertRaises(ValueError):
-            self.api.atualizar_fornecedor(id_fornecedor=forn["id"], nome="   ")
+            self.api.update_supplier(id_fornecedor=forn["id"], nome="   ")
 
         # Não deve permitir ID inexistente
         with self.assertRaises(ValueError):
-            self.api.atualizar_fornecedor(id_fornecedor=999999, nome="Inexistente")
+            self.api.update_supplier(id_fornecedor=999999, nome="Inexistente")
 
     def test_atualizar_fornecedor_nome_duplicado_api(self) -> None:
-        fornecedores = self.api.listar_fornecedores()
+        fornecedores = self.api.list_suppliers()
         forn1 = fornecedores[0]
         forn2 = fornecedores[1]
         # Tentar mudar o nome do forn1 para o nome do forn2
         with self.assertRaises(ValueError):
-            self.api.atualizar_fornecedor(
+            self.api.update_supplier(
                 id_fornecedor=forn1["id"],
                 nome=forn2["nome"],
             )
@@ -318,18 +318,18 @@ class TestApi(unittest.TestCase):
     # Testes de Rodadas
     # -------------------------------------------------------------------------
     def test_listar_e_criar_rodada(self) -> None:
-        rodadas = self.api.listar_rodadas()
+        rodadas = self.api.list_rounds()
         self.assertEqual(len(rodadas), 4)
 
-        nova = self.api.criar_rodada("Cotação Extra Maio 2026")
+        nova = self.api.create_round("Cotação Extra Maio 2026")
         self.assertEqual(nova["descricao"], "Cotação Extra Maio 2026")
         self.assertEqual(nova["status"], "aberta")
 
-        rodadas_atualizadas = self.api.listar_rodadas()
+        rodadas_atualizadas = self.api.list_rounds()
         self.assertEqual(len(rodadas_atualizadas), 5)
 
     def test_listar_rodadas_com_metricas_api(self) -> None:
-        rodadas = self.api.listar_rodadas_com_metricas()
+        rodadas = self.api.list_rounds_with_metrics()
         self.assertEqual(len(rodadas), 4)
         self.assertIn("total_necessidades", rodadas[0])
         self.assertIn("total_cotacoes", rodadas[0])
@@ -338,69 +338,69 @@ class TestApi(unittest.TestCase):
 
     def test_atualizar_rodada_api(self) -> None:
         # Atualiza rodada 4 para fechada
-        atualizada = self.api.atualizar_rodada(4, "Cotação Abril 2026 Finalizada", "fechada")
+        atualizada = self.api.update_round(4, "Cotação Abril 2026 Finalizada", "fechada")
         self.assertEqual(atualizada["descricao"], "Cotação Abril 2026 Finalizada")
         self.assertEqual(atualizada["status"], "fechada")
 
     def test_duplicar_e_remover_rodada_api(self) -> None:
         # Cria rodada 5 clonando necessidades da rodada 1
-        nova = self.api.criar_rodada("Cotação Junho 2026", "aberta", duplicar_de_id=1)
-        necessidades = self.api.listar_necessidades(nova["id"])
+        nova = self.api.create_round("Cotação Junho 2026", "aberta", duplicar_de_id=1)
+        necessidades = self.api.list_needs(nova["id"])
         self.assertEqual(len(necessidades), 6)
 
         # Exclui rodada 5
-        res = self.api.remover_rodada(nova["id"])
+        res = self.api.remove_round(nova["id"])
         self.assertTrue(res["sucesso"])
-        self.assertEqual(len(self.api.listar_rodadas()), 4)
+        self.assertEqual(len(self.api.list_rounds()), 4)
 
     def test_bloqueio_exclusao_rodada_com_historico_api(self) -> None:
         # Rodada 1 tem cotações e alocações
         with self.assertRaises(ValueError) as ctx:
-            self.api.remover_rodada(1)
+            self.api.remove_round(1)
         self.assertIn("possui vínculos históricos", str(ctx.exception))
         self.assertIn("cancelada", str(ctx.exception))
 
         # Reabrir a rodada 1 não deve contornar a proteção de integridade
-        self.api.atualizar_rodada(1, "Rodada Reaberta", "aberta")
+        self.api.update_round(1, "Rodada Reaberta", "aberta")
         with self.assertRaises(ValueError) as ctx:
-            self.api.remover_rodada(1)
+            self.api.remove_round(1)
         self.assertIn("possui vínculos históricos", str(ctx.exception))
 
     def test_cancelar_rodada_e_bloqueio_mutacao_api(self) -> None:
         # Atualiza rodada 4 para cancelada
-        atualizada = self.api.atualizar_rodada(4, "Cotação Cancelada", "cancelada")
+        atualizada = self.api.update_round(4, "Cotação Cancelada", "cancelada")
         self.assertEqual(atualizada["status"], "cancelada")
 
         # Tentar adicionar necessidade em rodada cancelada deve falhar
         with self.assertRaises(ValueError) as ctx:
-            self.api.criar_necessidade(id_rodada=4, id_produto=1)
+            self.api.create_need(id_rodada=4, id_produto=1)
         self.assertIn("cancelada", str(ctx.exception))
 
     # -------------------------------------------------------------------------
     # Testes de Necessidades (sem exigir quantidade)
     # -------------------------------------------------------------------------
     def test_listar_necessidades(self) -> None:
-        necessidades = self.api.listar_necessidades(id_rodada=1)
+        necessidades = self.api.list_needs(id_rodada=1)
         self.assertEqual(len(necessidades), 6)
         self.assertIn("produto_nome", necessidades[0])
 
     def test_criar_e_remover_necessidade(self) -> None:
         # Cadastra produto avulso
-        prod = self.api.criar_produto(nome="Pano Multiuso Rolo")
+        prod = self.api.create_product(nome="Pano Multiuso Rolo")
 
         # Adiciona necessidade na rodada 4 (sem quantidade obrigatória)
-        nec = self.api.criar_necessidade(id_rodada=4, id_produto=prod["id"])
+        nec = self.api.create_need(id_rodada=4, id_produto=prod["id"])
         self.assertEqual(nec["produto_nome"], "Pano Multiuso Rolo")
 
         # Remove necessidade
-        res = self.api.remover_necessidade(nec["id"])
+        res = self.api.remove_need(nec["id"])
         self.assertTrue(res["sucesso"])
 
     # -------------------------------------------------------------------------
     # Testes de Cotações e Normalização de Preço
     # -------------------------------------------------------------------------
     def test_listar_cotacoes_calculo_preco_unitario(self) -> None:
-        cotacoes = self.api.listar_cotacoes(id_rodada=1)
+        cotacoes = self.api.list_quotes(id_rodada=1)
         self.assertEqual(len(cotacoes), 14)
 
         # Verifica se o preço unitário está presente e calculado
@@ -415,7 +415,7 @@ class TestApi(unittest.TestCase):
 
     def test_criar_e_remover_cotacao(self) -> None:
         # Cria cotação: Caixa com 50 unidades a R$ 100.00 -> unitário 2.00
-        cotacao = self.api.criar_cotacao(
+        cotacao = self.api.create_quote(
             id_rodada=4,
             id_fornecedor=1,
             id_produto=1,
@@ -431,13 +431,13 @@ class TestApi(unittest.TestCase):
         self.assertEqual(cotacao["preco_unitario"], 2.00)
 
         # Remove cotação
-        res = self.api.remover_cotacao(cotacao["id"])
+        res = self.api.remove_quote(cotacao["id"])
         self.assertTrue(res["sucesso"])
 
     def test_auto_cadastro_produto_na_cotacao(self) -> None:
         # Cotação com produto que ainda não existe no catálogo
         novo_prod_nome = "Desinfetante Lavanda 5L Inédito"
-        cotacao = self.api.criar_cotacao(
+        cotacao = self.api.create_quote(
             id_rodada=4,
             id_fornecedor=1,
             produto_nome=novo_prod_nome,
@@ -454,18 +454,18 @@ class TestApi(unittest.TestCase):
         self.assertAlmostEqual(cotacao["preco_unitario"], 7.0, places=2)
 
         # Verifica se o produto agora existe no catálogo
-        produtos = self.api.listar_produtos()
+        produtos = self.api.list_products()
         cadastrado = next((p for p in produtos if p["nome"] == novo_prod_nome), None)
         self.assertIsNotNone(cadastrado)
 
         # Verifica se foi inserido nas necessidades da rodada 4
-        necessidades = self.api.listar_necessidades(id_rodada=4)
+        necessidades = self.api.list_needs(id_rodada=4)
         nec = next((n for n in necessidades if n["produto_nome"] == novo_prod_nome), None)
         self.assertIsNotNone(nec)
 
         # Fornecedor inexistente deve falhar
         with self.assertRaises(ValueError):
-            self.api.criar_cotacao(
+            self.api.create_quote(
                 id_rodada=4,
                 id_fornecedor=99999,
                 produto_nome="Outro Produto",
@@ -478,7 +478,7 @@ class TestApi(unittest.TestCase):
     # Testes de Alocações
     # -------------------------------------------------------------------------
     def test_listar_alocacoes(self) -> None:
-        alocacoes = self.api.listar_alocacoes(id_rodada=1)
+        alocacoes = self.api.list_allocations(id_rodada=1)
         self.assertEqual(len(alocacoes), 6)
         self.assertIn("produto_nome", alocacoes[0])
         self.assertIn("fornecedor_nome", alocacoes[0])
@@ -507,11 +507,11 @@ class TestApi(unittest.TestCase):
                 "quantidade": 50.0,
             },
         ]
-        res = self.api.salvar_alocacoes(id_rodada=4, alocacoes=novas_alocacoes)
+        res = self.api.save_allocations(id_rodada=4, alocacoes=novas_alocacoes)
         self.assertTrue(res["sucesso"])
         self.assertEqual(res["total_alocacoes"], 3)
 
-        alocs = self.api.listar_alocacoes(id_rodada=4)
+        alocs = self.api.list_allocations(id_rodada=4)
         self.assertEqual(len(alocs), 3)
 
         # Filtra alocações do produto 1 para confirmar a divisão permitida
@@ -520,12 +520,12 @@ class TestApi(unittest.TestCase):
         self.assertEqual(sum(a["quantidade"] for a in alocs_prod1), 120.0)
 
     def test_remover_alocacao(self) -> None:
-        alocs = self.api.listar_alocacoes(id_rodada=4)
+        alocs = self.api.list_allocations(id_rodada=4)
         id_remover = alocs[0]["id"]
-        res = self.api.remover_alocacao(id_remover)
+        res = self.api.remove_allocation(id_remover)
         self.assertTrue(res["sucesso"])
 
-        alocs_apos = self.api.listar_alocacoes(id_rodada=4)
+        alocs_apos = self.api.list_allocations(id_rodada=4)
         self.assertEqual(len(alocs_apos), len(alocs) - 1)
 
     # -------------------------------------------------------------------------
@@ -541,7 +541,7 @@ class TestApi(unittest.TestCase):
             os.remove(caminho_inexistente)
 
         api_inexistente = Api(db_path=caminho_inexistente)
-        status = api_inexistente.verificar_status_banco()
+        status = api_inexistente.check_db_status()
         self.assertFalse(status["inicializado"])
 
     def test_salvar_e_obter_ultimo_banco_path(self) -> None:

@@ -74,7 +74,7 @@ class TestHttpServer(unittest.TestCase):
 
     def test_api_post_method_execution(self):
         """Valida execução dinâmica de métodos da API via HTTP POST."""
-        url = f"http://127.0.0.1:{self.port}/api/obter_configuracoes"
+        url = f"http://127.0.0.1:{self.port}/api/get_settings"
         req = urllib.request.Request(
             url,
             data=json.dumps({"args": []}).encode("utf-8"),
@@ -89,7 +89,7 @@ class TestHttpServer(unittest.TestCase):
     def test_api_method_with_arguments(self):
         """Valida execução de método com passagem de argumentos."""
         # Cria um produto via API HTTP
-        url_criar = f"http://127.0.0.1:{self.port}/api/criar_produto"
+        url_criar = f"http://127.0.0.1:{self.port}/api/create_product"
         payload = {"args": ["Produto Teste HTTP", "Alimentos"]}
         req = urllib.request.Request(
             url_criar,

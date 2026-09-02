@@ -7,12 +7,12 @@ import openpyxl
 from api import Api
 from db import create_schema, seed_data
 from excel_service import (
-    gerar_planilha_modelo_cotacao_db,
-    processar_planilha_cotacao_db,
-    exportar_produtos_excel_db,
-    importar_produtos_excel_db,
-    exportar_fornecedores_excel_db,
-    importar_fornecedores_excel_db,
+    generate_quote_template_excel,
+    process_quote_excel,
+    export_products_excel_db,
+    import_products_excel_db,
+    export_suppliers_excel_db,
+    import_suppliers_excel_db,
 )
 
 
@@ -32,7 +32,7 @@ class TestExcelService(unittest.TestCase):
 
     def test_gerar_e_processar_planilha_cotacao(self) -> None:
         # Gera modelo de cotação para rodada 1
-        res = self.api.exportar_planilha_cotacao(id_rodada=1, id_fornecedor=1)
+        res = self.api.export_quote_spreadsheet(id_rodada=1, id_fornecedor=1)
         self.assertTrue(res["sucesso"])
         self.assertIn("conteudo_base64", res)
         self.assertGreater(res["total_itens"], 0)
@@ -70,7 +70,7 @@ class TestExcelService(unittest.TestCase):
         filled_b64 = base64.b64encode(out_buf.read()).decode("utf-8")
 
         # Importa de volta via API
-        import_res = self.api.importar_planilha_cotacao(
+        import_res = self.api.import_quote_spreadsheet(
             id_rodada=1, id_fornecedor=1, conteudo_base64=filled_b64
         )
         self.assertTrue(import_res["sucesso"])
@@ -78,7 +78,7 @@ class TestExcelService(unittest.TestCase):
         self.assertEqual(import_res.get("produtos_criados"), 1)
 
     def test_exportar_e_importar_produtos_excel(self) -> None:
-        exp = self.api.exportar_produtos_excel()
+        exp = self.api.export_products_excel()
         self.assertTrue(exp["sucesso"])
         self.assertEqual(exp["total"], 12)
 
@@ -93,15 +93,15 @@ class TestExcelService(unittest.TestCase):
         buf.seek(0)
         novo_b64 = base64.b64encode(buf.read()).decode("utf-8")
 
-        imp = self.api.importar_produtos_excel(novo_b64)
+        imp = self.api.import_products_excel(novo_b64)
         self.assertTrue(imp["sucesso"])
         self.assertEqual(imp["importados"], 1)
 
-        produtos = self.api.listar_produtos()
+        produtos = self.api.list_products()
         self.assertEqual(len(produtos), 13)
 
     def test_exportar_e_importar_fornecedores_excel(self) -> None:
-        exp = self.api.exportar_fornecedores_excel()
+        exp = self.api.export_suppliers_excel()
         self.assertTrue(exp["sucesso"])
         self.assertEqual(exp["total"], 5)
 
@@ -116,9 +116,9 @@ class TestExcelService(unittest.TestCase):
         buf.seek(0)
         novo_b64 = base64.b64encode(buf.read()).decode("utf-8")
 
-        imp = self.api.importar_fornecedores_excel(novo_b64)
+        imp = self.api.import_suppliers_excel(novo_b64)
         self.assertTrue(imp["sucesso"])
         self.assertEqual(imp["importados"], 1)
 
-        fornecedores = self.api.listar_fornecedores()
+        fornecedores = self.api.list_suppliers()
         self.assertEqual(len(fornecedores), 6)
