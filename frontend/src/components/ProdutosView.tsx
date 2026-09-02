@@ -64,7 +64,7 @@ function downloadBase64File(
   document.body.removeChild(a)
 }
 
-export function ProdutosView() {
+export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -474,20 +474,22 @@ export function ProdutosView() {
                 <ActionIcon
                   color={isAtivo ? 'teal' : 'gray'}
                   variant="subtle"
+                  size="sm"
                   loading={togglingId === row.original.id}
                   onClick={() => handleToggleAtivo(row.original)}
                 >
-                  <IconPower size={18} />
+                  <IconPower size={16} />
                 </ActionIcon>
               </Tooltip>
 
               <Tooltip label="Editar produto">
                 <ActionIcon
-                  color="blue"
+                  color={themeColor}
                   variant="subtle"
+                  size="sm"
                   onClick={() => handleAbrirEdicao(row.original)}
                 >
-                  <IconEdit size={18} />
+                  <IconEdit size={16} />
                 </ActionIcon>
               </Tooltip>
 
@@ -495,10 +497,11 @@ export function ProdutosView() {
                 <ActionIcon
                   color="red"
                   variant="subtle"
+                  size="sm"
                   loading={deletingId === row.original.id}
                   onClick={() => handleRemover(row.original.id, row.original.nome)}
                 >
-                  <IconTrash size={18} />
+                  <IconTrash size={16} />
                 </ActionIcon>
               </Tooltip>
             </Group>
@@ -535,18 +538,18 @@ export function ProdutosView() {
     <Stack gap="xs" style={{ width: '100%' }}>
       <PageHeader
         icon={IconPackage}
-        iconColor="blue"
+        iconColor={themeColor}
         title="Cadastro de Produtos"
         subtitle="Cadastre itens digitando e usando Enter"
         badge={{
           label: `${produtos.length} ${produtos.length === 1 ? 'produto' : 'produtos'}`,
-          color: 'blue',
+          color: themeColor,
         }}
         rightSection={
           <Group gap="xs">
             <Button
               variant="light"
-              color="blue"
+              color={themeColor}
               size="xs"
               leftSection={<IconDownload size={14} />}
               loading={exportandoExcel}
@@ -556,7 +559,7 @@ export function ProdutosView() {
             </Button>
             <Button
               variant="outline"
-              color="blue"
+              color={themeColor}
               size="xs"
               leftSection={<IconUpload size={14} />}
               onClick={openModalImportar}
@@ -609,8 +612,10 @@ export function ProdutosView() {
             />
             <Button
               type="submit"
+              variant="filled"
+              color={themeColor}
               size="xs"
-              leftSection={<IconPlus size={15} />}
+              leftSection={<IconPlus size={14} />}
               loading={submitting}
             >
               Adicionar <Kbd ml={4} size="xs">Enter</Kbd>
@@ -634,20 +639,21 @@ export function ProdutosView() {
         onClose={closeModalEditar}
         title={
           <Group gap="xs">
-            <IconEdit size={20} />
+            <IconEdit size={18} />
             <Text fw={700}>
               Editar Produto: {produtoEmEdicao?.nome}
             </Text>
           </Group>
         }
         centered
-        radius="md"
+        radius="sm"
         size="lg"
       >
         <form onSubmit={formEdicao.onSubmit(handleSalvarEdicao)}>
-          <Stack gap="md">
+          <Stack gap="sm">
             <TextInput
               label="Nome do Produto"
+              size="xs"
               placeholder="Ex: Detergente Neutro 500ml"
               required
               {...formEdicao.getInputProps('nome')}
@@ -655,16 +661,17 @@ export function ProdutosView() {
 
             <AppAutocomplete
               label="Categoria"
+              size="xs"
               placeholder="Ex: Limpeza, Descartáveis"
               data={categoriasSugeridas}
               {...formEdicao.getInputProps('categoria')}
             />
 
-            <Group justify="flex-end" mt="md">
-              <Button variant="light" color="gray" onClick={closeModalEditar}>
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditar}>
                 Cancelar
               </Button>
-              <Button type="submit" color="blue" loading={salvandoEdicao}>
+              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvandoEdicao}>
                 Salvar Alterações
               </Button>
             </Group>
@@ -678,36 +685,39 @@ export function ProdutosView() {
         onClose={closeModalImportar}
         title={
           <Group gap="xs">
-            <IconFileSpreadsheet size={22} color="#3B82F6" />
+            <IconFileSpreadsheet size={18} />
             <Text fw={700}>Importar Produtos via Planilha Excel (.xlsx)</Text>
           </Group>
         }
         centered
-        radius="md"
+        radius="sm"
       >
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
             Faça upload de uma planilha contendo colunas: <b>Nome do Produto</b>, <b>Categoria</b> e <b>Unidade Padrão</b>.
           </Text>
 
           <FileInput
             label="Arquivo Excel (.xlsx)"
+            size="xs"
             placeholder="Selecione o arquivo de produtos..."
             accept=".xlsx,.xls"
             value={arquivoExcel}
             onChange={setArquivoExcel}
-            leftSection={<IconFileSpreadsheet size={18} />}
+            leftSection={<IconFileSpreadsheet size={14} />}
             clearable
             required
           />
 
-          <Group justify="flex-end" mt="md">
-            <Button variant="light" color="gray" onClick={closeModalImportar}>
+          <Group justify="flex-end" gap="xs" mt="md">
+            <Button variant="subtle" color="gray" size="xs" onClick={closeModalImportar}>
               Cancelar
             </Button>
             <Button
-              color="blue"
-              leftSection={<IconUpload size={16} />}
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              leftSection={<IconUpload size={14} />}
               loading={importandoExcel}
               onClick={handleProcessarImportacaoExcel}
             >

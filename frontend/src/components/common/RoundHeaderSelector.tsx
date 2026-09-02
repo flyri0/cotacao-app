@@ -9,6 +9,7 @@ interface RoundHeaderSelectorProps {
   onSelectRodada: (id: number) => void
   onNovaRodadaClick?: () => void
   disabled?: boolean
+  themeColor?: string
 }
 
 export function RoundHeaderSelector({
@@ -17,6 +18,7 @@ export function RoundHeaderSelector({
   onSelectRodada,
   onNovaRodadaClick,
   disabled = false,
+  themeColor = 'blue',
 }: RoundHeaderSelectorProps) {
   const rodadaSelecionada = rodadas.find((r) => r.id === selectedRodadaId)
   const isAberta = rodadaSelecionada?.status === 'aberta'
@@ -25,7 +27,7 @@ export function RoundHeaderSelector({
     <Group gap="xs" align="center">
       <AppSelect
         placeholder="Selecione a rodada..."
-        leftSection={<IconRotate size={16} />}
+        leftSection={<IconRotate size={14} />}
         data={rodadas.map((r) => ({
           value: r.id.toString(),
           label: `${r.descricao} (${r.status === 'aberta' ? 'Aberta' : 'Fechada'})`,
@@ -34,8 +36,8 @@ export function RoundHeaderSelector({
         onChange={(val) => {
           if (val) onSelectRodada(parseInt(val, 10))
         }}
-        style={{ width: 280 }}
-        size="sm"
+        style={{ width: 240 }}
+        size="xs"
         allowDeselect={false}
         disabled={disabled}
       />
@@ -43,10 +45,10 @@ export function RoundHeaderSelector({
       {rodadaSelecionada && (
         <Tooltip label={isAberta ? 'Rodada aberta para compras' : 'Rodada finalizada/fechada'}>
           <Badge
-            color={isAberta ? 'green' : 'gray'}
+            color={isAberta ? 'teal' : 'gray'}
             variant={isAberta ? 'light' : 'outline'}
-            size="md"
-            leftSection={isAberta ? <IconLockOpen size={12} /> : <IconLock size={12} />}
+            size="xs"
+            leftSection={isAberta ? <IconLockOpen size={11} /> : <IconLock size={11} />}
           >
             {isAberta ? 'Aberta' : 'Fechada'}
           </Badge>
@@ -57,9 +59,9 @@ export function RoundHeaderSelector({
         <Tooltip label="Criar nova rodada de cotação">
           <Button
             variant="light"
-            color="blue"
-            size="sm"
-            leftSection={<IconPlus size={16} />}
+            color={themeColor}
+            size="xs"
+            leftSection={<IconPlus size={14} />}
             onClick={onNovaRodadaClick}
           >
             Nova

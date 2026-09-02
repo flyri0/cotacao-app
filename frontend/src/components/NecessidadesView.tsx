@@ -43,11 +43,13 @@ import type { Necessidade, Produto, Rodada } from '../types'
 interface NecessidadesViewProps {
   rodadaAtivaId?: number
   onRodadaChange?: (id: number) => void
+  themeColor?: string
 }
 
 export function NecessidadesView({
   rodadaAtivaId,
   onRodadaChange,
+  themeColor = 'blue',
 }: NecessidadesViewProps) {
   const [rodadas, setRodadas] = useState<Rodada[]>([])
   const [selectedRodadaId, setSelectedRodadaId] = useState<number | null>(
@@ -383,27 +385,21 @@ export function NecessidadesView({
     <Stack gap="xs" style={{ width: '100%' }}>
       <PageHeader
         icon={IconChecklist}
-        iconColor="indigo"
+        iconColor={themeColor}
         title="Produtos em Falta (Necessidades)"
         subtitle="Selecione no autocomplete ou tecle Enter"
         rightSection={
-          <Group gap="xs">
-            {isFechada && (
-              <Badge variant="filled" color="red" size="xs">
-                Rodada Fechada
-              </Badge>
-            )}
-            <RoundHeaderSelector
-              rodadas={rodadas}
-              selectedRodadaId={selectedRodadaId}
-              onSelectRodada={(id) => {
-                setSelectedRodadaId(id)
-                onRodadaChange?.(id)
-                carregarNecessidades(id)
-              }}
-              onNovaRodadaClick={openModalNovaRodada}
-            />
-          </Group>
+          <RoundHeaderSelector
+            rodadas={rodadas}
+            selectedRodadaId={selectedRodadaId}
+            themeColor={themeColor}
+            onSelectRodada={(id) => {
+              setSelectedRodadaId(id)
+              onRodadaChange?.(id)
+              carregarNecessidades(id)
+            }}
+            onNovaRodadaClick={openModalNovaRodada}
+          />
         }
       />
 
@@ -442,8 +438,10 @@ export function NecessidadesView({
 
             <Button
               type="submit"
+              variant="filled"
+              color={themeColor}
               size="xs"
-              leftSection={<IconPlus size={15} />}
+              leftSection={<IconPlus size={14} />}
               loading={submitting}
             >
               Adicionar <Kbd ml={4} size="xs">Enter</Kbd>
@@ -476,16 +474,18 @@ export function NecessidadesView({
         onClose={closeModalNovaRodada}
         title={
           <Group gap="xs">
-            <IconPlus size={20} color="#228be6" />
+            <IconPlus size={18} />
             <Text fw={700}>Criar Nova Rodada de Cotação</Text>
           </Group>
         }
+        radius="sm"
         centered
       >
         <form onSubmit={formNovaRodada.onSubmit(handleCriarNovaRodada)}>
-          <Stack gap="md">
+          <Stack gap="sm">
             <TextInput
               label="Descrição / Nome da Rodada"
+              size="xs"
               placeholder="Ex: Cotação Geral - Maio 2026"
               required
               autoFocus
@@ -496,6 +496,7 @@ export function NecessidadesView({
               label="Copiar produtos de rodada anterior (Opcional)"
               description="Duplica os itens em falta da rodada escolhida"
               placeholder="Nenhuma (Começar lista vazia)"
+              size="xs"
               data={rodadas.map((r) => ({
                 value: String(r.id),
                 label: `#${r.id} - ${r.descricao}`,
@@ -507,20 +508,21 @@ export function NecessidadesView({
 
             <Radio.Group
               label="Status Inicial"
+              size="xs"
               value={formNovaRodada.values.status}
               onChange={(val) => formNovaRodada.setFieldValue('status', val)}
             >
               <Group mt="xs">
-                <Radio value="aberta" label="Aberta (Em andamento)" />
-                <Radio value="fechada" label="Fechada" />
+                <Radio value="aberta" label="Aberta (Em andamento)" color="teal" size="xs" />
+                <Radio value="fechada" label="Fechada" color="gray" size="xs" />
               </Group>
             </Radio.Group>
 
-            <Group justify="flex-end" mt="md">
-              <Button variant="default" onClick={closeModalNovaRodada}>
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalNovaRodada}>
                 Cancelar
               </Button>
-              <Button type="submit" color="blue" loading={salvandoRodada} leftSection={<IconPlus size={16} />}>
+              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvandoRodada} leftSection={<IconPlus size={14} />}>
                 Criar e Selecionar
               </Button>
             </Group>

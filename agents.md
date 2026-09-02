@@ -95,6 +95,10 @@ pessoa/equipe de compras.
   objetos Python customizados.
 - Sem `localStorage`/`sessionStorage` no frontend — o estado que importa
   vive no SQLite via a API Python.
+- **Design System & Interface**: toda alteração de UI, componente ou nova tela
+  deve seguir estritamente as diretrizes de `DESIGN_SYSTEM.md` na raiz do projeto
+  (herança da `themeColor`, cores semânticas estritas, alta densidade `size="xs"`
+  e alinhamentos de tabela).
 
 ## Comandos
 - `npm run dev` (dentro de `frontend/`) — Vite em modo desenvolvimento
@@ -108,3 +112,4 @@ pessoa/equipe de compras.
 - Não guardar preço unitário calculado no banco.
 - Não restringir Alocação a uma linha por (produto, rodada).
 - Não adicionar frameworks pesados de backend (FastAPI/Flask/Django) — o `server.py` nativo (`http.server`) e a bridge do `pywebview` já cobrem tudo com máxima leveza e compatibilidade com Win7.
+- Não usar cores fixas arbitrárias por tela ou estilos hexadecimais inline — seguir sempre `DESIGN_SYSTEM.md`.

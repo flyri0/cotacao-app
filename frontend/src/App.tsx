@@ -550,11 +550,12 @@ export default function App() {
 
       <AppShell.Main>
         <Container fluid px={4} style={{ width: '100%', maxWidth: '100%' }}>
-          {activeTab === 'produtos' && <ProdutosView />}
-          {activeTab === 'fornecedores' && <FornecedoresView />}
+          {activeTab === 'produtos' && <ProdutosView themeColor={themeColor} />}
+          {activeTab === 'fornecedores' && <FornecedoresView themeColor={themeColor} />}
           {activeTab === 'rodadas' && (
             <RodadasView
               rodadaAtivaId={rodadaAtivaId}
+              themeColor={themeColor}
               onSelecionarRodada={(id, aba) => {
                 setRodadaAtivaId(id)
                 if (aba === 'necessidades' || aba === 'cotacoes' || aba === 'comparacao' || aba === 'alocacao' || aba === 'resumo' || aba === 'pedido') {
@@ -566,43 +567,50 @@ export default function App() {
           {activeTab === 'necessidades' && (
             <NecessidadesView
               rodadaAtivaId={rodadaAtivaId}
+              themeColor={themeColor}
               onRodadaChange={setRodadaAtivaId}
             />
           )}
           {activeTab === 'cotacoes' && (
             <CotacoesView
               rodadaAtivaId={rodadaAtivaId}
+              themeColor={themeColor}
               onRodadaChange={setRodadaAtivaId}
             />
           )}
           {activeTab === 'comparacao' && (
             <ComparacaoView
               rodadaAtivaId={rodadaAtivaId}
+              themeColor={themeColor}
               onRodadaChange={setRodadaAtivaId}
             />
           )}
           {activeTab === 'alocacao' && (
             <AlocacaoView
               rodadaAtivaId={rodadaAtivaId}
+              themeColor={themeColor}
               onRodadaChange={setRodadaAtivaId}
             />
           )}
           {activeTab === 'resumo' && (
             <ResumoView
               rodadaAtivaId={rodadaAtivaId}
+              themeColor={themeColor}
               onRodadaChange={setRodadaAtivaId}
             />
           )}
           {activeTab === 'pedido' && (
             <PedidoView
               rodadaAtivaId={rodadaAtivaId}
+              themeColor={themeColor}
               onRodadaChange={setRodadaAtivaId}
             />
           )}
-          {activeTab === 'estatisticas' && <EstatisticasView />}
+          {activeTab === 'estatisticas' && <EstatisticasView themeColor={themeColor} />}
           {activeTab === 'configuracoes' && (
             <ConfiguracoesView
               configuracoes={configuracoes}
+              themeColor={themeColor}
               onConfiguracoesAlteradas={(novas) => setConfiguracoes(novas)}
             />
           )}
@@ -615,11 +623,12 @@ export default function App() {
         onClose={closeHelp}
         title={
           <Group gap="xs">
-            <IconKeyboard size={20} />
+            <IconKeyboard size={18} />
             <Text fw={700}>Atalhos de Teclado do Sistema</Text>
           </Group>
         }
         size="md"
+        radius="sm"
         centered
       >
         <Table withTableBorder striped highlightOnHover>

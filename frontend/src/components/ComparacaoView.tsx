@@ -9,7 +9,6 @@ import {
   Stack,
   Table,
   Text,
-  useComputedColorScheme,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
@@ -19,6 +18,7 @@ import {
 } from '@tabler/icons-react'
 import { PageHeader } from './common/PageHeader'
 import { RoundHeaderSelector } from './common/RoundHeaderSelector'
+import { StatCard } from './common/StatCard'
 import { EmptyState } from './common/EmptyState'
 import { getApi } from '../services/api'
 import type { Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
@@ -36,11 +36,13 @@ function formatMoney(valor: number, maxDigits = 4): string {
 interface ComparacaoViewProps {
   rodadaAtivaId?: number
   onRodadaChange?: (id: number) => void
+  themeColor?: string
 }
 
 export function ComparacaoView({
   rodadaAtivaId,
   onRodadaChange,
+  themeColor = 'blue',
 }: ComparacaoViewProps) {
   const [rodadas, setRodadas] = useState<Rodada[]>([])
   const [selectedRodadaId, setSelectedRodadaId] = useState<number | null>(
@@ -50,8 +52,6 @@ export function ComparacaoView({
   const [cotacoes, setCotacoes] = useState<Cotacao[]>([])
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
   const [loading, setLoading] = useState(true)
-  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
-  const isDark = computedColorScheme === 'dark'
 
   const carregarDados = async (rodadaId?: number) => {
     try {
@@ -123,20 +123,22 @@ export function ComparacaoView({
     rankingsPorProduto.forEach((cots) => {
       if (cots.length > 0) totalComCotacao++
     })
-    return { totalItens, totalComCotacao }
+    const percentual = totalItens > 0 ? Math.round((totalComCotacao / totalItens) * 100) : 0
+    return { totalItens, totalComCotacao, percentual }
   }, [necessidades, rankingsPorProduto])
 
   return (
     <Stack gap="xs" style={{ width: '100%' }}>
       <PageHeader
         icon={IconScale}
-        iconColor="orange"
+        iconColor={themeColor}
         title="Mapa Comparativo de Cotações"
         subtitle="Normalização por unidade de medida"
         rightSection={
           <RoundHeaderSelector
             rodadas={rodadas}
             selectedRodadaId={selectedRodadaId}
+            themeColor={themeColor}
             onSelectRodada={(id) => {
               setSelectedRodadaId(id)
               onRodadaChange?.(id)
@@ -146,78 +148,40 @@ export function ComparacaoView({
         }
       />
 
-      {/* Barra de Resumo e Legenda de Cores */}
+      {/* Cartões KPIs Padronizados (StatCard) */}
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
-        <Paper withBorder p="xs" radius="sm">
-          <Group justify="space-between">
-            <Text size="11px" c="dimmed" fw={700} tt="uppercase">
-              Itens na Rodada
-            </Text>
-            <Badge color="blue" size="xs" variant="light">
-              {stats.totalComCotacao}/{stats.totalItens} Cotados
-            </Badge>
-          </Group>
-        </Paper>
+        <StatCard
+          label="Cobertura de Cotações"
+          value={`${stats.totalComCotacao} de ${stats.totalItens}`}
+          subtitle="Itens com preço cotado"
+          icon={IconScale}
+          color={themeColor}
+          badge={{
+            label: `${stats.percentual}% Coberto`,
+            color: stats.percentual === 100 ? 'teal' : themeColor,
+          }}
+        />
 
-        <Paper withBorder p="xs" radius="sm">
-          <Group justify="space-between">
-            <Text size="11px" c="dimmed" fw={700} tt="uppercase">
-              Fornecedores na Matriz
-            </Text>
-            <Badge color="cyan" size="xs" variant="light" leftSection={<IconTruck size={12} />}>
-              {fornecedoresNaTabela.length} Participantes
-            </Badge>
-          </Group>
-        </Paper>
+        <StatCard
+          label="Fornecedores na Matriz"
+          value={fornecedoresNaTabela.length}
+          subtitle="Participantes concorrendo na rodada"
+          icon={IconTruck}
+          color="teal"
+          badge={{ label: 'Ativos', color: 'teal' }}
+        />
 
-        <Paper withBorder p="xs" radius="sm">
-          <Group justify="space-between" align="center">
-            <Text size="11px" c="dimmed" fw={700} tt="uppercase">
-              Ranking:
-            </Text>
-            <Group gap={4}>
-              <Badge
-                size="xs"
-                variant="filled"
-                styles={{
-                  root: {
-                    backgroundColor: isDark ? 'rgba(43, 138, 62, 0.4)' : '#bbf7d0',
-                    color: isDark ? '#8ce99a' : '#166534',
-                  },
-                }}
-              >
-                1º Menor
-              </Badge>
-              <Badge
-                size="xs"
-                variant="filled"
-                styles={{
-                  root: {
-                    backgroundColor: isDark ? 'rgba(245, 159, 0, 0.35)' : '#fef08a',
-                    color: isDark ? '#ffd43b' : '#854d0e',
-                  },
-                }}
-              >
-                2º Lugar
-              </Badge>
-              <Badge
-                size="xs"
-                variant="filled"
-                styles={{
-                  root: {
-                    backgroundColor: isDark ? 'rgba(224, 49, 49, 0.35)' : '#fecaca',
-                    color: isDark ? '#ffa8a8' : '#991b1b',
-                  },
-                }}
-              >
-                3º Lugar
-              </Badge>
-            </Group>
-          </Group>
-        </Paper>
+        <StatCard
+          label="Critério de Destaque"
+          value="Menor Preço"
+          subtitle="Normalizado por unidade (🏆 1º Lugar)"
+          color="teal"
+          valueColor="teal"
+          badge={{ label: 'Melhor Oferta', color: 'teal' }}
+        />
       </SimpleGrid>
 
-      {/* TABELA DE EXCEL COMPACTA */}
+      {/* SUPER-PLANILHA DE EXCEL COM PAINÉIS CONGELADOS */}
       {loading ? (
         <Center p="xl">
           <Loader size="lg" />
@@ -229,19 +193,20 @@ export function ComparacaoView({
         />
       ) : (
         <Paper withBorder radius="sm" style={{ overflow: 'hidden' }}>
-          <Table.ScrollContainer minWidth={850}>
+          <Table.ScrollContainer minWidth={850} style={{ maxHeight: 'calc(100vh - 240px)' }}>
             <Table
+              className="table-sticky-column-first table-sticky-header"
               withTableBorder
               withColumnBorders
               striped
               highlightOnHover
-              verticalSpacing={3}
-              horizontalSpacing={6}
+              verticalSpacing={4}
+              horizontalSpacing={8}
               style={{ fontSize: 'var(--app-font-base, 13px)', borderCollapse: 'collapse' }}
             >
-              <Table.Thead style={{ backgroundColor: isDark ? 'var(--mantine-color-dark-6)' : '#f1f3f5' }}>
+              <Table.Thead>
                 <Table.Tr>
-                  <Table.Th style={{ width: 280, padding: '5px 8px' }}>
+                  <Table.Th style={{ width: 280, padding: '6px 10px' }}>
                     <Text fw={700} size="xs" tt="uppercase" c="dimmed">
                       Produto
                     </Text>
@@ -253,8 +218,7 @@ export function ComparacaoView({
                       style={{
                         textAlign: 'center',
                         minWidth: 180,
-                        padding: '8px 6px',
-                        borderLeft: isDark ? '1px solid var(--mantine-color-dark-4)' : '1px solid #dee2e6',
+                        padding: '6px 8px',
                       }}
                     >
                       <Text fw={700} size="xs" lineClamp={1}>
@@ -270,14 +234,13 @@ export function ComparacaoView({
 
                   <Table.Th
                     style={{
-                      width: 170,
+                      width: 190,
                       textAlign: 'center',
-                      padding: '8px 6px',
-                      backgroundColor: isDark ? 'rgba(18, 184, 134, 0.20)' : '#e6fcf5',
-                      borderLeft: isDark ? '1px solid var(--mantine-color-dark-4)' : '1px solid #dee2e6',
+                      padding: '6px 8px',
+                      backgroundColor: 'var(--mantine-color-teal-light)',
                     }}
                   >
-                    <Text fw={700} size="xs" c={isDark ? 'teal.3' : 'teal.9'} tt="uppercase">
+                    <Text fw={700} size="xs" c="teal" tt="uppercase">
                       🏆 Menor Preço
                     </Text>
                   </Table.Th>
@@ -288,10 +251,11 @@ export function ComparacaoView({
                 {necessidades.map((nec) => {
                   const rankingDoProd = rankingsPorProduto.get(nec.id_produto) || []
                   const melhorCotacao = rankingDoProd.length > 0 ? rankingDoProd[0] : null
+                  const segundaMelhor = rankingDoProd.length > 1 ? rankingDoProd[1] : null
 
                   return (
                     <Table.Tr key={nec.id}>
-                      {/* Coluna 1: Nome do Produto */}
+                      {/* Coluna 1: Nome do Produto (Congelada à esquerda via sticky) */}
                       <Table.Td style={{ padding: '6px 10px', verticalAlign: 'middle' }}>
                         <Text fw={600} size="xs" lineClamp={1}>
                           {nec.produto_nome}
@@ -303,7 +267,7 @@ export function ComparacaoView({
                         )}
                       </Table.Td>
 
-                      {/* Colunas dos Fornecedores (Células Compactas com Background de Ranking) */}
+                      {/* Colunas dos Fornecedores (Células Limpas, Destaque apenas no Vencedor) */}
                       {fornecedoresNaTabela.map((forn) => {
                         const cot = cotacoes.find(
                           (c) => c.id_produto === nec.id_produto && c.id_fornecedor === forn.id,
@@ -316,10 +280,8 @@ export function ComparacaoView({
                               style={{
                                 textAlign: 'center',
                                 verticalAlign: 'middle',
-                                backgroundColor: isDark ? 'transparent' : '#fcfcfc',
-                                color: isDark ? 'var(--mantine-color-dark-2)' : '#adb5bd',
+                                color: 'var(--mantine-color-dimmed)',
                                 padding: '6px',
-                                borderLeft: isDark ? '1px solid var(--mantine-color-dark-4)' : '1px solid #dee2e6',
                               }}
                             >
                               -
@@ -329,36 +291,33 @@ export function ComparacaoView({
 
                         // Posição no ranking do produto
                         const posicao = rankingDoProd.findIndex((c) => c.id === cot.id) + 1
-
-                        // Cor de fundo e texto conforme ranking e tema
-                        let bgCell = 'transparent'
-                        let textPrecoColor = 'inherit'
-
-                        if (posicao === 1) {
-                          bgCell = isDark ? 'rgba(43, 138, 62, 0.35)' : '#d3f9d8'
-                          textPrecoColor = isDark ? '#8ce99a' : '#14532d'
-                        } else if (posicao === 2) {
-                          bgCell = isDark ? 'rgba(245, 159, 0, 0.28)' : '#fff3bf'
-                          textPrecoColor = isDark ? '#ffd43b' : '#713f12'
-                        } else if (posicao === 3) {
-                          bgCell = isDark ? 'rgba(224, 49, 49, 0.28)' : '#ffe3e3'
-                          textPrecoColor = isDark ? '#ffa8a8' : '#7f1d1d'
-                        }
+                        const isVencedor = posicao === 1
 
                         return (
                           <Table.Td
                             key={forn.id}
                             style={{
-                              backgroundColor: bgCell,
+                              backgroundColor: isVencedor ? 'var(--mantine-color-teal-light)' : undefined,
                               textAlign: 'center',
                               verticalAlign: 'middle',
                               padding: '5px 8px',
-                              borderLeft: isDark ? '1px solid var(--mantine-color-dark-4)' : '1px solid #dee2e6',
                             }}
                           >
-                            <Text fw={700} size="xs" c={textPrecoColor} style={{ lineHeight: 1.2 }}>
-                              {formatMoney(cot.preco_unitario)} / {cot.unidade || 'UN'}
-                            </Text>
+                            <Group gap={4} justify="center" align="center">
+                              {isVencedor && (
+                                <Text span size="xs">
+                                  🏆
+                                </Text>
+                              )}
+                              <Text
+                                fw={isVencedor ? 700 : 500}
+                                size="xs"
+                                c={isVencedor ? 'teal' : undefined}
+                                style={{ lineHeight: 1.2 }}
+                              >
+                                {formatMoney(cot.preco_unitario)} / {cot.unidade || 'UN'}
+                              </Text>
+                            </Group>
                             <Text size="10px" c="dimmed" style={{ lineHeight: 1.1, marginTop: 2 }}>
                               {cot.marca ? `[${cot.marca}] ` : ''}{cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
                             </Text>
@@ -366,24 +325,32 @@ export function ComparacaoView({
                         )
                       })}
 
-                      {/* Coluna Resumo Menor Preço */}
+                      {/* Coluna Menor Preço com Cálculo de Economia vs 2º Lugar */}
                       <Table.Td
                         style={{
-                          backgroundColor: '#f4fbf7',
+                          backgroundColor: 'var(--mantine-color-teal-light)',
                           textAlign: 'center',
                           verticalAlign: 'middle',
                           padding: '5px 8px',
-                          borderLeft: '1px solid #dee2e6',
                         }}
                       >
                         {melhorCotacao ? (
                           <div>
-                            <Text fw={700} size="xs" c="teal.9" style={{ lineHeight: 1.2 }}>
+                            <Text fw={700} size="xs" c="teal" style={{ lineHeight: 1.2 }}>
                               {formatMoney(melhorCotacao.preco_unitario)}
                             </Text>
-                            <Text size="10px" fw={600} c="teal.8" lineClamp={1}>
+                            <Text size="10px" fw={600} lineClamp={1}>
                               {melhorCotacao.fornecedor_nome}
                             </Text>
+                            {segundaMelhor && segundaMelhor.preco_unitario > melhorCotacao.preco_unitario ? (
+                              <Badge size="xs" variant="light" color="teal" mt={2}>
+                                -{(((segundaMelhor.preco_unitario - melhorCotacao.preco_unitario) / segundaMelhor.preco_unitario) * 100).toFixed(0)}% vs 2º
+                              </Badge>
+                            ) : rankingDoProd.length === 1 ? (
+                              <Badge size="xs" variant="light" color="gray" mt={2}>
+                                Única oferta
+                              </Badge>
+                            ) : null}
                           </div>
                         ) : (
                           <Text size="xs" c="dimmed">

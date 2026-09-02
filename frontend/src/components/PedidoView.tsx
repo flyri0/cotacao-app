@@ -71,9 +71,14 @@ interface PedidoPorFornecedor {
 interface PedidoViewProps {
   rodadaAtivaId?: number
   onRodadaChange?: (id: number) => void
+  themeColor?: string
 }
 
-export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
+export function PedidoView({
+  rodadaAtivaId,
+  onRodadaChange,
+  themeColor = 'blue',
+}: PedidoViewProps) {
   const [rodadas, setRodadas] = useState<Rodada[]>([])
   const [selectedRodadaId, setSelectedRodadaId] = useState<number | null>(
     rodadaAtivaId || null,
@@ -364,13 +369,14 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
       <div className="no-print">
         <PageHeader
           icon={IconFileText}
-          iconColor="blue"
+          iconColor={themeColor}
           title="Geração de Pedidos de Compra"
           subtitle="Ordens de compra formatadas por fornecedor"
           rightSection={
             <RoundHeaderSelector
               rodadas={rodadas}
               selectedRodadaId={selectedRodadaId}
+              themeColor={themeColor}
               onSelectRodada={(id) => {
                 setSelectedRodadaId(id)
                 onRodadaChange?.(id)
@@ -390,7 +396,7 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                 Resumo da Rodada
               </Text>
               <Group gap="xs" align="baseline">
-                <Title order={4} c="teal.7" style={{ fontSize: '1.2rem' }}>
+                <Title order={4} c="teal" style={{ fontSize: '1.2rem' }}>
                   {formatMoney(valorTotalGeral)}
                 </Title>
                 <Text size="xs" c="dimmed">
@@ -430,7 +436,7 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
 
               <Button
                 variant="filled"
-                color="teal"
+                color={themeColor}
                 size="xs"
                 leftSection={<IconClipboardCopy size={14} />}
                 onClick={handleCopiarTodos}
@@ -735,11 +741,11 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                         </Badge>
                       )}
 
-                      <Badge color="blue" variant="light" size="xs">
+                      <Badge color={themeColor} variant="light" size="xs">
                         {pedido.itens.length} {pedido.itens.length === 1 ? 'item' : 'itens'} ({totalEmbalagensFechadas} cx)
                       </Badge>
 
-                      <Text fw={800} size="sm" c="teal.7" style={{ minWidth: 90, textAlign: 'right' }}>
+                      <Text fw={800} size="sm" c="teal" style={{ minWidth: 90, textAlign: 'right' }}>
                         {formatMoney(pedido.total_pedido)}
                       </Text>
 
@@ -756,7 +762,7 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
 
                         <Button
                           variant="light"
-                          color="teal"
+                          color={themeColor}
                           size="xs"
                           leftSection={<IconCopy size={14} />}
                           onClick={() =>

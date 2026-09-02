@@ -126,11 +126,13 @@ const SUGESTOES_UNIDADES = [
 interface CotacoesViewProps {
   rodadaAtivaId?: number
   onRodadaChange?: (id: number) => void
+  themeColor?: string
 }
 
 export function CotacoesView({
   rodadaAtivaId,
   onRodadaChange,
+  themeColor = 'blue',
 }: CotacoesViewProps) {
   const [rodadas, setRodadas] = useState<Rodada[]>([])
   const [selectedRodadaId, setSelectedRodadaId] = useState<number | null>(
@@ -720,11 +722,12 @@ export function CotacoesView({
               {prod && (
                 <Tooltip label={`Editar cadastro de "${prod.nome}"`}>
                   <ActionIcon
-                    color="blue"
+                    color={themeColor}
                     variant="subtle"
+                    size="sm"
                     onClick={() => handleAbrirEdicaoProduto(prod)}
                   >
-                    <IconEdit size={18} />
+                    <IconEdit size={16} />
                   </ActionIcon>
                 </Tooltip>
               )}
@@ -732,6 +735,7 @@ export function CotacoesView({
                 <ActionIcon
                   color="red"
                   variant="subtle"
+                  size="sm"
                   loading={deletingId === item.id}
                   disabled={isFechada}
                   onClick={() =>
@@ -742,7 +746,7 @@ export function CotacoesView({
                     )
                   }
                 >
-                  <IconTrash size={18} />
+                  <IconTrash size={16} />
                 </ActionIcon>
               </Tooltip>
             </Group>
@@ -780,19 +784,14 @@ export function CotacoesView({
       {/* Cabeçalho */}
       <PageHeader
         icon={IconReceipt}
-        iconColor="teal"
+        iconColor={themeColor}
         title="Cotações de Preços"
         subtitle="Normalização automática de preço por unidade"
         rightSection={
           <Group gap="xs">
-            {isFechada && (
-              <Badge variant="filled" color="red" size="xs">
-                Rodada Fechada
-              </Badge>
-            )}
             <Button
               variant="light"
-              color="teal"
+              color={themeColor}
               size="xs"
               leftSection={<IconDownload size={14} />}
               loading={exportandoExcel}
@@ -802,7 +801,7 @@ export function CotacoesView({
             </Button>
             <Button
               variant="outline"
-              color="teal"
+              color={themeColor}
               size="xs"
               leftSection={<IconUpload size={14} />}
               onClick={openModalImportar}
@@ -813,6 +812,7 @@ export function CotacoesView({
             <RoundHeaderSelector
               rodadas={rodadas}
               selectedRodadaId={selectedRodadaId}
+              themeColor={themeColor}
               onSelectRodada={(id) => {
                 setSelectedRodadaId(id)
                 onRodadaChange?.(id)
@@ -990,7 +990,7 @@ export function CotacoesView({
                           Histórico: <b>{statsProduto.total_cotacoes}</b>
                         </Text>
                         <Text size="10px" c="dimmed">
-                          Menor: <b style={{ color: '#059669' }}>{formatMoney(statsProduto.menor_preco)}</b>
+                          Menor: <Text span c="teal" fw={700}>{formatMoney(statsProduto.menor_preco)}</Text>
                           {statsProduto.melhor_fornecedor && ` (${statsProduto.melhor_fornecedor})`}
                         </Text>
                         <Text size="10px" c="dimmed">
@@ -1002,7 +1002,7 @@ export function CotacoesView({
                       {precoUnitarioPreview > 0 && (
                         <Group gap="xs">
                           {precoUnitarioPreview < statsProduto.menor_preco ? (
-                            <Badge color="green" size="xs" variant="filled" leftSection={<IconTrendingDown size={12} />}>
+                            <Badge color="teal" size="xs" variant="filled" leftSection={<IconTrendingDown size={12} />}>
                               🔥 NOVO RECORDE (-{(((statsProduto.menor_preco - precoUnitarioPreview) / statsProduto.menor_preco) * 100).toFixed(1)}%)
                             </Badge>
                           ) : precoUnitarioPreview <= statsProduto.preco_medio ? (
@@ -1029,8 +1029,10 @@ export function CotacoesView({
             <Group justify="flex-end">
               <Button
                 type="submit"
+                variant="filled"
+                color={themeColor}
                 size="xs"
-                leftSection={<IconPlus size={15} />}
+                leftSection={<IconPlus size={14} />}
                 loading={submitting}
               >
                 Salvar Cotação <Kbd ml={4} size="xs">Enter</Kbd>
@@ -1056,21 +1058,22 @@ export function CotacoesView({
         onClose={closeModalImportar}
         title={
           <Group gap="xs">
-            <IconFileSpreadsheet size={22} color="#10B981" />
+            <IconFileSpreadsheet size={18} />
             <Text fw={700}>Importar Cotações via Planilha Excel (.xlsx)</Text>
           </Group>
         }
         centered
-        radius="md"
+        radius="sm"
         size="lg"
       >
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
             Selecione o fornecedor que enviou os preços e faça o upload da planilha modelo preenchida. Novos produtos serão cadastrados automaticamente.
           </Text>
 
           <AppSelect
             label="Fornecedor da Planilha"
+            size="xs"
             placeholder="Selecione qual fornecedor enviou esta cotação..."
             data={fornecedores.map((f) => ({ value: String(f.id), label: f.nome }))}
             value={fornecedorImportarId}
@@ -1080,22 +1083,25 @@ export function CotacoesView({
 
           <FileInput
             label="Arquivo Excel (.xlsx)"
+            size="xs"
             placeholder="Clique para selecionar a planilha..."
             accept=".xlsx,.xls"
             value={arquivoExcel}
             onChange={setArquivoExcel}
-            leftSection={<IconFileSpreadsheet size={18} />}
+            leftSection={<IconFileSpreadsheet size={14} />}
             clearable
             required
           />
 
-          <Group justify="flex-end" mt="md">
-            <Button variant="light" color="gray" onClick={closeModalImportar}>
+          <Group justify="flex-end" gap="xs" mt="md">
+            <Button variant="subtle" color="gray" size="xs" onClick={closeModalImportar}>
               Cancelar
             </Button>
             <Button
-              color="teal"
-              leftSection={<IconUpload size={16} />}
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              leftSection={<IconUpload size={14} />}
               loading={importandoExcel}
               onClick={handleProcessarImportacaoExcel}
             >
@@ -1111,18 +1117,19 @@ export function CotacoesView({
         onClose={closeModalEditarProduto}
         title={
           <Group gap="xs">
-            <IconEdit size={22} color="#3B82F6" />
+            <IconEdit size={18} />
             <Text fw={700}>Editar Cadastro do Produto</Text>
           </Group>
         }
         centered
-        radius="md"
+        radius="sm"
         size="md"
       >
         <form onSubmit={formEdicaoProduto.onSubmit(handleSalvarEdicaoProduto)}>
-          <Stack gap="md">
+          <Stack gap="sm">
             <TextInput
               label="Nome do Produto"
+              size="xs"
               placeholder="Nome do produto..."
               required
               {...formEdicaoProduto.getInputProps('nome')}
@@ -1130,18 +1137,21 @@ export function CotacoesView({
 
             <TextInput
               label="Categoria"
+              size="xs"
               placeholder="Ex: Alimentos, Limpeza, Embalagens..."
               {...formEdicaoProduto.getInputProps('categoria')}
             />
 
-            <Group justify="flex-end" mt="md">
-              <Button variant="light" color="gray" onClick={closeModalEditarProduto}>
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditarProduto}>
                 Cancelar
               </Button>
               <Button
-                color="blue"
+                variant="filled"
+                color={themeColor}
+                size="xs"
                 type="submit"
-                leftSection={<IconCheck size={16} />}
+                leftSection={<IconCheck size={14} />}
                 loading={salvandoEdicaoProduto}
               >
                 Salvar Alterações

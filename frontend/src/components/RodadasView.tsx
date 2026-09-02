@@ -45,11 +45,13 @@ import type { RodadaComMetricas } from '../types'
 interface RodadasViewProps {
   rodadaAtivaId?: number
   onSelecionarRodada?: (idRodada: number, redirecionarParaAba?: string) => void
+  themeColor?: string
 }
 
 export function RodadasView({
   rodadaAtivaId,
   onSelecionarRodada,
+  themeColor = 'blue',
 }: RodadasViewProps) {
   const [rodadas, setRodadas] = useState<RodadaComMetricas[]>([])
   const [loading, setLoading] = useState(true)
@@ -340,13 +342,14 @@ export function RodadasView({
       {/* Cabeçalho */}
       <PageHeader
         icon={IconRotate}
-        iconColor="blue"
+        iconColor={themeColor}
         title="Gestão de Rodadas de Cotação"
         subtitle="Ciclos de compras e acompanhamento de cotações"
         rightSection={
           <Button
             leftSection={<IconPlus size={14} />}
-            color="blue"
+            variant="filled"
+            color={themeColor}
             size="xs"
             onClick={openModalCriar}
           >
@@ -362,7 +365,7 @@ export function RodadasView({
           value={rodadas.length}
           subtitle="Ciclos registrados"
           icon={IconRotate}
-          color="blue"
+          color={themeColor}
         />
 
         <StatCard
@@ -370,7 +373,7 @@ export function RodadasView({
           value={totalAbertas}
           subtitle="Em cotação ativa"
           icon={IconLockOpen}
-          color="green"
+          color="teal"
         />
 
         <StatCard
@@ -419,7 +422,7 @@ export function RodadasView({
             <Button
               size="compact-xs"
               variant={filtroStatus === 'abertas' ? 'filled' : 'light'}
-              color="green"
+              color="teal"
               onClick={() => setFiltroStatus('abertas')}
             >
               Abertas ({totalAbertas})
@@ -549,12 +552,12 @@ export function RodadasView({
                     </Table.Td>
 
                     <Table.Td style={{ textAlign: 'center' }}>
-                      <Group gap={6} justify="center">
+                      <Group gap={4} justify="center" wrap="nowrap">
                         <Tooltip label="Definir como rodada ativa e ir para Necessidades">
                           <Button
                             size="compact-xs"
                             variant={isAtiva ? 'filled' : 'light'}
-                            color="blue"
+                            color={themeColor}
                             leftSection={<IconChecklist size={13} />}
                             onClick={() => onSelecionarRodada?.(r.id, 'necessidades')}
                           >
@@ -573,8 +576,8 @@ export function RodadasView({
                         >
                           <ActionIcon
                             size="sm"
-                            variant="light"
-                            color={isAberta ? 'gray' : 'green'}
+                            variant="subtle"
+                            color={isAberta ? 'gray' : 'teal'}
                             onClick={() => handleToggleStatus(r)}
                           >
                             {isAberta ? (
@@ -590,8 +593,8 @@ export function RodadasView({
                         <Tooltip label="Editar rodada">
                           <ActionIcon
                             size="sm"
-                            variant="light"
-                            color="blue"
+                            variant="subtle"
+                            color={themeColor}
                             onClick={() => handleAbrirEdicao(r)}
                           >
                             <IconEdit size={15} />
@@ -601,7 +604,7 @@ export function RodadasView({
                         <Tooltip label="Excluir rodada permanentemente">
                           <ActionIcon
                             size="sm"
-                            variant="light"
+                            variant="subtle"
                             color="red"
                             onClick={() => handleAbrirExclusao(r)}
                           >
@@ -624,17 +627,19 @@ export function RodadasView({
         onClose={closeModalCriar}
         title={
           <Group gap="xs">
-            <IconRotate size={22} color="#228be6" />
+            <IconRotate size={18} />
             <Text fw={700}>Criar Nova Rodada de Cotação</Text>
           </Group>
         }
         size="md"
+        radius="sm"
         centered
       >
         <form onSubmit={formNova.onSubmit(handleCriarRodada)}>
-          <Stack gap="md">
+          <Stack gap="sm">
             <TextInput
               label="Descrição / Nome da Rodada"
+              size="xs"
               placeholder="Ex: Cotação Mensal - Maio 2026"
               required
               autoFocus
@@ -643,18 +648,20 @@ export function RodadasView({
 
             <Radio.Group
               label="Status Inicial"
+              size="xs"
               value={formNova.values.status}
               onChange={(val) => formNova.setFieldValue('status', val)}
             >
               <Group mt="xs">
-                <Radio value="aberta" label="Aberta (Em cotação)" />
-                <Radio value="fechada" label="Fechada (Concluída)" />
+                <Radio value="aberta" label="Aberta (Em cotação)" color="teal" size="xs" />
+                <Radio value="fechada" label="Fechada (Concluída)" color="gray" size="xs" />
               </Group>
             </Radio.Group>
 
             {rodadas.length > 0 && (
               <AppSelect
                 label="Duplicar Necessidades de Outra Rodada (Opcional)"
+                size="xs"
                 placeholder="Selecione para copiar itens em falta..."
                 data={rodadas.map((r) => ({
                   value: String(r.id),
@@ -665,11 +672,11 @@ export function RodadasView({
               />
             )}
 
-            <Group justify="flex-end" mt="md">
-              <Button variant="default" onClick={closeModalCriar}>
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalCriar}>
                 Cancelar
               </Button>
-              <Button type="submit" color="blue" loading={salvando}>
+              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvando}>
                 Criar Rodada
               </Button>
             </Group>
@@ -683,16 +690,18 @@ export function RodadasView({
         onClose={closeModalEditar}
         title={
           <Group gap="xs">
-            <IconEdit size={22} color="#228be6" />
+            <IconEdit size={18} />
             <Text fw={700}>Editar Rodada: {rodadaEmEdicao?.descricao}</Text>
           </Group>
         }
+        radius="sm"
         centered
       >
         <form onSubmit={formEdicao.onSubmit(handleSalvarEdicao)}>
-          <Stack gap="md">
+          <Stack gap="sm">
             <TextInput
               label="Descrição / Nome da Rodada"
+              size="xs"
               required
               autoFocus
               {...formEdicao.getInputProps('descricao')}
@@ -700,21 +709,22 @@ export function RodadasView({
 
             <Radio.Group
               label="Status da Rodada"
+              size="xs"
               value={formEdicao.values.status}
               onChange={(val) => formEdicao.setFieldValue('status', val)}
             >
               <Group mt="xs">
-                <Radio value="aberta" label="Aberta" color="green" />
-                <Radio value="fechada" label="Fechada (Concluída)" color="gray" />
-                <Radio value="cancelada" label="Cancelada (Arquivada)" color="red" />
+                <Radio value="aberta" label="Aberta" color="teal" size="xs" />
+                <Radio value="fechada" label="Fechada (Concluída)" color="gray" size="xs" />
+                <Radio value="cancelada" label="Cancelada (Arquivada)" color="red" size="xs" />
               </Group>
             </Radio.Group>
 
-            <Group justify="flex-end" mt="md">
-              <Button variant="default" onClick={closeModalEditar}>
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditar}>
                 Cancelar
               </Button>
-              <Button type="submit" color="blue" loading={salvando}>
+              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvando}>
                 Salvar Alterações
               </Button>
             </Group>
@@ -728,15 +738,16 @@ export function RodadasView({
         onClose={closeModalExcluir}
         title={
           <Group gap="xs">
-            <IconTrash size={22} color="#fa5252" />
-            <Text fw={700} c="red.8">
+            <IconTrash size={18} color="var(--mantine-color-red-6)" />
+            <Text fw={700} c="red">
               Confirmar Exclusão de Rodada
             </Text>
           </Group>
         }
+        radius="sm"
         centered
       >
-        <Stack gap="md">
+        <Stack gap="sm">
           <Text size="sm">
             Tem certeza de que deseja excluir permanentemente a rodada{' '}
             <b>"{rodadaEmExclusao?.descricao}"</b>?
@@ -747,11 +758,11 @@ export function RodadasView({
             Para ciclos com histórico, utilize a opção "Cancelada" no status para arquivá-los com segurança.
           </Text>
 
-          <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={closeModalExcluir}>
+          <Group justify="flex-end" gap="xs" mt="md">
+            <Button variant="subtle" color="gray" size="xs" onClick={closeModalExcluir}>
               Cancelar
             </Button>
-            <Button color="red" loading={salvando} onClick={handleConfirmarExclusao}>
+            <Button color="red" variant="filled" size="xs" loading={salvando} onClick={handleConfirmarExclusao}>
               Excluir Definitivamente
             </Button>
           </Group>

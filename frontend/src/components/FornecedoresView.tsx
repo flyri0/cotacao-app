@@ -72,7 +72,7 @@ function formatMoney(valor: number): string {
   }).format(valor || 0)
 }
 
-export function FornecedoresView() {
+export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -512,20 +512,22 @@ export function FornecedoresView() {
                 <ActionIcon
                   color={isAtivo ? 'teal' : 'gray'}
                   variant="subtle"
+                  size="sm"
                   loading={togglingId === row.original.id}
                   onClick={() => handleToggleAtivo(row.original)}
                 >
-                  <IconPower size={18} />
+                  <IconPower size={16} />
                 </ActionIcon>
               </Tooltip>
 
               <Tooltip label="Editar fornecedor">
                 <ActionIcon
-                  color="blue"
+                  color={themeColor}
                   variant="subtle"
+                  size="sm"
                   onClick={() => handleAbrirEdicao(row.original)}
                 >
-                  <IconEdit size={18} />
+                  <IconEdit size={16} />
                 </ActionIcon>
               </Tooltip>
 
@@ -533,10 +535,11 @@ export function FornecedoresView() {
                 <ActionIcon
                   color="red"
                   variant="subtle"
+                  size="sm"
                   loading={deletingId === row.original.id}
                   onClick={() => handleRemover(row.original.id, row.original.nome)}
                 >
-                  <IconTrash size={18} />
+                  <IconTrash size={16} />
                 </ActionIcon>
               </Tooltip>
             </Group>
@@ -573,18 +576,18 @@ export function FornecedoresView() {
     <Stack gap="xs" style={{ width: '100%' }}>
       <PageHeader
         icon={IconTruck}
-        iconColor="cyan"
+        iconColor={themeColor}
         title="Cadastro de Fornecedores"
         subtitle="Cadastro mestre e pedidos mínimos"
         badge={{
           label: `${fornecedores.length} ${fornecedores.length === 1 ? 'fornecedor' : 'fornecedores'}`,
-          color: 'cyan',
+          color: themeColor,
         }}
         rightSection={
           <Group gap="xs">
             <Button
               variant="light"
-              color="cyan"
+              color={themeColor}
               size="xs"
               leftSection={<IconDownload size={14} />}
               loading={exportandoExcel}
@@ -594,7 +597,7 @@ export function FornecedoresView() {
             </Button>
             <Button
               variant="outline"
-              color="cyan"
+              color={themeColor}
               size="xs"
               leftSection={<IconUpload size={14} />}
               onClick={openModalImportar}
@@ -655,8 +658,10 @@ export function FornecedoresView() {
             <Group justify="flex-end">
               <Button
                 type="submit"
+                variant="filled"
+                color={themeColor}
                 size="xs"
-                leftSection={<IconPlus size={15} />}
+                leftSection={<IconPlus size={14} />}
                 loading={submitting}
               >
                 Adicionar Fornecedor
@@ -681,46 +686,51 @@ export function FornecedoresView() {
         onClose={closeModalEditar}
         title={
           <Group gap="xs">
-            <IconEdit size={20} />
+            <IconEdit size={18} />
             <Text fw={700}>
               Editar Fornecedor: {fornecedorEmEdicao?.nome}
             </Text>
           </Group>
         }
         centered
-        radius="md"
+        radius="sm"
         size="lg"
       >
         <form onSubmit={formEdicao.onSubmit(handleSalvarEdicao)}>
-          <Stack gap="md">
+          <Stack gap="sm">
             <TextInput
               label="Nome / Razão Social"
+              size="xs"
               placeholder="Ex: Distribuidora Alvorada"
               required
               {...formEdicao.getInputProps('nome')}
             />
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
               <TextInput
                 label="Contato / Vendedor"
+                size="xs"
                 placeholder="Ex: Carlos Oliveira"
                 {...formEdicao.getInputProps('contato')}
               />
               <TextInput
                 label="Telefone / WhatsApp"
+                size="xs"
                 placeholder="Ex: (11) 98765-4321"
                 {...formEdicao.getInputProps('telefone')}
               />
             </SimpleGrid>
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
               <TextInput
                 label="E-mail"
+                size="xs"
                 placeholder="Ex: vendas@empresa.com.br"
                 {...formEdicao.getInputProps('email')}
               />
               <NumberInput
                 label="Pedido Mínimo (R$)"
+                size="xs"
                 placeholder="0,00"
                 min={0}
                 decimalScale={2}
@@ -732,11 +742,11 @@ export function FornecedoresView() {
               />
             </SimpleGrid>
 
-            <Group justify="flex-end" mt="md">
-              <Button variant="light" color="gray" onClick={closeModalEditar}>
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditar}>
                 Cancelar
               </Button>
-              <Button type="submit" color="cyan" loading={salvandoEdicao}>
+              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvandoEdicao}>
                 Salvar Alterações
               </Button>
             </Group>
@@ -750,36 +760,39 @@ export function FornecedoresView() {
         onClose={closeModalImportar}
         title={
           <Group gap="xs">
-            <IconFileSpreadsheet size={22} color="#06B6D4" />
+            <IconFileSpreadsheet size={18} />
             <Text fw={700}>Importar Fornecedores via Planilha Excel (.xlsx)</Text>
           </Group>
         }
         centered
-        radius="md"
+        radius="sm"
       >
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
             Faça upload de uma planilha com colunas: <b>Nome / Razão Social</b>, <b>Contato</b>, <b>Telefone</b>, <b>E-mail</b> e <b>Pedido Mínimo</b>.
           </Text>
 
           <FileInput
             label="Arquivo Excel (.xlsx)"
+            size="xs"
             placeholder="Selecione o arquivo de fornecedores..."
             accept=".xlsx,.xls"
             value={arquivoExcel}
             onChange={setArquivoExcel}
-            leftSection={<IconFileSpreadsheet size={18} />}
+            leftSection={<IconFileSpreadsheet size={14} />}
             clearable
             required
           />
 
-          <Group justify="flex-end" mt="md">
-            <Button variant="light" color="gray" onClick={closeModalImportar}>
+          <Group justify="flex-end" gap="xs" mt="md">
+            <Button variant="subtle" color="gray" size="xs" onClick={closeModalImportar}>
               Cancelar
             </Button>
             <Button
-              color="cyan"
-              leftSection={<IconUpload size={16} />}
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              leftSection={<IconUpload size={14} />}
               loading={importandoExcel}
               onClick={handleProcessarImportacaoExcel}
             >

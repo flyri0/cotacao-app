@@ -93,9 +93,14 @@ export const OPCOES_ESQUEMA_COR = [
 interface ConfiguracoesViewProps {
   configuracoes?: ConfiguracoesApp
   onConfiguracoesAlteradas?: (novasConfigs: ConfiguracoesApp) => void
+  themeColor?: string
 }
 
-export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: ConfiguracoesViewProps) {
+export function ConfiguracoesView({
+  configuracoes,
+  onConfiguracoesAlteradas,
+  themeColor = 'blue',
+}: ConfiguracoesViewProps) {
   const { colorScheme, setColorScheme } = useMantineColorScheme()
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
@@ -615,7 +620,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       {/* Cabeçalho */}
       <PageHeader
         icon={IconSettings}
-        iconColor="gray"
+        iconColor={themeColor}
         title="Configurações do Aplicativo"
         subtitle="Personalize densidade, tamanho de fonte, tema visual e gerencie o banco de dados SQLite local"
       />

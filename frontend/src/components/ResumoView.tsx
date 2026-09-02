@@ -45,6 +45,7 @@ function formatMoney(valor: number, maxDigits = 2): string {
 interface ResumoViewProps {
   rodadaAtivaId?: number
   onRodadaChange?: (id: number) => void
+  themeColor?: string
 }
 
 interface ResumoFornecedorRow {
@@ -66,7 +67,11 @@ interface ResumoFornecedorRow {
   }[]
 }
 
-export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
+export function ResumoView({
+  rodadaAtivaId,
+  onRodadaChange,
+  themeColor = 'blue',
+}: ResumoViewProps) {
   const [rodadas, setRodadas] = useState<Rodada[]>([])
   const [selectedRodadaId, setSelectedRodadaId] = useState<number | null>(
     rodadaAtivaId || null,
@@ -310,10 +315,10 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
           if (status === 'ok') {
             return (
               <Badge
-                leftSection={<IconCheck size={14} />}
+                leftSection={<IconCheck size={12} />}
                 color="teal"
                 variant="filled"
-                size="md"
+                size="xs"
               >
                 Bateu Mínimo {diferenca > 0 && `(+${formatMoney(diferenca)})`}
               </Badge>
@@ -323,10 +328,10 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
           if (status === 'abaixo') {
             return (
               <Badge
-                leftSection={<IconAlertTriangle size={14} />}
+                leftSection={<IconAlertTriangle size={12} />}
                 color="red"
                 variant="filled"
-                size="md"
+                size="xs"
               >
                 Abaixo do Mínimo (Falta {formatMoney(Math.abs(diferenca))})
               </Badge>
@@ -334,7 +339,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
           }
 
           return (
-            <Badge color="gray" variant="light" size="sm">
+            <Badge color="gray" variant="light" size="xs">
               Sem Compras
             </Badge>
           )
@@ -416,13 +421,14 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
       {/* Cabeçalho */}
       <PageHeader
         icon={IconChartBar}
-        iconColor="indigo"
+        iconColor={themeColor}
         title="Resumo por Fornecedor"
         subtitle="Acompanhamento consolidado de valores alocados e pedidos mínimos"
         rightSection={
           <RoundHeaderSelector
             rodadas={rodadas}
             selectedRodadaId={selectedRodadaId}
+            themeColor={themeColor}
             onSelectRodada={(id) => {
               setSelectedRodadaId(id)
               onRodadaChange?.(id)
@@ -440,6 +446,7 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
           subtitle="Consolidado em embalagens fechadas"
           icon={IconScale}
           color="teal"
+          badge={{ label: 'Embalagens Fechadas', color: 'teal' }}
         />
 
         <StatCard
@@ -463,7 +470,8 @@ export function ResumoView({ rodadaAtivaId, onRodadaChange }: ResumoViewProps) {
           value={`${metricas.totalItensAlocados}`}
           subtitle={`${metricas.fornecedoresAtivosCount} fornecedor(es) com compras`}
           icon={IconPackage}
-          color="indigo"
+          color={themeColor}
+          badge={{ label: `${metricas.fornecedoresAtivosCount} Fornecedores`, color: themeColor }}
         />
       </SimpleGrid>
 

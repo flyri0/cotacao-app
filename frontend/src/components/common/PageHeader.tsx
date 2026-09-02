@@ -38,7 +38,7 @@ export function PageHeader({
             </Badge>
           )}
           {subtitle && (
-            <Text size="xs" c="dimmed" style={{ display: 'none' /* Oculto para salvar espaço vertical, ou visível em telas maiores */ }} visibleFrom="md">
+            <Text size="xs" c="dimmed" visibleFrom="md">
               • {subtitle}
             </Text>
           )}

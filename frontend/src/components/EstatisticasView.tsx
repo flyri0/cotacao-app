@@ -58,7 +58,7 @@ function formatMoney(valor: number, maxDigits = 4): string {
   }).format(valor || 0)
 }
 
-export function EstatisticasView() {
+export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [activeTab, setActiveTab] = useState<string | null>('produto')
 
   // Dados mestres
@@ -660,7 +660,7 @@ return Array.from(map.values())
       {/* Cabeçalho */}
       <PageHeader
         icon={IconHistory}
-        iconColor="indigo"
+        iconColor={themeColor}
         title="Estatísticas & Histórico Comercial"
         subtitle="Inteligência de compras, evolução temporal e comparativos"
       />
@@ -709,7 +709,7 @@ return Array.from(map.values())
                 <Paper withBorder p="xs" radius="sm">
                   <Group justify="space-between" align="center">
                     <Group gap="xs">
-                      <ThemeIcon size={28} radius="sm" color="indigo" variant="light">
+                      <ThemeIcon size={28} radius="sm" color={themeColor} variant="light">
                         <IconPackage size={16} />
                       </ThemeIcon>
                       <div>

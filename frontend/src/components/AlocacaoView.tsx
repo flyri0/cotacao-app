@@ -52,6 +52,7 @@ function formatMoney(valor: number, maxDigits = 4): string {
 interface AlocacaoViewProps {
   rodadaAtivaId?: number
   onRodadaChange?: (id: number) => void
+  themeColor?: string
 }
 
 export interface LinhaAlocacao {
@@ -66,6 +67,7 @@ export interface LinhaAlocacao {
 export function AlocacaoView({
   rodadaAtivaId,
   onRodadaChange,
+  themeColor = 'blue',
 }: AlocacaoViewProps) {
   const [rodadas, setRodadas] = useState<Rodada[]>([])
   const [selectedRodadaId, setSelectedRodadaId] = useState<number | null>(
@@ -566,7 +568,7 @@ export function AlocacaoView({
               <Text size="xs" c="dimmed">
                 Total: <b>{totalEfetivo}</b> {cot.unidade || 'UN'}
                 {diferenca > 0 && (
-                  <Text span c="blue" fw={600}>
+                  <Text span c={themeColor} fw={600}>
                     {' '}
                     (+{diferenca} sobra)
                   </Text>
@@ -617,11 +619,11 @@ export function AlocacaoView({
           const item = row.original
 
           return (
-            <Group gap={6} justify="center">
+            <Group gap={4} justify="center" wrap="nowrap">
               <Tooltip label="Dividir este item em outro fornecedor">
                 <ActionIcon
-                  variant="light"
-                  color="blue"
+                  variant="subtle"
+                  color={themeColor}
                   size="sm"
                   disabled={isFechada}
                   onClick={() => handleDividirLinha(index)}
@@ -677,20 +679,15 @@ export function AlocacaoView({
       {/* Cabeçalho Superior com Seletor e Botões de Ação */}
       <PageHeader
         icon={IconListCheck}
-        iconColor="teal"
+        iconColor={themeColor}
         title="Alocação de Compras"
         subtitle="Divisão e arredondamento automático para embalagens fechadas"
         rightSection={
           <Group gap="xs">
-            {isFechada && (
-              <Badge variant="filled" color="red" size="xs">
-                Rodada Fechada
-              </Badge>
-            )}
-
             <RoundHeaderSelector
               rodadas={rodadas}
               selectedRodadaId={selectedRodadaId}
+              themeColor={themeColor}
               onSelectRodada={(id) => {
                 setSelectedRodadaId(id)
                 onRodadaChange?.(id)
@@ -700,7 +697,7 @@ export function AlocacaoView({
 
             <Button
               variant="light"
-              color="indigo"
+              color={themeColor}
               size="xs"
               leftSection={<IconSparkles size={14} />}
               onClick={handleSugerirMenorPreco}
@@ -711,15 +708,15 @@ export function AlocacaoView({
 
             {!isFechada && (
               statusAutosave === 'salvando' ? (
-                <Badge variant="light" color="blue" size="sm" leftSection={<Loader size={10} color="blue" />}>
+                <Badge variant="light" color={themeColor} size="xs" leftSection={<Loader size={10} color={themeColor} />}>
                   Salvando...
                 </Badge>
               ) : statusAutosave === 'erro' ? (
-                <Badge variant="light" color="red" size="sm" leftSection={<IconAlertCircle size={12} />}>
+                <Badge variant="light" color="red" size="xs" leftSection={<IconAlertCircle size={12} />}>
                   Erro ao salvar
                 </Badge>
               ) : (
-                <Badge variant="subtle" color="gray" size="sm" leftSection={<IconCheck size={12} />}>
+                <Badge variant="subtle" color="teal" size="xs" leftSection={<IconCheck size={12} />}>
                   Salvo automaticamente
                 </Badge>
               )
@@ -744,8 +741,8 @@ export function AlocacaoView({
           value={`${totaisGerais.produtosComAlocacao} de ${necessidades.length}`}
           subtitle={`${linhas.length} ${linhas.length === 1 ? 'linha' : 'linhas'}`}
           icon={IconArrowsSplit}
-          color="blue"
-          badge={{ label: `${totaisGerais.totalItensComprados} itens`, color: 'blue' }}
+          color={themeColor}
+          badge={{ label: `${totaisGerais.totalItensComprados} itens`, color: themeColor }}
         />
 
         <StatCard
@@ -753,8 +750,8 @@ export function AlocacaoView({
           value={`${totaisGerais.fornecedoresContemplados} ${totaisGerais.fornecedoresContemplados === 1 ? 'fornecedor' : 'fornecedores'}`}
           subtitle="Com compras alocadas"
           icon={IconTruck}
-          color="indigo"
-          badge={{ label: 'Ativos', color: 'indigo' }}
+          color="teal"
+          badge={{ label: 'Ativos', color: 'teal' }}
         />
       </SimpleGrid>
 

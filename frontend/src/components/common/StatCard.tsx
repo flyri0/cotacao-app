@@ -37,7 +37,7 @@ export function StatCard({
               </Badge>
             )}
           </Group>
-          <Title order={3} fw={700} c={valueColor || (color === 'teal' ? 'teal.7' : undefined)} style={{ fontSize: '1.2rem', lineHeight: 1.2, marginTop: 2 }}>
+          <Title order={3} fw={700} c={valueColor || (color === 'teal' ? 'teal' : color === 'red' ? 'red' : undefined)} style={{ fontSize: '1.25rem', lineHeight: 1.2, marginTop: 2 }}>
             {value}
           </Title>
           {subtitle && (

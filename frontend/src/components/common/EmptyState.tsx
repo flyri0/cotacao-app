@@ -17,8 +17,8 @@ export function EmptyState({
   action,
 }: EmptyStateProps) {
   return (
-    <Card withBorder p="xl" radius="md" style={{ width: '100%' }}>
-      <Center py="lg">
+    <Card withBorder p="md" radius="sm" style={{ width: '100%' }}>
+      <Center py="md">
         <Stack align="center" gap="xs" style={{ maxWidth: 420, textAlign: 'center' }}>
           <ThemeIcon size={56} radius="xl" color="gray" variant="light">
             <Icon size={30} />
