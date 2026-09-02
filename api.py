@@ -665,15 +665,44 @@ class Api:
     def create_need(
         self,
         id_rodada: int,
-        id_produto: int,
+        id_produto: Optional[int] = None,
         quantidade: float = 0.0,
+        produto_nome: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Adiciona um produto à rodada de cotação (a quantidade é definida na alocação)."""
+        """Adiciona um produto à rodada de cotação. Auto-cadastra produto caso não exista no catálogo."""
         quantidade = float(quantidade or 0.0)
 
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_id(conn, id_rodada)
             cursor = conn.cursor()
+
+            produto_novo = False
+            prod_id = id_produto
+
+            if prod_id:
+                cursor.execute("SELECT id, nome FROM produtos WHERE id = ?", (prod_id,))
+                prod_row = cursor.fetchone()
+                if not prod_row:
+                    prod_id = None
+
+            if not prod_id and produto_nome and produto_nome.strip():
+                nome_limpo = produto_nome.strip()
+                cursor.execute("SELECT id, nome FROM produtos WHERE LOWER(nome) = LOWER(?)", (nome_limpo,))
+                prod_row = cursor.fetchone()
+                if prod_row:
+                    prod_id = prod_row["id"]
+                else:
+                    # Auto-cadastro do novo produto
+                    cursor.execute(
+                        "INSERT INTO produtos (nome, categoria, ativo) VALUES (?, NULL, 1)",
+                        (nome_limpo,),
+                    )
+                    prod_id = cursor.lastrowid
+                    produto_novo = True
+
+            if not prod_id:
+                raise ValueError("Informe um produto existente ou o nome do produto para cadastro automático.")
+
             cursor.execute(
                 """
                 INSERT INTO necessidades (id_rodada, id_produto, quantidade)
@@ -681,7 +710,7 @@ class Api:
                 ON CONFLICT(id_rodada, id_produto) DO UPDATE SET
                     quantidade = excluded.quantidade
                 """,
-                (id_rodada, id_produto, quantidade),
+                (id_rodada, prod_id, quantidade),
             )
             conn.commit()
 
@@ -698,9 +727,11 @@ class Api:
                 JOIN produtos p ON p.id = n.id_produto
                 WHERE n.id_rodada = ? AND n.id_produto = ?
                 """,
-                (id_rodada, id_produto),
+                (id_rodada, prod_id),
             )
-            return dict(cursor.fetchone())
+            res = dict(cursor.fetchone())
+            res["produto_novo"] = produto_novo
+            return res
 
     def remove_need(self, id_necessidade: int) -> Dict[str, Any]:
         """Remove uma necessidade pelo ID."""

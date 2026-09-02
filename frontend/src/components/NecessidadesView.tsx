@@ -22,6 +22,7 @@ import {
   IconAlertCircle,
   IconCheck,
   IconChecklist,
+  IconPackage,
   IconPlus,
   IconTrash,
   IconX,
@@ -185,8 +186,11 @@ export function NecessidadesView({
     setTimeout(() => produtoInputRef.current?.focus(), 150)
   }, [])
 
-  // Adição ultra rápida de produto à rodada
+  // Adição ultra rápida de produto à rodada (com auto-cadastro para novos produtos)
   const adicionarProdutoPorNome = async (nomeProduto: string) => {
+    const nomeLimpo = nomeProduto.trim()
+    if (!nomeLimpo) return
+
     if (!selectedRodadaId) {
       notifications.show({
         title: 'Selecione uma rodada',
@@ -198,36 +202,38 @@ export function NecessidadesView({
     }
 
     const prod = produtos.find(
-      (p) => p.nome.trim().toLowerCase() === nomeProduto.trim().toLowerCase(),
+      (p) => p.nome.trim().toLowerCase() === nomeLimpo.toLowerCase(),
     )
-
-    if (!prod) {
-      form.setFieldError(
-        'produtoNome',
-        'Produto não encontrado. Digite ou selecione um produto cadastrado.',
-      )
-      notifications.show({
-        title: 'Produto inexistente',
-        message: `O produto "${nomeProduto}" não foi encontrado no cadastro.`,
-        color: 'red',
-        icon: <IconAlertCircle size={16} />,
-      })
-      produtoInputRef.current?.focus()
-      return
-    }
 
     try {
       setSubmitting(true)
       const api = await getApi()
-      const salva = await api.create_need(selectedRodadaId, prod.id, 0)
+      const salva = await api.create_need(
+        selectedRodadaId,
+        prod ? prod.id : null,
+        0,
+        prod ? null : nomeLimpo,
+      )
 
-      notifications.show({
-        title: 'Produto Incluído',
-        message: `"${salva.produto_nome}" adicionado à rodada.`,
-        color: 'green',
-        icon: <IconCheck size={16} />,
-        autoClose: 1800,
-      })
+      if (salva.produto_novo) {
+        notifications.show({
+          title: 'Novo Produto Cadastrado',
+          message: `"${salva.produto_nome}" foi cadastrado no catálogo e incluído na rodada.`,
+          color: 'teal',
+          icon: <IconPackage size={16} />,
+          autoClose: 3500,
+        })
+        // Recarrega lista mestre de produtos para atualizar o autocomplete
+        await carregarDadosIniciais()
+      } else {
+        notifications.show({
+          title: 'Produto Incluído',
+          message: `"${salva.produto_nome}" adicionado à rodada.`,
+          color: 'green',
+          icon: <IconCheck size={16} />,
+          autoClose: 1800,
+        })
+      }
 
       form.setFieldValue('produtoNome', '')
       await carregarNecessidades(selectedRodadaId)

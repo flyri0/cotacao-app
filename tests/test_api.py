@@ -396,6 +396,27 @@ class TestApi(unittest.TestCase):
         res = self.api.remove_need(nec["id"])
         self.assertTrue(res["sucesso"])
 
+    def test_auto_cadastro_produto_na_necessidade(self) -> None:
+        novo_prod_nome = "Vassoura de Piaçava Inédita"
+        nec = self.api.create_need(id_rodada=4, produto_nome=novo_prod_nome)
+        self.assertTrue(nec.get("produto_novo"))
+        self.assertEqual(nec["produto_nome"], novo_prod_nome)
+
+        # Verifica se o produto foi inserido no catálogo de produtos
+        produtos = self.api.list_products()
+        cadastrado = next((p for p in produtos if p["nome"] == novo_prod_nome), None)
+        self.assertIsNotNone(cadastrado)
+        self.assertEqual(cadastrado["ativo"], 1)
+
+        # Verifica se consta na lista de necessidades da rodada
+        necessidades = self.api.list_needs(id_rodada=4)
+        item = next((n for n in necessidades if n["produto_nome"] == novo_prod_nome), None)
+        self.assertIsNotNone(item)
+
+        # Se chamar novamente para o mesmo produto, não é produto novo
+        nec2 = self.api.create_need(id_rodada=4, produto_nome=novo_prod_nome)
+        self.assertFalse(nec2.get("produto_novo"))
+
     # -------------------------------------------------------------------------
     # Testes de Cotações e Normalização de Preço
     # -------------------------------------------------------------------------

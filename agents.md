@@ -40,11 +40,12 @@ pessoa/equipe de compras.
   direto. Isso existe porque fornecedores diferentes vendem o mesmo
   produto em embalagens diferentes (ex: caixa de 6 vs. unidade) — comparar
   preço bruto sem normalizar dá resultado errado.
-- **Auto-cadastro de Produto na Cotação**: qualquer produto digitado ou
-  importado na tela de Cotações que não exista ainda no cadastro de
-  Produtos é cadastrado automaticamente no banco e adicionado às necessidades
-  da rodada ativa. Essa regra de auto-cadastro se aplica exclusivamente a
-  Produtos — Fornecedores continuam exigindo correspondência prévia no cadastro.
+- **Auto-cadastro de Produto (Cotação e Necessidades)**: qualquer produto
+  digitado ou importado na tela de Cotações ou na tela de Necessidades que não
+  exista ainda no cadastro de Produtos é cadastrado automaticamente no banco
+  e adicionado às necessidades da rodada ativa. Essa regra de auto-cadastro se
+  aplica exclusivamente a Produtos — Fornecedores continuam exigindo
+  correspondência prévia no cadastro.
 - **Alocação**: a decisão real de compra. **Pode (e deve poder) haver
   múltiplas linhas de Alocação pro mesmo produto na mesma rodada**, cada
   uma com fornecedor e quantidade diferentes. Isso é proposital — é o

@@ -237,9 +237,10 @@ export interface PywebviewApi {
   list_needs: (id_rodada: number) => Promise<Necessidade[]>
   create_need: (
     id_rodada: number,
-    id_produto: number,
+    id_produto?: number | null,
     quantidade?: number,
-  ) => Promise<Necessidade>
+    produto_nome?: string | null,
+  ) => Promise<Necessidade & { produto_novo?: boolean }>
   remove_need: (id_necessidade: number) => Promise<{ sucesso: boolean; id: number }>
 
   list_quotes: (id_rodada: number) => Promise<Cotacao[]>
