@@ -1,13 +1,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
+  Accordion,
   Badge,
   Button,
-  Card,
   Center,
   Group,
   Loader,
   Paper,
-  SimpleGrid,
   Stack,
   Table,
   Text,
@@ -16,6 +15,8 @@ import {
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
+  IconArrowsMaximize,
+  IconArrowsMinimize,
   IconCheck,
   IconClipboardCopy,
   IconCopy,
@@ -338,6 +339,25 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
     }, 100)
   }
 
+  // Estado para controle das abas colapsáveis dos pedidos
+  const [accordionValue, setAccordionValue] = useState<string[]>([])
+
+  // Inicializa com todos os fornecedores abertos quando os pedidos forem calculados
+  useEffect(() => {
+    if (pedidosAgrupados.length > 0) {
+      setAccordionValue(pedidosAgrupados.map((p) => p.fornecedor.id.toString()))
+    }
+  }, [pedidosAgrupados])
+
+  // Alterna entre expandir todos e recolher todos
+  const toggleTodosAccordions = () => {
+    if (accordionValue.length === pedidosAgrupados.length) {
+      setAccordionValue([])
+    } else {
+      setAccordionValue(pedidosAgrupados.map((p) => p.fornecedor.id.toString()))
+    }
+  }
+
   return (
     <Stack gap="xs" style={{ width: '100%' }}>
       {/* Cabeçalho Superior (Oculto na Impressão) */}
@@ -381,6 +401,24 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
 
             <Group gap="xs">
               <Button
+                variant="subtle"
+                color="gray"
+                size="xs"
+                leftSection={
+                  accordionValue.length === pedidosAgrupados.length ? (
+                    <IconArrowsMinimize size={14} />
+                  ) : (
+                    <IconArrowsMaximize size={14} />
+                  )
+                }
+                onClick={toggleTodosAccordions}
+              >
+                {accordionValue.length === pedidosAgrupados.length
+                  ? 'Recolher Todos'
+                  : 'Expandir Todos'}
+              </Button>
+
+              <Button
                 variant="outline"
                 color="gray"
                 size="xs"
@@ -414,7 +452,13 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
           description="Vá para a aba Alocação (Ctrl+6) para definir quais fornecedores receberão cada compra antes de gerar os pedidos."
         />
       ) : (
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs" className="pedidos-grid">
+        <Accordion
+          multiple
+          value={accordionValue}
+          onChange={setAccordionValue}
+          variant="separated"
+          radius="sm"
+        >
           {pedidosAgrupados.map((pedido) => {
             const estaOculto =
               fornecedorIdImprimir !== null &&
@@ -426,13 +470,15 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
             )
 
             return (
-              <Card
+              <Accordion.Item
                 key={pedido.fornecedor.id}
-                withBorder
-                shadow="none"
-                radius="sm"
-                p="xs"
+                value={pedido.fornecedor.id.toString()}
                 className={`pedido-ordem-compra ${estaOculto ? 'oculto-na-impressao' : ''}`}
+                style={{
+                  backgroundColor: 'var(--mantine-color-body)',
+                  border: '1px solid var(--mantine-color-default-border)',
+                  borderRadius: 'var(--mantine-radius-sm)',
+                }}
               >
                 {/* ========================================================= */}
                 {/* DOCUMENTO FORMAL DE IMPRESSÃO (ESTILO DANFE - PRINT ONLY) */}
@@ -642,82 +688,96 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                 </div>
 
                 {/* ========================================================= */}
-                {/* CABEÇALHO DO CARD NA TELA (NO-PRINT)                       */}
+                {/* CABEÇALHO DA ABA / CONTROLE DO ACCORDION (NO-PRINT)       */}
                 {/* ========================================================= */}
-                <Group justify="space-between" align="center" mb={6} className="no-print">
-                  <Group gap="xs" align="center">
-                    <ThemeIcon color="teal" variant="light" size={26} radius="sm">
-                      <IconTruck size={16} />
-                    </ThemeIcon>
-                    <div>
-                      <Title order={4} style={{ fontSize: '0.95rem' }}>{pedido.fornecedor.nome}</Title>
-                      <Group gap="xs">
-                        {pedido.fornecedor.contato && (
-                          <Text size="11px" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <IconUser size={12} /> {pedido.fornecedor.contato}
-                          </Text>
-                        )}
-                        {pedido.fornecedor.telefone && (
-                          <Text size="11px" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <IconPhone size={12} /> {pedido.fornecedor.telefone}
-                          </Text>
-                        )}
-                        {pedido.fornecedor.email && (
-                          <Text size="11px" c="dimmed" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <IconMail size={12} /> {pedido.fornecedor.email}
-                          </Text>
-                        )}
+                <Accordion.Control className="no-print" py="xs">
+                  <Group justify="space-between" align="center" wrap="wrap" gap="sm" style={{ width: '100%', paddingRight: 8 }}>
+                    <Group gap="xs" align="center" wrap="nowrap">
+                      <ThemeIcon color="teal" variant="light" size={28} radius="sm">
+                        <IconTruck size={16} />
+                      </ThemeIcon>
+                      <div>
+                        <Text fw={700} size="sm">{pedido.fornecedor.nome}</Text>
+                        <Group gap="xs">
+                          {pedido.fornecedor.contato && (
+                            <Text size="11px" c="dimmed" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              <IconUser size={12} /> {pedido.fornecedor.contato}
+                            </Text>
+                          )}
+                          {pedido.fornecedor.telefone && (
+                            <Text size="11px" c="dimmed" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              <IconPhone size={12} /> {pedido.fornecedor.telefone}
+                            </Text>
+                          )}
+                          {pedido.fornecedor.email && (
+                            <Text size="11px" c="dimmed" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              <IconMail size={12} /> {pedido.fornecedor.email}
+                            </Text>
+                          )}
+                        </Group>
+                      </div>
+                    </Group>
+
+                    <Group gap="xs" align="center" wrap="nowrap">
+                      {pedido.status_minimo === 'ok' && (
+                        <Badge color="teal" variant="filled" size="xs">
+                          ✓ Mínimo Ok (+{formatMoney(pedido.diferenca_minimo)})
+                        </Badge>
+                      )}
+                      {pedido.status_minimo === 'abaixo' && (
+                        <Badge color="red" variant="filled" size="xs">
+                          ⚠️ Abaixo Mínimo (-{formatMoney(pedido.diferenca_minimo)})
+                        </Badge>
+                      )}
+                      {pedido.status_minimo === 'sem_minimo' && (
+                        <Badge color="gray" variant="light" size="xs">
+                          Sem Mínimo
+                        </Badge>
+                      )}
+
+                      <Badge color="blue" variant="light" size="xs">
+                        {pedido.itens.length} {pedido.itens.length === 1 ? 'item' : 'itens'} ({totalEmbalagensFechadas} cx)
+                      </Badge>
+
+                      <Text fw={800} size="sm" c="teal.7" style={{ minWidth: 90, textAlign: 'right' }}>
+                        {formatMoney(pedido.total_pedido)}
+                      </Text>
+
+                      <Group gap={6} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="light"
+                          color="gray"
+                          size="xs"
+                          leftSection={<IconPrinter size={14} />}
+                          onClick={() => handleImprimirIndividual(pedido.fornecedor.id)}
+                        >
+                          Imprimir
+                        </Button>
+
+                        <Button
+                          variant="light"
+                          color="teal"
+                          size="xs"
+                          leftSection={<IconCopy size={14} />}
+                          onClick={() =>
+                            handleCopiarPedido(
+                              pedido.texto_formatado,
+                              pedido.fornecedor.nome,
+                            )
+                          }
+                        >
+                          Copiar
+                        </Button>
                       </Group>
-                    </div>
+                    </Group>
                   </Group>
+                </Accordion.Control>
 
-                  <Group gap="xs" align="center">
-                    {pedido.status_minimo === 'ok' && (
-                      <Badge color="teal" variant="filled" size="xs">
-                        ✓ Mínimo Ok (+{formatMoney(pedido.diferenca_minimo)})
-                      </Badge>
-                    )}
-                    {pedido.status_minimo === 'abaixo' && (
-                      <Badge color="red" variant="filled" size="xs">
-                        ⚠️ Abaixo Mínimo (-{formatMoney(pedido.diferenca_minimo)})
-                      </Badge>
-                    )}
-                    {pedido.status_minimo === 'sem_minimo' && (
-                      <Badge color="gray" variant="light" size="xs">
-                        Sem Mínimo
-                      </Badge>
-                    )}
-
-                    <Button
-                      variant="light"
-                      color="gray"
-                      size="xs"
-                      leftSection={<IconPrinter size={14} />}
-                      onClick={() => handleImprimirIndividual(pedido.fornecedor.id)}
-                    >
-                      Imprimir
-                    </Button>
-
-                    <Button
-                      variant="light"
-                      color="teal"
-                      size="xs"
-                      leftSection={<IconCopy size={14} />}
-                      onClick={() =>
-                        handleCopiarPedido(
-                          pedido.texto_formatado,
-                          pedido.fornecedor.nome,
-                        )
-                      }
-                    >
-                      Copiar
-                    </Button>
-                  </Group>
-                </Group>
-
-                {/* Tabela dos Itens na Tela (NO-PRINT) */}
-                <Table.ScrollContainer minWidth={520} className="no-print">
-                  <Table withTableBorder striped highlightOnHover verticalSpacing={2} horizontalSpacing={4}>
+                {/* ========================================================= */}
+                {/* CONTEÚDO DA ABA: TABELA EM LARGURA COMPLETA (NO-PRINT)     */}
+                {/* ========================================================= */}
+                <Accordion.Panel className="no-print">
+                  <Table withTableBorder striped highlightOnHover verticalSpacing={3} horizontalSpacing={8}>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Produto / Item</Table.Th>
@@ -792,11 +852,11 @@ export function PedidoView({ rodadaAtivaId, onRodadaChange }: PedidoViewProps) {
                       </Table.Tr>
                     </Table.Tbody>
                   </Table>
-                </Table.ScrollContainer>
-              </Card>
+                </Accordion.Panel>
+              </Accordion.Item>
             )
           })}
-        </SimpleGrid>
+        </Accordion>
       )}
     </Stack>
   )

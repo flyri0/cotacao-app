@@ -166,8 +166,13 @@ body,
     background: #ffffff !important;
   }
 
-  .pedidos-grid {
-    display: block !important;
+  .pedidos-grid,
+  .mantine-Accordion-root,
+  .mantine-Accordion-item {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .pedido-ordem-compra {
