@@ -416,7 +416,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
     () => [
       {
         accessorKey: 'nome',
-        header: 'Nome do Produto',
+        header: 'Produto',
         size: 260,
         minSize: 150,
         maxSize: 600,
@@ -430,7 +430,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         accessorKey: 'categoria',
         header: 'Categoria',
         size: 160,
-        minSize: 100,
+        minSize: 130,
         maxSize: 300,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
@@ -445,7 +445,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         accessorKey: 'ativo',
         header: 'Status',
         size: 100,
-        minSize: 80,
+        minSize: 95,
         maxSize: 140,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
@@ -463,7 +463,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         id: 'acoes',
         header: 'Ações',
         size: 110,
-        minSize: 100,
+        minSize: 110,
         maxSize: 130,
         enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
@@ -530,6 +530,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {

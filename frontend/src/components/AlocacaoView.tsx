@@ -404,8 +404,8 @@ export function AlocacaoView({
       {
         accessorKey: 'quantidade_alocada',
         header: 'Qtd a Comprar',
-        size: 130,
-        minSize: 90,
+        size: 140,
+        minSize: 135,
         maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -422,9 +422,9 @@ export function AlocacaoView({
       },
       {
         accessorKey: 'id_fornecedor',
-        header: 'Fornecedor Final',
+        header: 'Fornecedor',
         size: 220,
-        minSize: 150,
+        minSize: 160,
         maxSize: 400,
         Cell: ({ row }) => {
           const item = row.original
@@ -468,8 +468,8 @@ export function AlocacaoView({
       {
         id: 'preco_unitario',
         header: 'Preço Unitário',
-        size: 140,
-        minSize: 110,
+        size: 150,
+        minSize: 145,
         maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -512,9 +512,9 @@ export function AlocacaoView({
       },
       {
         id: 'embalagem_cotada',
-        header: 'Embalagem Cotada',
+        header: 'Embalagem',
         size: 160,
-        minSize: 120,
+        minSize: 135,
         maxSize: 300,
         Cell: ({ row }) => {
           const item = row.original
@@ -548,7 +548,7 @@ export function AlocacaoView({
         id: 'embalagens_comprar',
         header: 'Compra Efetiva',
         size: 160,
-        minSize: 120,
+        minSize: 145,
         maxSize: 300,
         Cell: ({ row }) => {
           const item = row.original
@@ -592,9 +592,9 @@ export function AlocacaoView({
       },
       {
         id: 'subtotal',
-        header: 'Subtotal (R$)',
-        size: 120,
-        minSize: 90,
+        header: 'Subtotal',
+        size: 130,
+        minSize: 115,
         maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -630,7 +630,7 @@ export function AlocacaoView({
         id: 'acoes',
         header: 'Ações',
         size: 85,
-        minSize: 75,
+        minSize: 85,
         maxSize: 100,
         enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
@@ -689,6 +689,7 @@ export function AlocacaoView({
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {

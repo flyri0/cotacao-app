@@ -429,9 +429,9 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
     () => [
       {
         accessorKey: 'nome',
-        header: 'Fornecedor / Razão Social',
+        header: 'Fornecedor',
         size: 220,
-        minSize: 140,
+        minSize: 160,
         maxSize: 450,
         Cell: ({ cell, row }) => (
           <Text fw={600} size="xs" c={row.original.ativo === 0 ? 'dimmed' : undefined} truncate="end">
@@ -443,7 +443,7 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'contato',
         header: 'Contato',
         size: 140,
-        minSize: 90,
+        minSize: 120,
         maxSize: 250,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end" c={!cell.getValue() ? 'dimmed' : undefined}>
@@ -454,9 +454,9 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'telefone',
         header: 'Telefone / WhatsApp',
-        size: 150,
-        minSize: 110,
-        maxSize: 220,
+        size: 180,
+        minSize: 175,
+        maxSize: 260,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end" c={!cell.getValue() ? 'dimmed' : undefined}>
             {cell.getValue<string | null>() || '-'}
@@ -481,9 +481,9 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'pedido_minimo',
         header: 'Pedido Mínimo',
-        size: 130,
-        minSize: 100,
-        maxSize: 200,
+        size: 150,
+        minSize: 145,
+        maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ cell }) => {
@@ -499,7 +499,7 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'ativo',
         header: 'Status',
         size: 100,
-        minSize: 80,
+        minSize: 95,
         maxSize: 140,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
@@ -584,6 +584,7 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {

@@ -193,10 +193,10 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     () => [
       {
         accessorKey: 'rodada_descricao',
-        header: 'Rodada de Cotação',
-        size: 180,
-        minSize: 130,
-        maxSize: 300,
+        header: 'Rodada',
+        size: 160,
+        minSize: 120,
+        maxSize: 250,
         Cell: ({ row }) => (
           <div style={{ width: '100%', overflow: 'hidden' }}>
             <Text fw={600} size="xs" truncate="end">
@@ -212,7 +212,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 160,
-        minSize: 120,
+        minSize: 135,
         maxSize: 300,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
@@ -224,7 +224,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'marca',
         header: 'Marca',
         size: 110,
-        minSize: 80,
+        minSize: 95,
         maxSize: 200,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
@@ -237,9 +237,9 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       },
       {
         accessorKey: 'embalagem',
-        header: 'Embalagem Cotada',
+        header: 'Embalagem',
         size: 140,
-        minSize: 100,
+        minSize: 125,
         maxSize: 250,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
@@ -250,8 +250,8 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'qtd_por_embalagem',
         header: 'Qtd / Emb.',
-        size: 100,
-        minSize: 75,
+        size: 110,
+        minSize: 105,
         maxSize: 150,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -263,9 +263,9 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       },
       {
         accessorKey: 'preco_embalagem',
-        header: 'Preço Emb. (R$)',
-        size: 120,
-        minSize: 90,
+        header: 'Preço Emb.',
+        size: 130,
+        minSize: 125,
         maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -277,9 +277,9 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       },
       {
         accessorKey: 'preco_unitario',
-        header: 'Preço Unitário Normalizado',
-        size: 145,
-        minSize: 110,
+        header: 'Preço Unitário',
+        size: 150,
+        minSize: 145,
         maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -310,9 +310,9 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'total_ofertas',
         header: 'Cotações Enviadas',
-        size: 130,
-        minSize: 100,
-        maxSize: 180,
+        size: 160,
+        minSize: 155,
+        maxSize: 220,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ cell }) => (
@@ -323,9 +323,9 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       },
       {
         accessorKey: 'menor_preco_oferecido',
-        header: 'Menor Preço Ofertado',
+        header: 'Menor Preço',
         size: 140,
-        minSize: 100,
+        minSize: 135,
         maxSize: 200,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -337,9 +337,9 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       },
       {
         accessorKey: 'preco_medio_oferecido',
-        header: 'Preço Médio Praticado',
+        header: 'Preço Médio',
         size: 140,
-        minSize: 100,
+        minSize: 135,
         maxSize: 200,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -369,6 +369,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {
@@ -397,6 +398,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {
@@ -418,7 +420,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'produto_nome',
         header: 'Produto Ofertado',
         size: 200,
-        minSize: 140,
+        minSize: 155,
         maxSize: 350,
         Cell: ({ row }) => (
           <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -435,7 +437,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       },
       {
         accessorKey: 'rodada_descricao',
-        header: 'Rodada de Cotação',
+        header: 'Rodada',
         size: 160,
         minSize: 120,
         maxSize: 250,
@@ -449,7 +451,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'embalagem',
         header: 'Embalagem',
         size: 140,
-        minSize: 100,
+        minSize: 125,
         maxSize: 220,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
@@ -459,9 +461,9 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       },
       {
         accessorKey: 'preco_embalagem',
-        header: 'Preço Emb. (R$)',
-        size: 120,
-        minSize: 90,
+        header: 'Preço Emb.',
+        size: 130,
+        minSize: 125,
         maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -473,9 +475,9 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       },
       {
         accessorKey: 'preco_unitario',
-        header: 'Preço Unitário Normalizado',
-        size: 145,
-        minSize: 110,
+        header: 'Preço Unitário',
+        size: 150,
+        minSize: 145,
         maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -505,6 +507,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {
@@ -580,7 +583,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 160,
-        minSize: 120,
+        minSize: 135,
         maxSize: 300,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
@@ -592,7 +595,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
         accessorKey: 'embalagem',
         header: 'Embalagem',
         size: 140,
-        minSize: 100,
+        minSize: 125,
         maxSize: 220,
         Cell: ({ row }) => (
           <Text size="xs" truncate="end">
@@ -603,8 +606,8 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'preco_embalagem',
         header: 'Preço Emb.',
-        size: 120,
-        minSize: 90,
+        size: 130,
+        minSize: 125,
         maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -617,8 +620,8 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário',
-        size: 145,
-        minSize: 110,
+        size: 150,
+        minSize: 145,
         maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -631,8 +634,8 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       {
         accessorKey: 'foi_alocado',
         header: 'Status Compra',
-        size: 130,
-        minSize: 100,
+        size: 140,
+        minSize: 135,
         maxSize: 180,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
@@ -667,6 +670,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {

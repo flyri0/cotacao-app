@@ -189,8 +189,8 @@ export function ComparacaoView({
       {
         accessorKey: 'produto_nome',
         header: 'Produto',
-        size: 200,
-        minSize: 140,
+        size: 220,
+        minSize: 150,
         maxSize: 500,
         enablePinning: true,
         enableColumnFilter: true,
@@ -207,8 +207,8 @@ export function ComparacaoView({
       {
         accessorKey: 'produto_categoria',
         header: 'Categoria',
-        size: 130,
-        minSize: 95,
+        size: 140,
+        minSize: 120,
         maxSize: 250,
         enablePinning: true,
         enableColumnFilter: true,
@@ -235,8 +235,8 @@ export function ComparacaoView({
       cols.push({
         id: `forn_${forn.id}`,
         header: forn.nome,
-        size: 155,
-        minSize: 130,
+        size: 165,
+        minSize: 145,
         maxSize: 350,
         enableColumnFilter: false,
         enableColumnActions: false,
@@ -276,6 +276,7 @@ export function ComparacaoView({
           }
 
           const isVencedor = row.original.melhorCotacao?.id === cot.id
+          const { economiaPct } = row.original
 
           return (
             <div
@@ -314,7 +315,7 @@ export function ComparacaoView({
                       height: 16,
                       lineHeight: '14px',
                       flexShrink: 0,
-                      maxWidth: 70,
+                      maxWidth: 65,
                     }}
                   >
                     {cot.marca}
@@ -322,100 +323,21 @@ export function ComparacaoView({
                 )}
               </Group>
 
-              {/* Embalagem e Preço Fechado */}
-              <Text size="10px" c="dimmed" truncate="end" style={{ marginTop: 1 }}>
-                {cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
-              </Text>
+              {/* Embalagem e Porcentagem de Economia do Vencedor */}
+              <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ marginTop: 1, width: '100%', overflow: 'hidden' }}>
+                <Text size="10px" c="dimmed" truncate="end" style={{ flex: 1 }}>
+                  {cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
+                </Text>
+                {isVencedor && economiaPct !== null && economiaPct > 0.1 && (
+                  <Text size="10px" fw={700} c="teal" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    -{economiaPct.toFixed(0)}%
+                  </Text>
+                )}
+              </Group>
             </div>
           )
         },
       })
-    })
-
-    // Coluna final fixa à direita: 🏆 Menor Preço
-    cols.push({
-      id: 'menor_preco',
-      header: '🏆 Menor Preço',
-      size: 155,
-      minSize: 130,
-      maxSize: 300,
-      enablePinning: true,
-      enableColumnFilter: false,
-      enableColumnActions: false,
-      Header: () => (
-        <Text fw={700} size="xs" c="teal" tt="uppercase" style={{ lineHeight: 1.15 }}>
-          🏆 Menor Preço
-        </Text>
-      ),
-      accessorFn: (row) => row.melhorCotacao?.preco_unitario ?? null,
-      sortingFn: (rowA, rowB) => {
-        const valA = rowA.original.melhorCotacao?.preco_unitario ?? Infinity
-        const valB = rowB.original.melhorCotacao?.preco_unitario ?? Infinity
-        return valA - valB
-      },
-      Cell: ({ row }) => {
-        const { melhorCotacao, economiaPct, ranking } =
-          row.original
-        if (!melhorCotacao) {
-          return (
-            <Text size="xs" c="dimmed" ta="center">
-              -
-            </Text>
-          )
-        }
-
-        return (
-          <div
-            style={{
-              width: '100%',
-              overflow: 'hidden',
-              backgroundColor: 'var(--mantine-color-teal-light)',
-              borderRadius: 'var(--mantine-radius-xs)',
-              padding: '2px 4px',
-              lineHeight: 1.2,
-            }}
-          >
-            <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ width: '100%', overflow: 'hidden' }}>
-              <Text fw={700} size="xs" c="teal" style={{ whiteSpace: 'nowrap' }}>
-                {formatMoney(melhorCotacao.preco_unitario)}
-              </Text>
-              {melhorCotacao.marca && (
-                <Badge
-                  size="xs"
-                  variant="filled"
-                  color="teal"
-                  radius="xs"
-                  style={{
-                    textTransform: 'uppercase',
-                    fontSize: '9px',
-                    padding: '0 4px',
-                    height: 16,
-                    lineHeight: '14px',
-                    flexShrink: 0,
-                    maxWidth: 70,
-                  }}
-                >
-                  {melhorCotacao.marca}
-                </Badge>
-              )}
-            </Group>
-            <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ marginTop: 1, width: '100%', overflow: 'hidden' }}>
-              <Text size="10px" fw={600} truncate="end" style={{ flex: 1 }}>
-                {melhorCotacao.fornecedor_nome}
-              </Text>
-              {economiaPct !== null && economiaPct > 0.1 ? (
-                <Text size="10px" fw={700} c="teal" style={{ whiteSpace: 'nowrap' }}>
-                  -{economiaPct.toFixed(0)}%
-                </Text>
-              ) : ranking.length === 1 ? (
-                <Text size="10px" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
-                  Única
-                </Text>
-              ) : null}
-            </Group>
-          </div>
-        )
-      },
     })
 
     return cols
@@ -444,7 +366,6 @@ export function ComparacaoView({
       density: 'xs',
       columnPinning: {
         left: ['produto_nome', 'produto_categoria'],
-        right: ['menor_preco'],
       },
       showGlobalFilter: true,
     },
@@ -462,6 +383,7 @@ export function ComparacaoView({
       style: {
         padding: '4px 6px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {

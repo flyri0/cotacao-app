@@ -220,7 +220,7 @@ export function ResumoView({
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 200,
-        minSize: 140,
+        minSize: 150,
         maxSize: 400,
         Cell: ({ cell, row }) => (
           <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -236,9 +236,9 @@ export function ResumoView({
       },
       {
         accessorKey: 'total_alocado',
-        header: 'Total Alocado (R$)',
+        header: 'Total Alocado',
         size: 140,
-        minSize: 100,
+        minSize: 135,
         maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -260,9 +260,9 @@ export function ResumoView({
       },
       {
         accessorKey: 'pedido_minimo',
-        header: 'Pedido Mínimo (R$)',
+        header: 'Pedido Mínimo',
         size: 140,
-        minSize: 100,
+        minSize: 135,
         maxSize: 200,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -278,7 +278,7 @@ export function ResumoView({
         id: 'progresso',
         header: 'Meta Mínima',
         size: 180,
-        minSize: 120,
+        minSize: 130,
         maxSize: 300,
         Cell: ({ row }) => {
           const { pedido_minimo, total_alocado, percentual_atingido, status } =
@@ -319,9 +319,9 @@ export function ResumoView({
       },
       {
         id: 'status_minimo',
-        header: 'Status Pedido Mínimo',
+        header: 'Status do Mínimo',
         size: 180,
-        minSize: 140,
+        minSize: 155,
         maxSize: 280,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
@@ -381,6 +381,7 @@ export function ResumoView({
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {

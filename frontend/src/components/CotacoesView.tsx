@@ -659,7 +659,7 @@ export function CotacoesView({
         accessorKey: 'marca',
         header: 'Marca',
         size: 110,
-        minSize: 80,
+        minSize: 95,
         maxSize: 200,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
@@ -674,7 +674,7 @@ export function CotacoesView({
         accessorKey: 'fornecedor_nome',
         header: 'Fornecedor',
         size: 160,
-        minSize: 120,
+        minSize: 135,
         maxSize: 300,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
@@ -684,9 +684,9 @@ export function CotacoesView({
       },
       {
         accessorKey: 'embalagem',
-        header: 'Embalagem Cotada',
+        header: 'Embalagem',
         size: 140,
-        minSize: 100,
+        minSize: 125,
         maxSize: 250,
         Cell: ({ cell }) => (
           <Text size="xs" truncate="end">
@@ -697,8 +697,8 @@ export function CotacoesView({
       {
         accessorKey: 'qtd_por_embalagem',
         header: 'Qtd / Emb.',
-        size: 100,
-        minSize: 75,
+        size: 110,
+        minSize: 105,
         maxSize: 150,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -710,9 +710,9 @@ export function CotacoesView({
       },
       {
         accessorKey: 'preco_embalagem',
-        header: 'Preço Emb. (R$)',
-        size: 120,
-        minSize: 90,
+        header: 'Preço Emb.',
+        size: 130,
+        minSize: 125,
         maxSize: 180,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -724,9 +724,9 @@ export function CotacoesView({
       },
       {
         accessorKey: 'preco_unitario',
-        header: 'Preço Unitário Normalizado',
-        size: 145,
-        minSize: 110,
+        header: 'Preço Unitário',
+        size: 150,
+        minSize: 145,
         maxSize: 220,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
@@ -740,7 +740,7 @@ export function CotacoesView({
         id: 'acoes',
         header: 'Ações',
         size: 85,
-        minSize: 75,
+        minSize: 85,
         maxSize: 100,
         enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
@@ -749,12 +749,12 @@ export function CotacoesView({
           const item = row.original
           const prod = produtos.find((p) => p.id === item.id_produto)
           return (
-            <Group gap={4} justify="center">
+            <Group gap={4} justify="center" wrap="nowrap">
               {prod && (
                 <Tooltip label={`Editar cadastro de "${prod.nome}"`}>
                   <ActionIcon
-                    color={themeColor}
                     variant="subtle"
+                    color={themeColor}
                     size="sm"
                     onClick={() => handleAbrirEdicaoProduto(prod)}
                   >
@@ -762,10 +762,11 @@ export function CotacoesView({
                   </ActionIcon>
                 </Tooltip>
               )}
-              <Tooltip label="Excluir cotação">
+
+              <Tooltip label="Remover esta cotação">
                 <ActionIcon
-                  color="red"
                   variant="subtle"
+                  color="red"
                   size="sm"
                   loading={deletingId === item.id}
                   disabled={isFechada}
@@ -804,6 +805,7 @@ export function CotacoesView({
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {

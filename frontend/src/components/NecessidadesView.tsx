@@ -317,7 +317,7 @@ export function NecessidadesView({
     () => [
       {
         accessorKey: 'produto_nome',
-        header: 'Produto em Falta na Rodada',
+        header: 'Produto em Falta',
         size: 280,
         minSize: 180,
         maxSize: 600,
@@ -331,7 +331,7 @@ export function NecessidadesView({
         accessorKey: 'produto_categoria',
         header: 'Categoria',
         size: 160,
-        minSize: 110,
+        minSize: 130,
         maxSize: 300,
         Cell: ({ cell }) => {
           const val = cell.getValue<string | null>()
@@ -346,7 +346,7 @@ export function NecessidadesView({
         id: 'acoes',
         header: 'Ações',
         size: 80,
-        minSize: 70,
+        minSize: 80,
         maxSize: 100,
         enableResizing: false,
         mantineTableHeadCellProps: { align: 'center' },
@@ -388,6 +388,7 @@ export function NecessidadesView({
       style: {
         padding: '6px 8px',
         fontSize: 'var(--app-font-base, 13px)',
+        whiteSpace: 'nowrap',
       },
     },
     mantineTableBodyCellProps: {
