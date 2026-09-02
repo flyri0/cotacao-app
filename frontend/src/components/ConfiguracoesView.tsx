@@ -124,7 +124,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       app_subtitulo: configuracoes?.app_subtitulo || 'Comparativo e Alocação Inteligente',
       app_icone: configuracoes?.app_icone || 'Scale',
       app_theme_color: configuracoes?.app_theme_color || 'blue',
-      app_color_scheme: (configuracoes?.app_color_scheme || colorScheme || 'light') as 'light' | 'dark' | 'auto',
+      app_color_scheme: (configuracoes?.app_color_scheme || colorScheme || 'auto') as 'light' | 'dark' | 'auto',
       app_densidade: (configuracoes?.app_densidade || 'compacto') as 'compacto' | 'confortavel',
       app_tamanho_fonte: configuracoes?.app_tamanho_fonte || '13.5',
       app_modo_execucao: (configuracoes?.app_modo_execucao || 'janela') as 'janela' | 'navegador',
@@ -134,7 +134,7 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
   // Sincroniza form quando configuracoes globais carregarem
   useEffect(() => {
     if (configuracoes) {
-      const scheme = (configuracoes.app_color_scheme || colorScheme || 'light') as 'light' | 'dark' | 'auto'
+      const scheme = (configuracoes.app_color_scheme || colorScheme || 'auto') as 'light' | 'dark' | 'auto'
       
       form.setValues({
         app_nome: configuracoes.app_nome || 'Mapa de Cotações',

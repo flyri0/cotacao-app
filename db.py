@@ -187,7 +187,7 @@ def seed_settings(conn: sqlite3.Connection) -> None:
         ("app_subtitulo", "Comparativo e Alocação Inteligente"),
         ("app_icone", "Scale"),
         ("app_theme_color", "blue"),
-        ("app_color_scheme", "light"),
+        ("app_color_scheme", "auto"),
         ("app_densidade", "compacto"),
         ("app_tamanho_fonte", "medio"),
         ("app_modo_execucao", "janela"),
