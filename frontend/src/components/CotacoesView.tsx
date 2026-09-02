@@ -714,6 +714,7 @@ export function CotacoesView({
         id: 'acoes',
         header: 'Ações',
         size: 100,
+        enableResizing: false,
         Cell: ({ row }) => {
           const item = row.original
           const prod = produtos.find((p) => p.id === item.id_produto)
@@ -759,6 +760,8 @@ export function CotacoesView({
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns,
     data: cotacoes,
     localization: MRT_Localization_PT_BR,

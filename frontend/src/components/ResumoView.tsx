@@ -351,6 +351,8 @@ export function ResumoView({
 
   const tableFornecedores = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns: columnsFornecedores,
     data: dadosFornecedores,
     localization: MRT_Localization_PT_BR,

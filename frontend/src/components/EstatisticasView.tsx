@@ -328,6 +328,8 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
 
   const tableHistoricoProd = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns: columnsHistoricoProd,
     data: estatisticasProduto?.cotacoes_historico || [],
     localization: MRT_Localization_PT_BR,
@@ -342,6 +344,8 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
 
   const tableRankingProd = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns: columnsRankingProd,
     data: estatisticasProduto?.ranking_fornecedores || [],
     localization: MRT_Localization_PT_BR,
@@ -409,6 +413,8 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
 
   const tableHistoricoForn = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns: columnsHistoricoForn,
     data: estatisticasFornecedor?.cotacoes_historico || [],
     localization: MRT_Localization_PT_BR,
@@ -537,6 +543,8 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
 
   const tableGlobal = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns: columnsGlobal,
     data: dadosFiltradosGlobal,
     localization: MRT_Localization_PT_BR,

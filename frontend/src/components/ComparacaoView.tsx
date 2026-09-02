@@ -425,6 +425,8 @@ export function ComparacaoView({
     enablePagination: false,
     enableBottomToolbar: false,
     enableTopToolbar: true,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     enableColumnPinning: true,
     enableStickyHeader: true,
     enableColumnFilters: true,

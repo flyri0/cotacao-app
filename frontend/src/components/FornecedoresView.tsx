@@ -504,6 +504,7 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         id: 'acoes',
         header: 'Ações',
         size: 130,
+        enableResizing: false,
         Cell: ({ row }) => {
           const isAtivo = row.original.ativo !== 0
           return (
@@ -552,6 +553,8 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns,
     data: fornecedores,
     localization: MRT_Localization_PT_BR,

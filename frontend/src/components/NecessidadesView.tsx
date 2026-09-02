@@ -341,6 +341,7 @@ export function NecessidadesView({
         id: 'acoes',
         header: 'Ações',
         size: 90,
+        enableResizing: false,
         Cell: ({ row }) => (
           <Tooltip label="Remover produto da rodada">
             <ActionIcon
@@ -361,6 +362,8 @@ export function NecessidadesView({
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns,
     data: necessidades,
     localization: MRT_Localization_PT_BR,

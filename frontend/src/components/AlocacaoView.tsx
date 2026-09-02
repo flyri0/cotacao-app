@@ -614,6 +614,7 @@ export function AlocacaoView({
         id: 'acoes',
         header: 'Ações',
         size: 90,
+        enableResizing: false,
         Cell: ({ row }) => {
           const index = row.index
           const item = row.original
@@ -653,6 +654,8 @@ export function AlocacaoView({
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     columns,
     data: linhas,
     memoMode: 'rows',
