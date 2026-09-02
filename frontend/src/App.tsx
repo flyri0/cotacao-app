@@ -292,20 +292,27 @@ export default function App() {
     shortcut?: string,
   ) => {
     const isActive = activeTab === tab
-    const content = (
+    const content = navbarCollapsed ? (
+      <ActionIcon
+        variant={isActive ? 'light' : 'subtle'}
+        color={isActive ? themeColor : 'gray'}
+        size={42}
+        radius="md"
+        onClick={() => setActiveTab(tab)}
+        mb={2}
+        style={{ width: '100%' }}
+      >
+        {icon}
+      </ActionIcon>
+    ) : (
       <NavLink
-        label={navbarCollapsed ? undefined : label}
+        label={label}
         leftSection={icon}
-        rightSection={!navbarCollapsed && shortcut ? <Kbd size="xs">{shortcut}</Kbd> : undefined}
+        rightSection={shortcut ? <Kbd size="xs">{shortcut}</Kbd> : undefined}
         active={isActive}
         onClick={() => setActiveTab(tab)}
         variant="light"
-        style={{
-          borderRadius: 6,
-          justifyContent: navbarCollapsed ? 'center' : 'flex-start',
-          paddingLeft: navbarCollapsed ? 12 : undefined,
-          paddingRight: navbarCollapsed ? 12 : undefined,
-        }}
+        style={{ borderRadius: 6 }}
         mb={2}
       />
     )
@@ -423,13 +430,13 @@ export default function App() {
                 size="md"
                 onClick={handleToggleTheme}
               >
-                {computedColorScheme === 'dark' ? <IconSun size={16} /> : <IconMoon size={16} />}
+                {computedColorScheme === 'dark' ? <IconSun size="1.2rem" /> : <IconMoon size="1.2rem" />}
               </ActionIcon>
             </Tooltip>
 
             <Tooltip label="Guia de Atalhos do Teclado (F1 ou Ctrl+K)">
               <ActionIcon variant="light" color={themeColor} size="md" onClick={openHelp}>
-                <IconKeyboard size={16} />
+                <IconKeyboard size="1.2rem" />
               </ActionIcon>
             </Tooltip>
 
@@ -449,8 +456,8 @@ export default function App() {
               Cadastros
             </Text>
           )}
-          {renderNavItem('produtos', 'Produtos', <IconPackage size={16} />, 'Ctrl+1')}
-          {renderNavItem('fornecedores', 'Fornecedores', <IconTruck size={16} />, 'Ctrl+2')}
+          {renderNavItem('produtos', 'Produtos', <IconPackage size="1.2rem" />, 'Ctrl+1')}
+          {renderNavItem('fornecedores', 'Fornecedores', <IconTruck size="1.2rem" />, 'Ctrl+2')}
 
           {navbarCollapsed ? (
             <Divider my={4} />
@@ -459,13 +466,13 @@ export default function App() {
               Rodada de Cotação
             </Text>
           )}
-          {renderNavItem('rodadas', 'Rodadas', <IconRotate size={16} />)}
-          {renderNavItem('necessidades', 'Necessidades', <IconChecklist size={16} />, 'Ctrl+3')}
-          {renderNavItem('cotacoes', 'Cotações', <IconReceipt size={16} />, 'Ctrl+4')}
-          {renderNavItem('comparacao', 'Comparação', <IconScale size={16} />, 'Ctrl+5')}
-          {renderNavItem('alocacao', 'Alocação', <IconListCheck size={16} />, 'Ctrl+6')}
-          {renderNavItem('resumo', 'Resumo por Fornecedor', <IconChartBar size={16} />, 'Ctrl+7')}
-          {renderNavItem('pedido', 'Gerar Pedido', <IconFileText size={16} />, 'Ctrl+8')}
+          {renderNavItem('rodadas', 'Rodadas', <IconRotate size="1.2rem" />)}
+          {renderNavItem('necessidades', 'Necessidades', <IconChecklist size="1.2rem" />, 'Ctrl+3')}
+          {renderNavItem('cotacoes', 'Cotações', <IconReceipt size="1.2rem" />, 'Ctrl+4')}
+          {renderNavItem('comparacao', 'Comparação', <IconScale size="1.2rem" />, 'Ctrl+5')}
+          {renderNavItem('alocacao', 'Alocação', <IconListCheck size="1.2rem" />, 'Ctrl+6')}
+          {renderNavItem('resumo', 'Resumo por Fornecedor', <IconChartBar size="1.2rem" />, 'Ctrl+7')}
+          {renderNavItem('pedido', 'Gerar Pedido', <IconFileText size="1.2rem" />, 'Ctrl+8')}
 
           {navbarCollapsed ? (
             <Divider my={4} />
@@ -474,8 +481,8 @@ export default function App() {
               Inteligência & Sistema
             </Text>
           )}
-          {renderNavItem('estatisticas', 'Estatísticas & Histórico', <IconHistory size={16} />, 'Ctrl+9')}
-          {renderNavItem('configuracoes', 'Configurações', <IconSettings size={16} />, 'Ctrl+0')}
+          {renderNavItem('estatisticas', 'Estatísticas & Histórico', <IconHistory size="1.2rem" />, 'Ctrl+9')}
+          {renderNavItem('configuracoes', 'Configurações', <IconSettings size="1.2rem" />, 'Ctrl+0')}
         </AppShell.Section>
 
         <AppShell.Section pt={4}>
@@ -486,24 +493,26 @@ export default function App() {
             withArrow
             disabled={!navbarCollapsed}
           >
-            <NavLink
-              label={navbarCollapsed ? undefined : 'Recolher menu'}
-              leftSection={
-                navbarCollapsed ? (
-                  <IconChevronsRight size={16} />
-                ) : (
-                  <IconChevronsLeft size={16} />
-                )
-              }
-              onClick={() => setNavbarCollapsed(!navbarCollapsed)}
-              variant="subtle"
-              style={{
-                borderRadius: 4,
-                justifyContent: navbarCollapsed ? 'center' : 'flex-start',
-                paddingLeft: navbarCollapsed ? 8 : undefined,
-                paddingRight: navbarCollapsed ? 8 : undefined,
-              }}
-            />
+            {navbarCollapsed ? (
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                size={42}
+                radius="md"
+                onClick={() => setNavbarCollapsed(!navbarCollapsed)}
+                style={{ width: '100%' }}
+              >
+                <IconChevronsRight size="1.2rem" />
+              </ActionIcon>
+            ) : (
+              <NavLink
+                label="Recolher menu"
+                leftSection={<IconChevronsLeft size="1.2rem" />}
+                onClick={() => setNavbarCollapsed(!navbarCollapsed)}
+                variant="subtle"
+                style={{ borderRadius: 4 }}
+              />
+            )}
           </Tooltip>
 
           {isNavegador && (
@@ -513,20 +522,27 @@ export default function App() {
               withArrow
               disabled={!navbarCollapsed}
             >
-              <NavLink
-                label={navbarCollapsed ? undefined : 'Encerrar App'}
-                leftSection={<IconPower size={16} color="var(--mantine-color-red-6)" />}
-                onClick={openModalEncerrar}
-                variant="subtle"
-                c="red"
-                style={{
-                  borderRadius: 4,
-                  justifyContent: navbarCollapsed ? 'center' : 'flex-start',
-                  paddingLeft: navbarCollapsed ? 8 : undefined,
-                  paddingRight: navbarCollapsed ? 8 : undefined,
-                  marginTop: 2,
-                }}
-              />
+              {navbarCollapsed ? (
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size={42}
+                  radius="md"
+                  onClick={openModalEncerrar}
+                  style={{ width: '100%', marginTop: 2 }}
+                >
+                  <IconPower size="1.2rem" />
+                </ActionIcon>
+              ) : (
+                <NavLink
+                  label="Encerrar App"
+                  leftSection={<IconPower size="1.2rem" />}
+                  onClick={openModalEncerrar}
+                  variant="subtle"
+                  c="red"
+                  style={{ borderRadius: 4, marginTop: 2 }}
+                />
+              )}
             </Tooltip>
           )}
         </AppShell.Section>
@@ -727,7 +743,7 @@ export default function App() {
         title={
           <Group gap="xs">
             <ThemeIcon color="red" variant="light" size={24} radius="sm">
-              <IconPower size={16} />
+              <IconPower size="1.2rem" />
             </ThemeIcon>
             <Text fw={700} size="sm">
               Encerrar Aplicativo
