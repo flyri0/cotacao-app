@@ -66,6 +66,9 @@ def main() -> None:
     port = parse_port()
     api = Api()
 
+    # Executa verificação de backup automático na abertura se configurado
+    api.check_auto_backup_trigger("abertura")
+
     # 1. CONTROLE DE INSTÂNCIA ÚNICA (SINGLE INSTANCE)
     if is_server_already_running(port):
         url = get_entry_url(port)

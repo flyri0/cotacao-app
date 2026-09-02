@@ -8,11 +8,13 @@ import {
   FileInput,
   Group,
   Modal,
+  NumberInput,
   Paper,
   SegmentedControl,
   SimpleGrid,
   Slider,
   Stack,
+  Switch,
   Table,
   Text,
   TextInput,
@@ -31,6 +33,7 @@ import {
   IconBrowser,
   IconBuildingStore,
   IconCheck,
+  IconClock,
   IconCoins,
   IconDatabase,
   IconDatabaseExport,
@@ -40,6 +43,8 @@ import {
   IconDimensions,
   IconFileDatabase,
   IconFolder,
+  IconFolderCheck,
+  IconFolderOpen,
   IconMoon,
   IconPackage,
   IconPalette,
@@ -116,6 +121,12 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
   const [arquivoImportar, setArquivoImportar] = useState<File | null>(null)
   const [palavraConfirmacaoFormatar, setPalavraConfirmacaoFormatar] = useState('')
 
+  // Estados de backup automático
+  const [executandoBackupAuto, setExecutandoBackupAuto] = useState(false)
+  const [selecionandoPasta, setSelecionandoPasta] = useState(false)
+  const [ultimoBackupSucesso, setUltimoBackupSucesso] = useState(configuracoes?.backup_auto_ultimo_sucesso || '')
+  const [ultimoBackupStatus, setUltimoBackupStatus] = useState(configuracoes?.backup_auto_ultimo_status || '')
+
   const timerRef = useRef<number | null>(null)
 
   const form = useForm({
@@ -128,6 +139,11 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       app_densidade: (configuracoes?.app_densidade || 'compacto') as 'compacto' | 'confortavel',
       app_tamanho_fonte: configuracoes?.app_tamanho_fonte || '13.5',
       app_modo_execucao: (configuracoes?.app_modo_execucao || 'janela') as 'janela' | 'navegador',
+      backup_auto_ativo: configuracoes?.backup_auto_ativo === '1',
+      backup_auto_diretorio: configuracoes?.backup_auto_diretorio || '',
+      backup_auto_gatilho: (configuracoes?.backup_auto_gatilho || 'abertura') as string,
+      backup_auto_intervalo_horas: String(configuracoes?.backup_auto_intervalo_horas || '4'),
+      backup_auto_max_arquivos: parseInt(String(configuracoes?.backup_auto_max_arquivos || '10'), 10),
     },
   })
 
@@ -145,7 +161,15 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
         app_densidade: (configuracoes.app_densidade || 'compacto') as 'compacto' | 'confortavel',
         app_tamanho_fonte: configuracoes.app_tamanho_fonte || '13.5',
         app_modo_execucao: (configuracoes.app_modo_execucao || 'janela') as 'janela' | 'navegador',
+        backup_auto_ativo: configuracoes.backup_auto_ativo === '1',
+        backup_auto_diretorio: configuracoes.backup_auto_diretorio || '',
+        backup_auto_gatilho: configuracoes.backup_auto_gatilho || 'abertura',
+        backup_auto_intervalo_horas: String(configuracoes.backup_auto_intervalo_horas || '4'),
+        backup_auto_max_arquivos: parseInt(String(configuracoes.backup_auto_max_arquivos || '10'), 10),
       })
+
+      setUltimoBackupSucesso(configuracoes.backup_auto_ultimo_sucesso || '')
+      setUltimoBackupStatus(configuracoes.backup_auto_ultimo_status || '')
     }
   }, [configuracoes, colorScheme])
 
@@ -279,7 +303,13 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
     try {
       setSalvandoConfig(true)
       const api = await getApi()
-      const atualizadas = await api.save_settings(values)
+      const payload: Record<string, any> = {
+        ...values,
+        backup_auto_ativo: values.backup_auto_ativo ? '1' : '0',
+        backup_auto_intervalo_horas: String(values.backup_auto_intervalo_horas || '4'),
+        backup_auto_max_arquivos: String(values.backup_auto_max_arquivos || 10),
+      }
+      const atualizadas = await api.save_settings(payload)
       setColorScheme(values.app_color_scheme)
       if (values.app_densidade) {
         document.documentElement.setAttribute('data-density', values.app_densidade)
@@ -290,8 +320,8 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
 
       notifications.show({
         title: 'Configurações Salvas',
-        message: 'A identidade visual, densidade e preferências foram salvas com sucesso no banco de dados.',
-        color: 'green',
+        message: 'A identidade visual, preferências e backup automático foram salvos com sucesso.',
+        color: 'teal',
         icon: <IconCheck size={16} />,
       })
 
@@ -306,6 +336,95 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
       })
     } finally {
       setSalvandoConfig(false)
+    }
+  }
+
+  // AÇÃO BACKUP AUTO 1: Selecionar pasta exclusivamente pelo diálogo nativo
+  const handleSelecionarPastaBackup = async () => {
+    try {
+      setSelecionandoPasta(true)
+      const api = await getApi()
+      const res = await api.select_backup_directory()
+      if (res.cancelado) {
+        return
+      }
+      if (!res.sucesso) {
+        notifications.show({
+          title: 'Aviso de Permissão de Pasta',
+          message: res.mensagem || 'Não foi possível selecionar ou gravar nesta pasta.',
+          color: 'red',
+          icon: <IconAlertTriangle size={16} />,
+        })
+        return
+      }
+      if (res.caminho) {
+        form.setFieldValue('backup_auto_diretorio', res.caminho)
+        notifications.show({
+          title: 'Pasta de Backup Selecionada',
+          message: `Diretório com permissão de escrita confirmado: ${res.caminho}`,
+          color: 'teal',
+          icon: <IconFolderCheck size={16} />,
+        })
+      }
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erro ao Selecionar Pasta',
+        message: error?.message || 'Falha ao acionar diálogo de seleção.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setSelecionandoPasta(false)
+    }
+  }
+
+  // AÇÃO BACKUP AUTO 2: Executar e testar backup automático imediatamente
+  const handleTestarBackupAgora = async () => {
+    if (!form.values.backup_auto_diretorio) {
+      notifications.show({
+        title: 'Diretório Obrigatório',
+        message: 'Selecione primeiro a pasta de destino usando o botão "Selecionar Pasta...".',
+        color: 'yellow',
+        icon: <IconAlertTriangle size={16} />,
+      })
+      return
+    }
+
+    try {
+      setExecutandoBackupAuto(true)
+      const api = await getApi()
+      // Garante que o backend salve as opções atuais antes da execução
+      const payload: Record<string, any> = {
+        ...form.values,
+        backup_auto_ativo: form.values.backup_auto_ativo ? '1' : '0',
+        backup_auto_intervalo_horas: String(form.values.backup_auto_intervalo_horas || '4'),
+        backup_auto_max_arquivos: String(form.values.backup_auto_max_arquivos || 10),
+      }
+      await api.save_settings(payload)
+
+      const res = await api.execute_auto_backup()
+      if (res.sucesso) {
+        const dataHora = (res as any).data_hora || new Date().toLocaleString('pt-BR')
+        setUltimoBackupSucesso(dataHora)
+        setUltimoBackupStatus('Sucesso')
+        notifications.show({
+          title: 'Backup Automático Concluído!',
+          message: `Arquivo ${res.nome_arquivo} gravado com sucesso.`,
+          color: 'teal',
+          icon: <IconCheck size={16} />,
+          autoClose: 5000,
+        })
+      }
+    } catch (error: any) {
+      setUltimoBackupStatus(`Falha: ${error?.message || 'Erro de gravação'}`)
+      notifications.show({
+        title: 'Falha no Backup Automático',
+        message: error?.message || 'Não foi possível gravar o arquivo na pasta configurada.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setExecutandoBackupAuto(false)
     }
   }
 
@@ -752,6 +871,154 @@ export function ConfiguracoesView({ configuracoes, onConfiguracoesAlteradas }: C
         <Text size="xs" c="dimmed" mb="lg">
           Arquivo local independente (<b>cotacao.db</b>). Todas as ações críticas contam com confirmação segura e timer de proteção.
         </Text>
+
+        {/* Card: Backup Automático Programado */}
+        <Paper withBorder p="md" radius="md" mb="md">
+          <Stack gap="sm">
+            <Group justify="space-between" align="center" wrap="wrap">
+              <Group gap="xs">
+                <ThemeIcon color="blue" variant="light" size="lg" radius="md">
+                  <IconClock size={20} />
+                </ThemeIcon>
+                <div>
+                  <Group gap="xs" align="center">
+                    <Title order={4}>Backup Automático Programado</Title>
+                    <Badge color={form.values.backup_auto_ativo ? 'teal' : 'gray'} variant="light" size="sm">
+                      {form.values.backup_auto_ativo ? 'Ativo' : 'Desativado'}
+                    </Badge>
+                  </Group>
+                  <Text size="xs" c="dimmed">
+                    Gera cópias atômicas do banco em outro diretório (outro disco, pendrive ou pasta sincronizada) com retenção automática.
+                  </Text>
+                </div>
+              </Group>
+
+              <Switch
+                label="Ativar Backup Automático"
+                checked={form.values.backup_auto_ativo}
+                onChange={(e) => form.setFieldValue('backup_auto_ativo', e.currentTarget.checked)}
+                size="md"
+                color="teal"
+              />
+            </Group>
+
+            <Divider my={4} />
+
+            {/* Configurações do Backup Automático */}
+            <Stack gap="xs">
+              {/* Campo de Seleção Segura de Diretório (readOnly) */}
+              <TextInput
+                label="Diretório de Destino dos Backups"
+                description="Selecione a pasta de destino exclusivamente através do diálogo nativo do sistema."
+                placeholder="Nenhuma pasta selecionada. Clique no botão ao lado para escolher..."
+                value={form.values.backup_auto_diretorio}
+                readOnly
+                styles={{ input: { cursor: 'default' } }}
+                leftSection={<IconFolder size={16} />}
+                rightSectionWidth={170}
+                rightSection={
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    leftSection={<IconFolderOpen size={14} />}
+                    onClick={handleSelecionarPastaBackup}
+                    loading={selecionandoPasta}
+                    style={{ marginRight: 4 }}
+                  >
+                    Selecionar Pasta...
+                  </Button>
+                }
+              />
+
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs" mt={4}>
+                <AppSelect
+                  label="Momento / Gatilho"
+                  description="Quando executar a cópia"
+                  data={[
+                    { value: 'abertura', label: 'Ao Iniciar o Aplicativo' },
+                    { value: 'fechamento', label: 'Ao Fechar o Aplicativo' },
+                    { value: 'periodico', label: 'Periodicamente por Intervalo' },
+                    { value: 'sempre', label: 'Completo (Abertura, Fechamento e Periódico)' },
+                  ]}
+                  value={form.values.backup_auto_gatilho}
+                  onChange={(val) => form.setFieldValue('backup_auto_gatilho', val || 'abertura')}
+                  allowDeselect={false}
+                />
+
+                <AppSelect
+                  label="Intervalo Periódico"
+                  description="Frequência em horas"
+                  data={[
+                    { value: '1', label: 'A cada 1 hora' },
+                    { value: '2', label: 'A cada 2 horas' },
+                    { value: '4', label: 'A cada 4 horas (Padrão)' },
+                    { value: '8', label: 'A cada 8 horas' },
+                    { value: '12', label: 'A cada 12 horas' },
+                    { value: '24', label: 'Diário (a cada 24 horas)' },
+                  ]}
+                  value={String(form.values.backup_auto_intervalo_horas || '4')}
+                  onChange={(val) => form.setFieldValue('backup_auto_intervalo_horas', val || '4')}
+                  allowDeselect={false}
+                  disabled={form.values.backup_auto_gatilho === 'abertura' || form.values.backup_auto_gatilho === 'fechamento'}
+                />
+
+                <NumberInput
+                  label="Retenção Máxima"
+                  description="Backups mais antigos são removidos"
+                  min={1}
+                  max={50}
+                  value={form.values.backup_auto_max_arquivos}
+                  onChange={(val) => form.setFieldValue('backup_auto_max_arquivos', typeof val === 'number' ? val : 10)}
+                />
+              </SimpleGrid>
+
+              {/* Barra de Status do Último Backup e Ações */}
+              <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-default-hover)" mt="xs">
+                <Group justify="space-between" align="center" wrap="wrap">
+                  <Group gap="xs" align="center">
+                    <Text size="xs" fw={600}>Último Backup Realizado:</Text>
+                    <Text size="xs" c={ultimoBackupSucesso ? 'dimmed' : 'gray'}>
+                      {ultimoBackupSucesso || 'Nenhum backup automático registrado ainda.'}
+                    </Text>
+                    {ultimoBackupStatus && (
+                      <Badge
+                        size="xs"
+                        color={ultimoBackupStatus === 'Sucesso' ? 'teal' : 'red'}
+                        variant="filled"
+                      >
+                        {ultimoBackupStatus === 'Sucesso' ? '✓ Sucesso' : ultimoBackupStatus}
+                      </Badge>
+                    )}
+                  </Group>
+
+                  <Group gap="xs">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="teal"
+                      leftSection={<IconDatabaseExport size={14} />}
+                      onClick={handleTestarBackupAgora}
+                      loading={executandoBackupAuto}
+                    >
+                      Fazer Backup Agora
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="filled"
+                      color="blue"
+                      leftSection={<IconDeviceFloppy size={14} />}
+                      onClick={() => handleSubmitConfigs(form.values)}
+                      loading={salvandoConfig}
+                    >
+                      Salvar Opções de Backup
+                    </Button>
+                  </Group>
+                </Group>
+              </Paper>
+            </Stack>
+          </Stack>
+        </Paper>
 
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
           {/* Card 1: Backup / Restaurar */}

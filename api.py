@@ -1,6 +1,8 @@
 import base64
 import os
 import sqlite3
+import threading
+import atexit
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 import contextlib
@@ -14,6 +16,7 @@ from db import (
     create_schema,
     seed_settings,
     get_db_settings,
+    save_db_setting,
     save_all_db_settings,
     format_database_db,
     check_db_status_db,
@@ -51,6 +54,9 @@ class Api:
         self._explicit_db_path = db_path
         self._file_lock_handle = None
         self._ensure_lock()
+        self._backup_worker_started = False
+        self._start_auto_backup_worker()
+        atexit.register(self._on_app_exit)
 
     @property
     def db_path(self) -> str:
@@ -243,6 +249,258 @@ class Api:
             "tamanho_bytes": tamanho_bytes,
             "mensagem": f"Backup gravado com sucesso em: {caminho_completo}",
         }
+
+    def select_backup_directory(self) -> Dict[str, Any]:
+        """
+        Abre o diálogo nativo do sistema operacional para o usuário escolher o diretório de destino
+        para os backups automáticos. Testa se a pasta possui permissão de escrita.
+        """
+        pasta_selecionada = ""
+        try:
+            import webview
+
+            if webview.windows and len(webview.windows) > 0:
+                win = webview.windows[0]
+                dialog_type = getattr(
+                    webview.FileDialog, "FOLDER", getattr(webview, "FOLDER_DIALOG", 20)
+                )
+                caminhos = win.create_file_dialog(dialog_type=dialog_type)
+                if not caminhos:
+                    return {"sucesso": False, "cancelado": True, "caminho": ""}
+                pasta_selecionada = caminhos if isinstance(caminhos, str) else caminhos[0]
+        except Exception:
+            pass
+
+        if not pasta_selecionada:
+            # Fallback para tkinter caso não haja janela pywebview ativa
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+
+                root = tk.Tk()
+                root.withdraw()
+                root.wm_attributes("-topmost", 1)
+                destino = filedialog.askdirectory(title="Selecione a Pasta para o Backup Automático")
+                root.destroy()
+                if not destino:
+                    return {"sucesso": False, "cancelado": True, "caminho": ""}
+                pasta_selecionada = destino
+            except Exception as e:
+                return {
+                    "sucesso": False,
+                    "cancelado": False,
+                    "mensagem": f"Não foi possível acionar o diálogo de seleção de pasta: {e}",
+                }
+
+        pasta_selecionada = str(pasta_selecionada).strip()
+        if not pasta_selecionada:
+            return {"sucesso": False, "cancelado": True, "caminho": ""}
+
+        # Testa permissão de escrita no diretório selecionado
+        try:
+            os.makedirs(pasta_selecionada, exist_ok=True)
+            teste_arquivo = os.path.join(pasta_selecionada, ".write_test_cotacao.tmp")
+            with open(teste_arquivo, "w", encoding="utf-8") as f:
+                f.write("test")
+            os.remove(teste_arquivo)
+        except Exception as e:
+            return {
+                "sucesso": False,
+                "cancelado": False,
+                "caminho": pasta_selecionada,
+                "mensagem": f"Sem permissão de escrita no diretório selecionado: {e}",
+            }
+
+        return {
+            "sucesso": True,
+            "cancelado": False,
+            "caminho": pasta_selecionada,
+            "mensagem": f"Diretório selecionado com permissão de escrita: {pasta_selecionada}",
+        }
+
+    def execute_auto_backup(self, origem_gatilho: str = "manual") -> Dict[str, Any]:
+        """
+        Executa uma cópia de segurança atômica do banco de dados SQLite para o diretório configurado,
+        aplicando rotação de arquivos para não exceder o limite máximo.
+        """
+        with self._get_connection() as conn:
+            configs = get_db_settings(conn)
+
+        diretorio = configs.get("backup_auto_diretorio", "").strip()
+        if not diretorio:
+            msg = "Nenhum diretório de backup configurado."
+            self._registrar_status_backup("Falha: diretório não configurado")
+            raise ValueError(msg)
+
+        try:
+            max_arquivos = int(configs.get("backup_auto_max_arquivos", "10"))
+            if max_arquivos < 1:
+                max_arquivos = 10
+        except (ValueError, TypeError):
+            max_arquivos = 10
+
+        # Verifica e garante o diretório de destino
+        try:
+            os.makedirs(diretorio, exist_ok=True)
+        except Exception as e:
+            msg = f"Não foi possível acessar ou criar a pasta de backup: {e}"
+            self._registrar_status_backup(f"Falha: {msg}")
+            raise PermissionError(msg)
+
+        # Testa permissão de escrita
+        try:
+            teste_arq = os.path.join(diretorio, ".write_test_cotacao.tmp")
+            with open(teste_arq, "w", encoding="utf-8") as f:
+                f.write("test")
+            os.remove(teste_arq)
+        except Exception as e:
+            msg = f"Sem permissão de escrita no diretório '{diretorio}': {e}"
+            self._registrar_status_backup(f"Falha: sem permissão de escrita")
+            raise PermissionError(msg)
+
+        agora = datetime.now()
+        nome_arquivo = f"backup_auto_cotacao_{agora.strftime('%Y%m%d_%H%M%S')}.db"
+        caminho_destino = os.path.join(diretorio, nome_arquivo)
+
+        # Cópia atômica segura via sqlite3.Connection.backup
+        try:
+            with self._get_connection() as src_conn:
+                dest_conn = sqlite3.connect(caminho_destino)
+                try:
+                    src_conn.backup(dest_conn)
+                finally:
+                    dest_conn.close()
+        except Exception as e:
+            msg = f"Falha durante a cópia atômica do banco: {e}"
+            self._registrar_status_backup(f"Falha: {msg}")
+            raise RuntimeError(msg)
+
+        tamanho_bytes = os.path.getsize(caminho_destino) if os.path.exists(caminho_destino) else 0
+
+        # Rotação e limpeza dos backups mais antigos
+        removidos_count = 0
+        try:
+            arquivos_backup = []
+            for item in os.listdir(diretorio):
+                if item.startswith("backup_auto_cotacao_") and item.endswith(".db"):
+                    caminho_item = os.path.join(diretorio, item)
+                    if os.path.isfile(caminho_item):
+                        arquivos_backup.append((os.path.getmtime(caminho_item), caminho_item))
+
+            arquivos_backup.sort(key=lambda x: x[0])  # Mais antigos primeiro
+            if len(arquivos_backup) > max_arquivos:
+                excesso = len(arquivos_backup) - max_arquivos
+                for i in range(excesso):
+                    try:
+                        os.remove(arquivos_backup[i][1])
+                        removidos_count += 1
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"[Backup Automático] Erro na rotação de backups: {e}")
+
+        data_hora_str = agora.strftime("%d/%m/%Y %H:%M:%S")
+        self._registrar_status_backup("Sucesso", data_hora_str)
+
+        print(f"[Backup Automático] Backup realizado com sucesso ({origem_gatilho}): {nome_arquivo} ({tamanho_bytes} bytes)")
+
+        return {
+            "sucesso": True,
+            "cancelado": False,
+            "caminho": caminho_destino,
+            "nome_arquivo": nome_arquivo,
+            "tamanho_bytes": tamanho_bytes,
+            "data_hora": data_hora_str,
+            "removidos_rotacao": removidos_count,
+            "mensagem": f"Backup automático gerado com sucesso em {nome_arquivo}.",
+        }
+
+    def _registrar_status_backup(self, status: str, data_hora: Optional[str] = None) -> None:
+        """Grava no banco o status da última tentativa de backup e data/hora se fornecida."""
+        try:
+            with self._get_connection() as conn:
+                save_db_setting(conn, "backup_auto_ultimo_status", status)
+                if data_hora:
+                    save_db_setting(conn, "backup_auto_ultimo_sucesso", data_hora)
+        except Exception:
+            pass
+
+    def check_auto_backup_trigger(self, gatilho: str) -> Optional[Dict[str, Any]]:
+        """
+        Verifica se o backup automático está habilitado para o gatilho informado
+        ('abertura', 'fechamento' ou 'periodico') e executa caso as condições sejam atendidas.
+        """
+        try:
+            with self._get_connection() as conn:
+                configs = get_db_settings(conn)
+
+            if configs.get("backup_auto_ativo") != "1":
+                return None
+
+            diretorio = configs.get("backup_auto_diretorio", "").strip()
+            if not diretorio:
+                return None
+
+            gatilho_config = configs.get("backup_auto_gatilho", "abertura")
+
+            deve_executar = False
+            if gatilho_config == "sempre":
+                deve_executar = True
+            elif gatilho_config == gatilho:
+                deve_executar = True
+            elif gatilho == "periodico" and gatilho_config in ("periodico", "sempre"):
+                try:
+                    intervalo_horas = float(configs.get("backup_auto_intervalo_horas", "4"))
+                except (ValueError, TypeError):
+                    intervalo_horas = 4.0
+
+                ultimo_sucesso = configs.get("backup_auto_ultimo_sucesso", "")
+                if not ultimo_sucesso:
+                    deve_executar = True
+                else:
+                    try:
+                        dt_ultimo = datetime.strptime(ultimo_sucesso, "%d/%m/%Y %H:%M:%S")
+                        horas_passadas = (datetime.now() - dt_ultimo).total_seconds() / 3600.0
+                        if horas_passadas >= intervalo_horas:
+                            deve_executar = True
+                    except Exception:
+                        deve_executar = True
+
+            if deve_executar:
+                return self.execute_auto_backup(origem_gatilho=gatilho)
+            return None
+        except (sqlite3.ProgrammingError, sqlite3.OperationalError):
+            return None
+        except Exception as e:
+            print(f"[Backup Automático] Erro ao verificar gatilho '{gatilho}': {e}")
+            return None
+
+    def _start_auto_backup_worker(self) -> None:
+        """Inicia uma thread leve em segundo plano para checagem periódica do backup automático."""
+        if self._backup_worker_started or self.db_path == ":memory:":
+            return
+        self._backup_worker_started = True
+
+        def _worker():
+            import time
+            time.sleep(15)
+            while True:
+                try:
+                    self.check_auto_backup_trigger("periodico")
+                except Exception as e:
+                    print(f"[Backup Automático] Erro no worker periódico: {e}")
+                time.sleep(300)
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+
+    def _on_app_exit(self) -> None:
+        """Chamado no término da aplicação para executar backup de fechamento se configurado."""
+        try:
+            if self.db_path and self.db_path != ":memory:" and os.path.exists(self.db_path):
+                self.check_auto_backup_trigger("fechamento")
+        except Exception:
+            pass
 
     def import_database(self, conteudo_base64: str) -> Dict[str, Any]:
         """Importa e substitui o arquivo do banco de dados a partir de uma string base64 de forma segura."""

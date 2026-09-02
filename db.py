@@ -191,6 +191,13 @@ def seed_settings(conn: sqlite3.Connection) -> None:
         ("app_tamanho_fonte", "medio"),
         ("app_modo_execucao", "janela"),
         ("sistema_inicializado", "0"),
+        ("backup_auto_ativo", "0"),
+        ("backup_auto_diretorio", ""),
+        ("backup_auto_gatilho", "abertura"),
+        ("backup_auto_intervalo_horas", "4"),
+        ("backup_auto_max_arquivos", "10"),
+        ("backup_auto_ultimo_sucesso", ""),
+        ("backup_auto_ultimo_status", ""),
     ]
     for chave, valor in configs_padrao:
         cursor.execute(

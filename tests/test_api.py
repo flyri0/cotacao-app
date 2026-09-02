@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import unittest
 from api import Api
@@ -616,7 +617,136 @@ class TestApi(unittest.TestCase):
                 except Exception:
                     pass
 
+    # -------------------------------------------------------------------------
+    # Testes do Sistema de Backup Automático
+    # -------------------------------------------------------------------------
+    def test_execute_auto_backup_sem_diretorio_lanca_erro(self) -> None:
+        """Verifica que execute_auto_backup lança erro se não houver pasta configurada."""
+        self.api.save_settings({"backup_auto_diretorio": ""})
+        with self.assertRaises(ValueError):
+            self.api.execute_auto_backup()
+
+    def test_execute_auto_backup_sucesso_e_integridade(self) -> None:
+        """Verifica que o backup automático gera arquivo SQLite íntegro e atualiza configs."""
+        import tempfile
+        import shutil
+
+        temp_backup_dir = tempfile.mkdtemp(prefix="cotacao_backup_test_")
+        try:
+            self.api.save_settings({
+                "backup_auto_ativo": "1",
+                "backup_auto_diretorio": temp_backup_dir,
+                "backup_auto_max_arquivos": "5",
+            })
+
+            res = self.api.execute_auto_backup(origem_gatilho="teste")
+            self.assertTrue(res["sucesso"])
+            self.assertTrue(os.path.exists(res["caminho"]))
+            self.assertGreater(res["tamanho_bytes"], 0)
+
+            # Valida integridade do banco copiado
+            conn_backup = sqlite3.connect(res["caminho"])
+            cursor = conn_backup.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tabelas = [r[0] for r in cursor.fetchall()]
+            conn_backup.close()
+            self.assertIn("produtos", tabelas)
+            self.assertIn("fornecedores", tabelas)
+
+            # Verifica se configs foram atualizadas
+            configs = self.api.get_settings()
+            self.assertEqual(configs.get("backup_auto_ultimo_status"), "Sucesso")
+            self.assertNotEqual(configs.get("backup_auto_ultimo_sucesso"), "")
+        finally:
+            shutil.rmtree(temp_backup_dir, ignore_errors=True)
+
+    def test_execute_auto_backup_rotacao_arquivos(self) -> None:
+        """Verifica que o número de backups mantidos respeita o limite de retenção configurado."""
+        import tempfile
+        import shutil
+        import time
+
+        temp_backup_dir = tempfile.mkdtemp(prefix="cotacao_rotacao_test_")
+        try:
+            limite_max = 3
+            self.api.save_settings({
+                "backup_auto_ativo": "1",
+                "backup_auto_diretorio": temp_backup_dir,
+                "backup_auto_max_arquivos": str(limite_max),
+            })
+
+            # Gera 5 backups sequenciais simulados
+            for i in range(5):
+                # Pequena pausa ou simula arquivo para timestamp diferente
+                arq = os.path.join(temp_backup_dir, f"backup_auto_cotacao_20260902_{i:02d}0000.db")
+                with open(arq, "wb") as f:
+                    f.write(b"dummy")
+                # Define mtime sequencial
+                os.utime(arq, (time.time() + i * 10, time.time() + i * 10))
+
+            # Executa o backup oficial da API
+            res = self.api.execute_auto_backup()
+            self.assertTrue(res["sucesso"])
+
+            # Lista arquivos de backup no diretório
+            arquivos = [
+                f for f in os.listdir(temp_backup_dir)
+                if f.startswith("backup_auto_cotacao_") and f.endswith(".db")
+            ]
+            self.assertLessEqual(len(arquivos), limite_max)
+        finally:
+            shutil.rmtree(temp_backup_dir, ignore_errors=True)
+
+    def test_check_auto_backup_trigger(self) -> None:
+        """Testa acionamento por gatilho condicional (abertura, fechamento, etc.)."""
+        import tempfile
+        import shutil
+
+        temp_backup_dir = tempfile.mkdtemp(prefix="cotacao_trigger_test_")
+        try:
+            # 1. Com backup desativado -> não deve executar
+            self.api.save_settings({
+                "backup_auto_ativo": "0",
+                "backup_auto_diretorio": temp_backup_dir,
+                "backup_auto_gatilho": "abertura",
+            })
+            res_desativado = self.api.check_auto_backup_trigger("abertura")
+            self.assertIsNone(res_desativado)
+
+            # 2. Com backup ativo para 'abertura' -> acionamento por 'fechamento' não deve rodar
+            self.api.save_settings({
+                "backup_auto_ativo": "1",
+                "backup_auto_diretorio": temp_backup_dir,
+                "backup_auto_gatilho": "abertura",
+            })
+            res_outro_gatilho = self.api.check_auto_backup_trigger("fechamento")
+            self.assertIsNone(res_outro_gatilho)
+
+            # 3. Com backup ativo para 'abertura' -> acionamento por 'abertura' DEVE rodar
+            res_abertura = self.api.check_auto_backup_trigger("abertura")
+            self.assertIsNotNone(res_abertura)
+            self.assertTrue(res_abertura["sucesso"])
+        finally:
+            shutil.rmtree(temp_backup_dir, ignore_errors=True)
+
+    def test_execute_auto_backup_sem_permissao_escrita(self) -> None:
+        """Verifica que diretório sem permissão de escrita gera erro e registra status de falha."""
+        from unittest.mock import patch
+
+        self.api.save_settings({
+            "backup_auto_ativo": "1",
+            "backup_auto_diretorio": "C:\\diretorio_sem_permissao_test_999",
+        })
+
+        with patch("os.makedirs", side_effect=PermissionError("Acesso negado")):
+            with self.assertRaises(PermissionError):
+                self.api.execute_auto_backup()
+
+        configs = self.api.get_settings()
+        self.assertTrue(configs.get("backup_auto_ultimo_status", "").startswith("Falha"))
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

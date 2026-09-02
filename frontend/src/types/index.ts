@@ -79,7 +79,14 @@ export interface ConfiguracoesApp {
   app_densidade?: 'compacto' | 'confortavel'
   app_tamanho_fonte?: string
   app_modo_execucao?: 'janela' | 'navegador'
-  [key: string]: string | undefined
+  backup_auto_ativo?: string | boolean
+  backup_auto_diretorio?: string
+  backup_auto_gatilho?: 'abertura' | 'fechamento' | 'periodico' | 'sempre' | string
+  backup_auto_intervalo_horas?: string | number
+  backup_auto_max_arquivos?: string | number
+  backup_auto_ultimo_sucesso?: string
+  backup_auto_ultimo_status?: string
+  [key: string]: any
 }
 
 export interface CotacaoHistoricoItem {
@@ -179,6 +186,8 @@ export interface PywebviewApi {
   export_database: () => Promise<{ sucesso: boolean; nome_arquivo: string; conteudo_base64: string }>
   select_location_and_save_backup: (nome_sugerido?: string) => Promise<RespostaBackup>
   salvar_backup_em_caminho: (caminho_completo: string) => Promise<RespostaBackup>
+  select_backup_directory: () => Promise<{ sucesso: boolean; cancelado?: boolean; caminho?: string; mensagem?: string }>
+  execute_auto_backup: () => Promise<RespostaBackup>
   import_database: (conteudo_base64: string) => Promise<{ sucesso: boolean; mensagem: string }>
 
   list_products: (apenas_ativos?: boolean) => Promise<Produto[]>
