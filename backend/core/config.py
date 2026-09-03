@@ -26,7 +26,9 @@ def get_last_db_path() -> Optional[str]:
     Retorna o caminho do último banco de dados utilizado registrado em app_config.json.
     Retorna None se a configuração não existir ou se o arquivo físico não for encontrado no disco.
     """
-    config_file = get_app_config_path()
+    db_mod = sys.modules.get("backend.db") or sys.modules.get("backend.core.config") or sys.modules.get("db")
+    get_cfg_fn = getattr(db_mod, "get_app_config_path", get_app_config_path)
+    config_file = get_cfg_fn()
     if os.path.exists(config_file):
         try:
             with open(config_file, "r", encoding="utf-8") as f:
@@ -40,7 +42,11 @@ def get_last_db_path() -> Optional[str]:
 
 def set_last_db_path(db_path: str) -> None:
     """Registra o caminho do banco ativo no arquivo app_config.json."""
-    config_file = get_app_config_path()
+    if not db_path or db_path == ":memory:":
+        return
+    db_mod = sys.modules.get("backend.db") or sys.modules.get("backend.core.config") or sys.modules.get("db")
+    get_cfg_fn = getattr(db_mod, "get_app_config_path", get_app_config_path)
+    config_file = get_cfg_fn()
     try:
         data = {}
         if os.path.exists(config_file):
@@ -50,6 +56,9 @@ def set_last_db_path(db_path: str) -> None:
             except Exception:
                 data = {}
         data["ultimo_banco_path"] = os.path.abspath(db_path)
+        pasta = os.path.dirname(os.path.abspath(config_file))
+        if pasta and not os.path.exists(pasta):
+            os.makedirs(pasta, exist_ok=True)
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
     except Exception as e:

@@ -15,11 +15,13 @@ from backend.core.schema import (
     check_db_status_db,
     initialize_empty_db_db,
     format_database_db,
+    create_schema,
 )
 from backend.domain.configuracoes import (
     get_db_settings,
     save_db_setting,
     save_all_db_settings,
+    seed_settings,
 )
 from backend.domain.produtos import (
     list_products_db,
@@ -131,30 +133,68 @@ class Api:
     # STATUS DE INICIALIZAÇÃO & SETUP INICIAL
     # -------------------------------------------------------------------------
     def check_db_status(self) -> Dict[str, Any]:
-        if self._explicit_db_path == ":memory:":
+        if self._explicit_db_path:
+            if self._explicit_db_path == ":memory:":
+                with self._get_connection() as conn:
+                    return check_db_status_db(conn, db_path=":memory:")
+            if not os.path.exists(self._explicit_db_path):
+                return {
+                    "inicializado": False,
+                    "total_produtos": 0,
+                    "total_fornecedores": 0,
+                    "total_rodadas": 0,
+                    "caminho_banco": self._explicit_db_path,
+                }
             with self._get_connection() as conn:
-                return check_db_status_db(conn, db_path=":memory:")
+                create_schema(conn)
+                seed_settings(conn)
+                return check_db_status_db(conn, db_path=self._explicit_db_path)
 
         last_path = get_last_db_path()
         if not last_path or not os.path.exists(last_path):
-            return {
-                "inicializado": False,
-                "total_produtos": 0,
-                "total_fornecedores": 0,
-                "total_rodadas": 0,
-                "caminho_banco": last_path or self.db_path,
-            }
+            default_path = get_default_db_path()
+            if os.path.exists(default_path):
+                last_path = default_path
+                set_last_db_path(last_path)
+            else:
+                return {
+                    "inicializado": False,
+                    "total_produtos": 0,
+                    "total_fornecedores": 0,
+                    "total_rodadas": 0,
+                    "caminho_banco": None,
+                }
 
         with self._get_connection() as conn:
-            return check_db_status_db(conn, db_path=last_path)
+            create_schema(conn)
+            seed_settings(conn)
+            status = check_db_status_db(conn, db_path=last_path)
+            self._ensure_lock()
+            return status
 
     def initialize_empty_db(self) -> Dict[str, Any]:
+        """Inicializa um banco 100% limpo para produção e salva seu caminho como ativo."""
+        self._release_lock()
+        path = self.db_path
+        set_last_db_path(path)
         with self._get_connection() as conn:
-            return initialize_empty_db_db(conn)
+            create_schema(conn)
+            seed_settings(conn)
+            res = initialize_empty_db_db(conn)
+        self._ensure_lock()
+        res["caminho"] = path
+        return res
 
     def populate_demo_db(self) -> Dict[str, Any]:
+        """Popula o banco com catálogo rico de teste e salva seu caminho como ativo."""
+        self._release_lock()
+        path = self.db_path
+        set_last_db_path(path)
         with self._get_connection() as conn:
-            return populate_demo_db_db(conn)
+            res = populate_demo_db_db(conn)
+        self._ensure_lock()
+        res["caminho"] = path
+        return res
 
     def format_database(self, com_seed: bool = False) -> Dict[str, Any]:
         self._release_lock()

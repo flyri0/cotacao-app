@@ -8,6 +8,15 @@ from backend.db import create_schema, seed_data
 class TestApi(unittest.TestCase):
     def setUp(self) -> None:
         """Cria um banco de dados em memória para testes isolados da Api."""
+        import tempfile
+        from unittest.mock import patch
+        self._temp_cfg_fd, self._temp_cfg_path = tempfile.mkstemp(suffix=".json")
+        os.close(self._temp_cfg_fd)
+        self._cfg_patch1 = patch("backend.core.config.get_app_config_path", return_value=self._temp_cfg_path)
+        self._cfg_patch2 = patch("backend.db.get_app_config_path", return_value=self._temp_cfg_path)
+        self._cfg_patch1.start()
+        self._cfg_patch2.start()
+
         self.conn = sqlite3.connect(":memory:")
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON;")
@@ -20,6 +29,13 @@ class TestApi(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.conn.close()
+        self._cfg_patch1.stop()
+        self._cfg_patch2.stop()
+        if os.path.exists(self._temp_cfg_path):
+            try:
+                os.remove(self._temp_cfg_path)
+            except Exception:
+                pass
 
     # -------------------------------------------------------------------------
     # Testes de Configurações
@@ -569,19 +585,25 @@ class TestApi(unittest.TestCase):
     def test_salvar_e_obter_ultimo_banco_path(self) -> None:
         import tempfile
         import os
+        from unittest.mock import patch
         from backend.db import set_last_db_path, get_last_db_path
 
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             temp_db = f.name
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f_cfg:
+            temp_cfg = f_cfg.name
 
         try:
-            set_last_db_path(temp_db)
-            last = get_last_db_path()
-            self.assertIsNotNone(last)
-            self.assertEqual(os.path.abspath(last), os.path.abspath(temp_db))
+            with patch("backend.core.config.get_app_config_path", return_value=temp_cfg):
+                set_last_db_path(temp_db)
+                last = get_last_db_path()
+                self.assertIsNotNone(last)
+                self.assertEqual(os.path.abspath(last), os.path.abspath(temp_db))
         finally:
             if os.path.exists(temp_db):
                 os.remove(temp_db)
+            if os.path.exists(temp_cfg):
+                os.remove(temp_cfg)
 
     def test_trava_arquivo_em_uso_impede_delecao(self) -> None:
         import tempfile

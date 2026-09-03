@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import unittest
 from backend.db import (
@@ -377,7 +378,7 @@ class TestDatabaseSchema(unittest.TestCase):
             tmp_cfg = f.name
 
         try:
-            with patch("backend.db.get_app_config_path", return_value=tmp_cfg):
+            with patch("backend.db.get_app_config_path", return_value=tmp_cfg), patch("backend.core.config.get_app_config_path", return_value=tmp_cfg):
                 self.assertIsNone(get_last_db_path())
                 # Testar set_last_db_path sobrepondo JSON corrompido
                 set_last_db_path(r"C:\test\cotacao.db")
@@ -389,7 +390,7 @@ class TestDatabaseSchema(unittest.TestCase):
                 self.assertEqual(get_db_path(), tmp_cfg)
 
             # Testar erro ao salvar app_config.json (linhas 60-61)
-            with patch("builtins.open", side_effect=PermissionError("Acesso negado")):
+            with patch("builtins.open", side_effect=PermissionError("Acesso negado")), patch("backend.core.config.get_app_config_path", return_value=tmp_cfg):
                 set_last_db_path(r"C:\test\cotacao.db")
 
             # Testar exceção ao remover banco anterior em reset_db (linhas 1110-1111)
