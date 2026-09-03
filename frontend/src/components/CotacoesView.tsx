@@ -177,6 +177,39 @@ export function CotacoesView({
     },
   })
 
+  // Estado para Modal de Edição Completa de Cotação
+  const [modalEditarCotacaoOpened, { open: openModalEditarCotacao, close: closeModalEditarCotacao }] =
+    useDisclosure(false)
+  const [cotacaoParaEditar, setCotacaoParaEditar] = useState<Cotacao | null>(null)
+  const [salvandoEdicaoCotacao, setSalvandoEdicaoCotacao] = useState(false)
+
+  const formEdicaoCotacao = useForm({
+    initialValues: {
+      fornecedorNome: '',
+      produtoNome: '',
+      produtoCategoria: '',
+      marca: '',
+      embalagem: 'Unidade',
+      qtd_por_embalagem: 1,
+      unidade: 'UN',
+      preco_embalagem: 0,
+    },
+    validate: {
+      fornecedorNome: (value) =>
+        value.trim().length === 0 ? 'Informe o fornecedor' : null,
+      produtoNome: (value) =>
+        value.trim().length === 0 ? 'Informe o produto' : null,
+      embalagem: (value) =>
+        value.trim().length === 0 ? 'Informe a embalagem' : null,
+      unidade: (value) =>
+        value.trim().length === 0 ? 'Informe a unidade de medida' : null,
+      qtd_por_embalagem: (value) =>
+        value <= 0 ? 'Quantidade por embalagem deve ser maior que zero' : null,
+      preco_embalagem: (value) =>
+        value < 0 ? 'O preço da embalagem não pode ser negativo' : null,
+    },
+  })
+
   // Referências para navegação ultrarrápida por teclado
   const fornecedorRef = useRef<HTMLInputElement>(null)
   const produtoRef = useRef<HTMLInputElement>(null)
@@ -359,6 +392,91 @@ export function CotacoesView({
       })
     } finally {
       setSalvandoEdicaoProduto(false)
+    }
+  }
+
+  const handleAbrirEdicaoCotacao = (cotacao: Cotacao) => {
+    const prod = produtos.find((p) => p.id === cotacao.id_produto)
+    setCotacaoParaEditar(cotacao)
+    formEdicaoCotacao.setValues({
+      fornecedorNome: cotacao.fornecedor_nome,
+      produtoNome: cotacao.produto_nome,
+      produtoCategoria: prod?.categoria || '',
+      marca: cotacao.marca || '',
+      embalagem: cotacao.embalagem || 'Unidade',
+      qtd_por_embalagem: cotacao.qtd_por_embalagem || 1,
+      unidade: cotacao.unidade || 'UN',
+      preco_embalagem: cotacao.preco_embalagem || 0,
+    })
+    openModalEditarCotacao()
+  }
+
+  const handleSalvarEdicaoCotacao = async (values: typeof formEdicaoCotacao.values) => {
+    if (!cotacaoParaEditar) return
+    const forn = fornecedores.find(
+      (f) =>
+        f.nome.trim().toLowerCase() === values.fornecedorNome.trim().toLowerCase(),
+    )
+    if (!forn) {
+      formEdicaoCotacao.setFieldError('fornecedorNome', 'Fornecedor não encontrado no cadastro.')
+      notifications.show({
+        title: 'Fornecedor não cadastrado',
+        message: `O fornecedor "${values.fornecedorNome}" não foi encontrado. Cadastre-o na aba Fornecedores.`,
+        color: 'red',
+        icon: <IconAlertCircle size={16} />,
+      })
+      return
+    }
+
+    try {
+      setSalvandoEdicaoCotacao(true)
+      const api = await getApi()
+      const atualizada = await api.update_quote(
+        cotacaoParaEditar.id,
+        forn.id,
+        null,
+        values.produtoNome,
+        values.marca || null,
+        values.embalagem,
+        values.qtd_por_embalagem,
+        values.unidade,
+        values.preco_embalagem,
+        values.produtoCategoria || null,
+      )
+
+      if (atualizada.produto_novo) {
+        notifications.show({
+          title: 'Novo Produto Cadastrado',
+          message: `"${atualizada.produto_nome}" foi cadastrado no catálogo e incluído nas necessidades desta rodada.`,
+          color: 'teal',
+          icon: <IconPackage size={16} />,
+          autoClose: 3500,
+        })
+      }
+
+      notifications.show({
+        title: 'Cotação Atualizada',
+        message: `Cotação de "${atualizada.produto_nome}" (${atualizada.fornecedor_nome}) atualizada com sucesso!`,
+        color: 'green',
+        icon: <IconCheck size={16} />,
+        autoClose: 2500,
+      })
+
+      closeModalEditarCotacao()
+      await carregarDadosIniciais()
+      if (selectedRodadaId) {
+        await carregarCotacoesENecessidades(selectedRodadaId)
+      }
+    } catch (error: any) {
+      console.error('Erro ao atualizar cotação:', error)
+      notifications.show({
+        title: 'Erro ao atualizar cotação',
+        message: error?.message || 'Falha ao atualizar cotação.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setSalvandoEdicaoCotacao(false)
     }
   }
 
@@ -730,21 +848,19 @@ export function CotacoesView({
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
           const item = row.original
-          const prod = produtos.find((p) => p.id === item.id_produto)
           return (
             <Group gap={4} justify="center" wrap="nowrap">
-              {prod && (
-                <Tooltip label={`Editar cadastro de "${prod.nome}"`}>
-                  <ActionIcon
-                    variant="subtle"
-                    color={themeColor}
-                    size="sm"
-                    onClick={() => handleAbrirEdicaoProduto(prod)}
-                  >
-                    <IconEdit size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              )}
+              <Tooltip label={`Editar cotação de "${item.produto_nome}"`}>
+                <ActionIcon
+                  variant="subtle"
+                  color={themeColor}
+                  size="sm"
+                  disabled={isFechada}
+                  onClick={() => handleAbrirEdicaoCotacao(item)}
+                >
+                  <IconEdit size={16} />
+                </ActionIcon>
+              </Tooltip>
 
               <Tooltip label="Remover esta cotação">
                 <ActionIcon
@@ -1137,6 +1253,139 @@ export function CotacoesView({
             </Button>
           </Group>
         </Stack>
+      </Modal>
+
+      {/* Modal de Edição Completa de Cotação */}
+      <Modal
+        opened={modalEditarCotacaoOpened}
+        onClose={closeModalEditarCotacao}
+        title={
+          <Group gap="xs">
+            <IconEdit size={18} />
+            <Text fw={700}>Editar Cotação</Text>
+          </Group>
+        }
+        centered
+        radius="sm"
+        size="lg"
+      >
+        <form onSubmit={formEdicaoCotacao.onSubmit(handleSalvarEdicaoCotacao)}>
+          <Stack gap="sm">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+              <AppAutocomplete
+                label="Fornecedor"
+                size="xs"
+                placeholder="Selecione o fornecedor..."
+                data={nomesFornecedores}
+                required
+                limit={8}
+                {...formEdicaoCotacao.getInputProps('fornecedorNome')}
+              />
+
+              <AppAutocomplete
+                label="Produto"
+                size="xs"
+                placeholder="Digite ou selecione o produto..."
+                data={nomesTodosProdutos}
+                required
+                limit={10}
+                {...formEdicaoCotacao.getInputProps('produtoNome')}
+              />
+            </SimpleGrid>
+
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+              <TextInput
+                label="Categoria do Produto (Opcional)"
+                size="xs"
+                placeholder="Ex: Alimentos, Limpeza, Embalagens..."
+                {...formEdicaoCotacao.getInputProps('produtoCategoria')}
+              />
+
+              <TextInput
+                label="Marca (Opcional)"
+                size="xs"
+                placeholder="Ex: Ypê, Bombril, 3M..."
+                {...formEdicaoCotacao.getInputProps('marca')}
+              />
+            </SimpleGrid>
+
+            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="xs">
+              <AppAutocomplete
+                label="Embalagem"
+                size="xs"
+                placeholder="Ex: Caixa c/ 24 un"
+                data={SUGESTOES_EMBALAGEM}
+                required
+                {...formEdicaoCotacao.getInputProps('embalagem')}
+              />
+
+              <NumberInput
+                label="Qtd na Embalagem"
+                size="xs"
+                placeholder="Ex: 24"
+                min={0.001}
+                decimalScale={3}
+                required
+                {...formEdicaoCotacao.getInputProps('qtd_por_embalagem')}
+              />
+
+              <AppAutocomplete
+                label="Unidade Medida"
+                size="xs"
+                placeholder="Ex: UN, KG, L"
+                data={SUGESTOES_UNIDADES}
+                required
+                {...formEdicaoCotacao.getInputProps('unidade')}
+              />
+
+              <NumberInput
+                label="Preço Embalagem (R$)"
+                size="xs"
+                placeholder="0,00"
+                min={0}
+                decimalScale={2}
+                fixedDecimalScale
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                required
+                {...formEdicaoCotacao.getInputProps('preco_embalagem')}
+              />
+            </SimpleGrid>
+
+            {formEdicaoCotacao.values.qtd_por_embalagem > 0 && (
+              <Paper p="xs" radius="sm" withBorder bg="var(--mantine-color-gray-light)">
+                <Group justify="space-between" align="center">
+                  <Text size="xs" c="dimmed">Preço Unitário Calculado:</Text>
+                  <Text fw={700} size="sm" c="teal">
+                    {formatMoney(
+                      (formEdicaoCotacao.values.preco_embalagem || 0) /
+                        (formEdicaoCotacao.values.qtd_por_embalagem || 1)
+                    )}{' '}
+                    /{' '}
+                    {formEdicaoCotacao.values.unidade || 'UN'}
+                  </Text>
+                </Group>
+              </Paper>
+            )}
+
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditarCotacao}>
+                Cancelar
+              </Button>
+              <Button
+                variant="filled"
+                color={themeColor}
+                size="xs"
+                type="submit"
+                leftSection={<IconCheck size={14} />}
+                loading={salvandoEdicaoCotacao}
+              >
+                Salvar Alterações
+              </Button>
+            </Group>
+          </Stack>
+        </form>
       </Modal>
 
       {/* Modal de Edição de Produto */}

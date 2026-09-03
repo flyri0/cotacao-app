@@ -57,6 +57,7 @@ from backend.domain.necessidades import (
 from backend.domain.cotacoes import (
     list_quotes_db,
     save_quote_db,
+    update_quote_db,
     remove_quote_db,
     get_quote_matrix_db,
     get_global_quotes_history_db,
@@ -604,6 +605,35 @@ class Api:
 
     def save_quote(self, *args, **kwargs) -> Dict[str, Any]:
         return self.create_quote(*args, **kwargs)
+
+    def update_quote(
+        self,
+        id_cotacao: int,
+        id_fornecedor: int,
+        id_produto: Optional[int] = None,
+        produto_nome: Optional[str] = None,
+        marca: Optional[str] = None,
+        embalagem: str = "Unidade",
+        qtd_por_embalagem: float = 1.0,
+        unidade: str = "UN",
+        preco_embalagem: float = 0.0,
+        produto_categoria: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            self._verificar_rodada_aberta_por_entidade(conn, "cotacoes", id_cotacao)
+            return update_quote_db(
+                conn,
+                id_cotacao=id_cotacao,
+                id_fornecedor=id_fornecedor,
+                id_produto=id_produto,
+                produto_nome=produto_nome,
+                marca=marca,
+                embalagem=embalagem,
+                qtd_por_embalagem=qtd_por_embalagem,
+                unidade=unidade,
+                preco_embalagem=preco_embalagem,
+                produto_categoria=produto_categoria,
+            )
 
     def remove_quote(self, id_cotacao: int) -> Dict[str, Any]:
         with self._get_connection() as conn:

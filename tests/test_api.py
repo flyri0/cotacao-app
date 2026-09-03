@@ -512,6 +512,56 @@ class TestApi(unittest.TestCase):
                 preco_embalagem=10,
             )
 
+    def test_atualizar_cotacao(self) -> None:
+        cotacao = self.api.create_quote(
+            id_rodada=4,
+            id_fornecedor=1,
+            id_produto=1,
+            marca="Marca Original",
+            embalagem="Caixa",
+            qtd_por_embalagem=10.0,
+            unidade="UN",
+            preco_embalagem=100.0,
+        )
+        id_cotacao = cotacao["id"]
+
+        atualizada = self.api.update_quote(
+            id_cotacao=id_cotacao,
+            id_fornecedor=1,
+            id_produto=1,
+            marca="Marca Atualizada",
+            embalagem="Fardo Especial",
+            qtd_por_embalagem=10.0,
+            unidade="FD",
+            preco_embalagem=50.0,
+            produto_categoria="Limpeza Pesada",
+        )
+        self.assertEqual(atualizada["marca"], "Marca Atualizada")
+        self.assertEqual(atualizada["embalagem"], "Fardo Especial")
+        self.assertEqual(atualizada["qtd_por_embalagem"], 10.0)
+        self.assertEqual(atualizada["unidade"], "FD")
+        self.assertEqual(atualizada["preco_embalagem"], 50.0)
+        self.assertAlmostEqual(atualizada["preco_unitario"], 5.0, places=2)
+
+        # Teste de validações
+        with self.assertRaises(ValueError):
+            self.api.update_quote(id_cotacao=id_cotacao, id_fornecedor=1, embalagem="")
+        with self.assertRaises(ValueError):
+            self.api.update_quote(id_cotacao=id_cotacao, id_fornecedor=1, unidade="")
+        with self.assertRaises(ValueError):
+            self.api.update_quote(id_cotacao=id_cotacao, id_fornecedor=1, qtd_por_embalagem=0)
+        with self.assertRaises(ValueError):
+            self.api.update_quote(id_cotacao=id_cotacao, id_fornecedor=1, preco_embalagem=-5)
+        with self.assertRaises(ValueError):
+            self.api.update_quote(id_cotacao=id_cotacao, id_fornecedor=99999)
+        with self.assertRaises(ValueError):
+            self.api.update_quote(id_cotacao=99999, id_fornecedor=1)
+
+        # Rodada fechada deve bloquear atualização
+        cotacoes_fechadas = self.api.list_quotes(id_rodada=1)
+        with self.assertRaises(ValueError):
+            self.api.update_quote(id_cotacao=cotacoes_fechadas[0]["id"], id_fornecedor=1)
+
     # -------------------------------------------------------------------------
     # Testes de Alocações
     # -------------------------------------------------------------------------

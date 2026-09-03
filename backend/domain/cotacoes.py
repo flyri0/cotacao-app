@@ -157,6 +157,145 @@ def save_quote_db(
     return res
 
 
+def update_quote_db(
+    conn: sqlite3.Connection,
+    id_cotacao: int,
+    id_fornecedor: int,
+    id_produto: Optional[int] = None,
+    marca: Optional[str] = None,
+    embalagem: str = "Unidade",
+    qtd_por_embalagem: float = 1.0,
+    unidade: str = "UN",
+    preco_embalagem: float = 0.0,
+    produto_nome: Optional[str] = None,
+    produto_categoria: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Atualiza uma cotação existente com normalização de preço e suporte a alteração de fornecedor/produto."""
+    from backend.domain.rodadas import verificar_rodada_aberta
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, id_rodada, id_produto, id_fornecedor FROM cotacoes WHERE id = ?", (id_cotacao,))
+    row = cursor.fetchone()
+    if not row:
+        raise ValueError(f"Cotação #{id_cotacao} não encontrada.")
+
+    id_rodada = row["id_rodada"]
+    verificar_rodada_aberta(conn, id_rodada)
+
+    embalagem = embalagem.strip() if embalagem else ""
+    if not embalagem:
+        raise ValueError("A descrição da embalagem não pode ser vazia.")
+
+    unidade = unidade.strip().upper() if unidade else ""
+    if not unidade:
+        raise ValueError("A unidade de medida não pode ser vazia.")
+
+    if qtd_por_embalagem <= 0:
+        raise ValueError("A quantidade por embalagem deve ser maior que zero.")
+
+    if preco_embalagem < 0:
+        raise ValueError("O preço da embalagem não pode ser negativo.")
+
+    marca = marca.strip() if marca else None
+
+    # Validar fornecedor
+    cursor.execute("SELECT id FROM fornecedores WHERE id = ?", (id_fornecedor,))
+    if not cursor.fetchone():
+        raise ValueError(f"Fornecedor #{id_fornecedor} não encontrado.")
+
+    # Validar ou resolver produto
+    prod_id = id_produto
+    if prod_id:
+        cursor.execute("SELECT id FROM produtos WHERE id = ?", (prod_id,))
+        if not cursor.fetchone():
+            prod_id = None
+
+    produto_novo = False
+    if not prod_id and produto_nome and produto_nome.strip():
+        nome_limpo = produto_nome.strip()
+        cursor.execute("SELECT id FROM produtos WHERE LOWER(nome) = LOWER(?)", (nome_limpo,))
+        prod_row = cursor.fetchone()
+        if prod_row:
+            prod_id = prod_row["id"]
+        else:
+            cat = produto_categoria.strip() if (produto_categoria and produto_categoria.strip()) else None
+            cursor.execute(
+                "INSERT INTO produtos (nome, categoria, ativo) VALUES (?, ?, 1)",
+                (nome_limpo, cat),
+            )
+            prod_id = cursor.lastrowid
+            produto_novo = True
+
+    if not prod_id:
+        prod_id = row["id_produto"]
+
+    # Se categoria foi passada e produto já existia, atualiza categoria se fornecida
+    if produto_categoria is not None and prod_id and not produto_novo:
+        cat = produto_categoria.strip() if produto_categoria.strip() else None
+        cursor.execute("UPDATE produtos SET categoria = ? WHERE id = ?", (cat, prod_id))
+
+    # Verifica se já existe OUTRA cotação com a mesma chave (id_rodada, id_fornecedor, prod_id)
+    cursor.execute(
+        "SELECT id FROM cotacoes WHERE id_rodada = ? AND id_fornecedor = ? AND id_produto = ? AND id != ?",
+        (id_rodada, id_fornecedor, prod_id, id_cotacao),
+    )
+    if cursor.fetchone():
+        raise ValueError("Já existe outra cotação registrada para este produto e fornecedor nesta rodada.")
+
+    # Garante inclusão nas necessidades da rodada
+    cursor.execute(
+        """
+        INSERT INTO necessidades (id_rodada, id_produto)
+        VALUES (?, ?)
+        ON CONFLICT(id_rodada, id_produto) DO NOTHING
+        """,
+        (id_rodada, prod_id),
+    )
+
+    cursor.execute(
+        """
+        UPDATE cotacoes SET
+            id_fornecedor = ?,
+            id_produto = ?,
+            marca = ?,
+            embalagem = ?,
+            qtd_por_embalagem = ?,
+            unidade = ?,
+            preco_embalagem = ?
+        WHERE id = ?
+        """,
+        (
+            id_fornecedor,
+            prod_id,
+            marca,
+            embalagem,
+            qtd_por_embalagem,
+            unidade,
+            preco_embalagem,
+            id_cotacao,
+        ),
+    )
+    conn.commit()
+
+    cursor.execute(
+        """
+        SELECT 
+            c.id, c.id_rodada, c.id_fornecedor, f.nome AS fornecedor_nome,
+            c.id_produto, p.nome AS produto_nome, p.categoria AS produto_categoria,
+            c.marca, c.embalagem, c.qtd_por_embalagem, c.unidade, c.preco_embalagem,
+            (c.preco_embalagem / c.qtd_por_embalagem) AS preco_unitario
+        FROM cotacoes c
+        JOIN fornecedores f ON f.id = c.id_fornecedor
+        JOIN produtos p ON p.id = c.id_produto
+        WHERE c.id = ?
+        """,
+        (id_cotacao,),
+    )
+    res = dict(cursor.fetchone())
+    res["produto_novo"] = produto_novo
+    return res
+
+
 def remove_quote_db(conn: sqlite3.Connection, id_cotacao: int) -> Dict[str, Any]:
     """Remove uma cotação da rodada."""
     from backend.domain.rodadas import verificar_rodada_aberta

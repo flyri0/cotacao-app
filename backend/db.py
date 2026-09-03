@@ -75,6 +75,7 @@ from backend.domain.cotacoes import (
     get_global_quotes_history_db,
     list_quotes_db,
     save_quote_db,
+    update_quote_db,
     remove_quote_db,
     get_quote_matrix_db,
     get_global_quote_history_db,

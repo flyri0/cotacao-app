@@ -264,6 +264,18 @@ export interface PywebviewApi {
     unidade?: string,
     preco_embalagem?: number,
   ) => Promise<Cotacao>
+  update_quote: (
+    id_cotacao: number,
+    id_fornecedor: number,
+    id_produto?: number | null,
+    produto_nome?: string | null,
+    marca?: string | null,
+    embalagem?: string,
+    qtd_por_embalagem?: number,
+    unidade?: string,
+    preco_embalagem?: number,
+    produto_categoria?: string | null,
+  ) => Promise<Cotacao>
   remove_quote: (id_cotacao: number) => Promise<{ sucesso: boolean; id: number }>
 
   list_allocations: (id_rodada: number) => Promise<Alocacao[]>
