@@ -1,12 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
-  Badge,
   Center,
-  Group,
   Loader,
   SimpleGrid,
   Stack,
   Text,
+  useComputedColorScheme,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
@@ -60,6 +59,9 @@ export function ComparacaoView({
   onRodadaChange,
   themeColor = 'blue',
 }: ComparacaoViewProps) {
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const isDark = computedColorScheme === 'dark'
+
   const [rodadas, setRodadas] = useState<Rodada[]>([])
   const [selectedRodadaId, setSelectedRodadaId] = useState<number | null>(
     rodadaAtivaId || null,
@@ -189,15 +191,21 @@ export function ComparacaoView({
       {
         accessorKey: 'produto_nome',
         header: 'Produto',
-        size: 220,
+        size: 200,
         enablePinning: true,
         enableColumnFilter: true,
         mantineFilterTextInputProps: {
           size: 'xs',
           placeholder: 'Buscar produto...',
         },
+        mantineTableBodyCellProps: {
+          style: {
+            padding: '3px 6px',
+            verticalAlign: 'middle',
+          },
+        },
         Cell: ({ cell }) => (
-          <Text fw={600} size="xs" lineClamp={2} style={{ lineHeight: 1.2 }}>
+          <Text fw={600} size="xs" lineClamp={2} style={{ lineHeight: 1.15 }}>
             {cell.getValue<string>()}
           </Text>
         ),
@@ -205,7 +213,7 @@ export function ComparacaoView({
       {
         accessorKey: 'produto_categoria',
         header: 'Categoria',
-        size: 140,
+        size: 120,
         enablePinning: true,
         enableColumnFilter: true,
         filterVariant: 'select',
@@ -215,10 +223,16 @@ export function ComparacaoView({
           clearable: true,
           placeholder: 'Todas as categorias',
         },
+        mantineTableBodyCellProps: {
+          style: {
+            padding: '3px 6px',
+            verticalAlign: 'middle',
+          },
+        },
         Cell: ({ cell }) => {
           const cat = cell.getValue<string | null>()
           return (
-            <Text size="xs" truncate="end" c={!cat ? 'dimmed' : undefined}>
+            <Text size="xs" truncate="end" c={!cat ? 'dimmed' : undefined} style={{ lineHeight: 1.15 }}>
               {cat || '-'}
             </Text>
           )
@@ -231,11 +245,11 @@ export function ComparacaoView({
       cols.push({
         id: `forn_${forn.id}`,
         header: forn.nome,
-        size: 165,
+        size: 150,
         enableColumnFilter: false,
         enableColumnActions: false,
         Header: () => (
-          <div style={{ lineHeight: 1.15, width: '100%', overflow: 'hidden' }}>
+          <div style={{ lineHeight: 1.15, width: '100%', textAlign: 'center', overflow: 'hidden' }}>
             <Text fw={700} size="xs" truncate="end">
               {forn.nome}
             </Text>
@@ -259,6 +273,42 @@ export function ComparacaoView({
             Infinity
           return valA - valB
         },
+        mantineTableBodyCellProps: ({ row }) => {
+          const cot = row.original.cotacoesPorFornecedor[forn.id]
+          if (!cot) {
+            return {
+              style: {
+                padding: '3px 6px',
+                textAlign: 'center',
+                verticalAlign: 'middle',
+              },
+            }
+          }
+
+          const ranking = row.original.ranking || []
+          const menorPreco = ranking[0]?.preco_unitario
+          const isVencedor = cot.preco_unitario === menorPreco
+          const index = ranking.findIndex((c) => c.id === cot.id)
+          const posicao = isVencedor ? 1 : index + 1
+
+          let backgroundColor = 'transparent'
+          if (posicao === 1) {
+            backgroundColor = isDark ? 'rgba(43, 138, 62, 0.35)' : '#d3f9d8'
+          } else if (posicao === 2) {
+            backgroundColor = isDark ? 'rgba(245, 159, 0, 0.28)' : '#fff3bf'
+          } else if (posicao >= 3) {
+            backgroundColor = isDark ? 'rgba(224, 49, 49, 0.28)' : '#ffe3e3'
+          }
+
+          return {
+            style: {
+              backgroundColor,
+              padding: '3px 6px',
+              textAlign: 'center',
+              verticalAlign: 'middle',
+            },
+          }
+        },
         Cell: ({ row }) => {
           const cot = row.original.cotacoesPorFornecedor[forn.id]
           if (!cot) {
@@ -269,65 +319,64 @@ export function ComparacaoView({
             )
           }
 
-          const isVencedor = row.original.melhorCotacao?.id === cot.id
+          const ranking = row.original.ranking || []
+          const menorPreco = ranking[0]?.preco_unitario
+          const isVencedor = cot.preco_unitario === menorPreco
+          const index = ranking.findIndex((c) => c.id === cot.id)
+          const posicao = isVencedor ? 1 : index + 1
           const { economiaPct } = row.original
 
+          let textPrecoColor = undefined
+          if (posicao === 1) {
+            textPrecoColor = isDark ? '#8ce99a' : '#14532d'
+          } else if (posicao === 2) {
+            textPrecoColor = isDark ? '#ffd43b' : '#713f12'
+          } else if (posicao >= 3) {
+            textPrecoColor = isDark ? '#ffa8a8' : '#7f1d1d'
+          }
+
           return (
-            <div
-              style={{
-                width: '100%',
-                overflow: 'hidden',
-                backgroundColor: isVencedor
-                  ? 'var(--mantine-color-teal-light)'
-                  : undefined,
-                borderRadius: 'var(--mantine-radius-xs)',
-                padding: '2px 4px',
-                lineHeight: 1.2,
-              }}
-            >
-              {/* Preço Unitário + Marca em destaque na mesma linha */}
-              <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ width: '100%', overflow: 'hidden' }}>
+            <div style={{ width: '100%', overflow: 'hidden', lineHeight: 1.15 }}>
+              {/* Linha 1: Preço unitário + (🏆 ou % economia se vencedor) */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 3,
+                }}
+              >
+                {isVencedor && <span style={{ fontSize: '11px' }}>🏆</span>}
                 <Text
-                  fw={isVencedor ? 700 : 500}
+                  fw={700}
                   size="xs"
-                  c={isVencedor ? 'teal' : undefined}
+                  c={textPrecoColor}
                   style={{ whiteSpace: 'nowrap' }}
                 >
-                  {isVencedor ? '🏆 ' : ''}{formatMoney(cot.preco_unitario)}
-                </Text>
-
-                {cot.marca && (
-                  <Badge
-                    size="xs"
-                    variant={isVencedor ? 'filled' : 'outline'}
-                    color={isVencedor ? 'teal' : 'gray'}
-                    radius="xs"
-                    style={{
-                      textTransform: 'uppercase',
-                      fontSize: '9px',
-                      padding: '0 4px',
-                      height: 16,
-                      lineHeight: '14px',
-                      flexShrink: 0,
-                      maxWidth: 65,
-                    }}
-                  >
-                    {cot.marca}
-                  </Badge>
-                )}
-              </Group>
-
-              {/* Embalagem e Porcentagem de Economia do Vencedor */}
-              <Group gap={4} justify="space-between" wrap="nowrap" align="center" style={{ marginTop: 1, width: '100%', overflow: 'hidden' }}>
-                <Text size="10px" c="dimmed" truncate="end" style={{ flex: 1 }}>
-                  {cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
+                  {formatMoney(cot.preco_unitario)}
                 </Text>
                 {isVencedor && economiaPct !== null && economiaPct > 0.1 && (
-                  <Text size="10px" fw={700} c="teal" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    -{economiaPct.toFixed(0)}%
+                  <Text
+                    size="10px"
+                    fw={700}
+                    c={textPrecoColor}
+                    style={{ whiteSpace: 'nowrap' }}
+                  >
+                    (-{economiaPct.toFixed(0)}%)
                   </Text>
                 )}
-              </Group>
+              </div>
+
+              {/* Linha 2: Marca, Embalagem e Preço da Embalagem */}
+              <Text
+                size="10px"
+                c="dimmed"
+                truncate="end"
+                ta="center"
+                style={{ marginTop: 1 }}
+              >
+                {cot.marca ? `[${cot.marca}] ` : ''}{cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
+              </Text>
             </div>
           )
         },
@@ -335,7 +384,7 @@ export function ComparacaoView({
     })
 
     return cols
-  }, [fornecedoresNaTabela, categoriasUnicas])
+  }, [fornecedoresNaTabela, categoriasUnicas, isDark])
 
   // Configuração da Mantine React Table
   const table = useMantineReactTable({
@@ -380,7 +429,7 @@ export function ComparacaoView({
     },
     mantineTableBodyCellProps: {
       style: {
-        padding: '2px 4px',
+        padding: '3px 6px',
         fontSize: 'var(--app-font-base, 13px)',
       },
     },
@@ -392,7 +441,7 @@ export function ComparacaoView({
       },
     },
     mantineTableProps: {
-      striped: true,
+      striped: false,
       highlightOnHover: true,
       withTableBorder: true,
       withColumnBorders: true,
@@ -451,10 +500,10 @@ export function ComparacaoView({
         <StatCard
           label="Critério de Destaque"
           value="Menor Preço"
-          subtitle="Normalizado por unidade (🏆 1º Lugar)"
+          subtitle="Verde: 1º | Amarelo: 2º | Vermelho: 3º+"
           color="teal"
           valueColor="teal"
-          badge={{ label: 'Melhor Oferta', color: 'teal' }}
+          badge={{ label: 'Show de Cores', color: 'teal' }}
         />
       </SimpleGrid>
 
