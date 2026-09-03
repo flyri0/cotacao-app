@@ -80,7 +80,7 @@ class TestExcelService(unittest.TestCase):
     def test_exportar_e_importar_produtos_excel(self) -> None:
         exp = self.api.export_products_excel()
         self.assertTrue(exp["sucesso"])
-        self.assertEqual(exp["total"], 12)
+        self.assertEqual(exp["total"], 50)
 
         # Cria uma planilha com novo produto
         wb = openpyxl.Workbook()
@@ -98,12 +98,12 @@ class TestExcelService(unittest.TestCase):
         self.assertEqual(imp["importados"], 1)
 
         produtos = self.api.list_products()
-        self.assertEqual(len(produtos), 13)
+        self.assertEqual(len(produtos), 51)
 
     def test_exportar_e_importar_fornecedores_excel(self) -> None:
         exp = self.api.export_suppliers_excel()
         self.assertTrue(exp["sucesso"])
-        self.assertEqual(exp["total"], 5)
+        self.assertEqual(exp["total"], 8)
 
         # Cria uma planilha com novo fornecedor
         wb = openpyxl.Workbook()
@@ -121,7 +121,7 @@ class TestExcelService(unittest.TestCase):
         self.assertEqual(imp["importados"], 1)
 
         fornecedores = self.api.list_suppliers()
-        self.assertEqual(len(fornecedores), 6)
+        self.assertEqual(len(fornecedores), 9)
 
     def test_generate_quote_template_excel_errors_and_options(self) -> None:
         """Testa validações na geração de template de cotação."""

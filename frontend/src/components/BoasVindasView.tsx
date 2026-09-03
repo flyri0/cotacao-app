@@ -137,7 +137,7 @@ export function BoasVindasView({
       await api.populate_demo_db()
       notifications.show({
         title: 'Banco Populado para Testes',
-        message: '12 produtos, 5 fornecedores, 3 rodadas fechadas e 1 aberta carregadas.',
+        message: '50 produtos em 6 categorias, 8 fornecedores, 3 rodadas fechadas e 1 aberta carregadas.',
         color: 'teal',
         icon: <IconSparkles size={16} />,
       })
@@ -274,7 +274,7 @@ export function BoasVindasView({
                   </Text>
                 </Group>
                 <Text size="xs" c="dimmed" mt={4}>
-                  Popula o sistema com 12 produtos, 5 fornecedores, 3 rodadas fechadas (histórico de preços) e 1 rodada aberta em andamento com cotações.
+                  Popula o sistema com 50 produtos em 6 categorias, 8 fornecedores, 3 rodadas fechadas (histórico de preços) e 1 rodada aberta em andamento com cotações e alocações.
                 </Text>
               </div>
 

@@ -77,7 +77,7 @@ class TestDatabaseSchema(unittest.TestCase):
         # Formata com seed
         format_database_db(self.conn, com_seed=True)
         cursor.execute("SELECT COUNT(*) FROM produtos")
-        self.assertEqual(cursor.fetchone()[0], 12)
+        self.assertEqual(cursor.fetchone()[0], 50)
 
     def test_cotacoes_schema_no_stored_unit_price(self) -> None:
         """Garante que a tabela cotacoes NÃO possui coluna de preço unitário armazenado."""
@@ -167,17 +167,17 @@ class TestDatabaseSchema(unittest.TestCase):
         self.assertEqual(total_qtd, 100.0)
 
     def test_seed_data_validation(self) -> None:
-        """Valida que o seed_data inicializa o catálogo rico com 12 produtos, 5 fornecedores e 4 rodadas."""
+        """Valida que o seed_data inicializa o catálogo rico com 50 produtos, 8 fornecedores e 4 rodadas."""
         seed_data(self.conn)
         cursor = self.conn.cursor()
 
         # Produtos
         cursor.execute("SELECT COUNT(*) FROM produtos")
-        self.assertEqual(cursor.fetchone()[0], 12)
+        self.assertEqual(cursor.fetchone()[0], 50)
 
         # Fornecedores
         cursor.execute("SELECT COUNT(*) FROM fornecedores")
-        self.assertEqual(cursor.fetchone()[0], 5)
+        self.assertEqual(cursor.fetchone()[0], 8)
 
         # Rodadas
         cursor.execute("SELECT COUNT(*) FROM rodadas")
