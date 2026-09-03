@@ -1,8 +1,8 @@
 import os
 import sqlite3
 import unittest
-from api import Api
-from db import create_schema, seed_data
+from backend.api import Api
+from backend.db import create_schema, seed_data
 
 
 class TestApi(unittest.TestCase):
@@ -569,7 +569,7 @@ class TestApi(unittest.TestCase):
     def test_salvar_e_obter_ultimo_banco_path(self) -> None:
         import tempfile
         import os
-        from db import set_last_db_path, get_last_db_path
+        from backend.db import set_last_db_path, get_last_db_path
 
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             temp_db = f.name
@@ -744,6 +744,688 @@ class TestApi(unittest.TestCase):
 
         configs = self.api.get_settings()
         self.assertTrue(configs.get("backup_auto_ultimo_status", "").startswith("Falha"))
+
+
+
+    # -------------------------------------------------------------------------
+    # Testes Abrangentes de Cobertura da API (Fase 2)
+    # -------------------------------------------------------------------------
+    def test_db_path_and_lock_handling(self) -> None:
+        """Testa caminhos do banco, aquisição e liberação de locks de arquivo."""
+        from unittest.mock import patch, MagicMock
+        from backend.api import Api
+
+        # Api sem caminho explícito
+        with patch("backend.api.get_last_db_path", return_value=None), patch("backend.api.get_default_db_path", return_value="dummy_default.db"):
+            api_temp = Api()
+            self.assertEqual(api_temp.db_path, "dummy_default.db")
+
+        # Exceção em _ensure_lock
+        with patch("builtins.open", side_effect=PermissionError("Lock failed")):
+            import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".db") as tf:
+            api_lock = Api(tf.name)
+            api_lock._ensure_lock()
+
+        # Exceção em _release_lock
+        mock_handle = MagicMock()
+        mock_handle.close.side_effect = Exception("Close error")
+        api_temp._file_lock_handle = mock_handle
+        api_temp._release_lock()
+        self.assertIsNone(api_temp._file_lock_handle)
+
+    def test_check_db_status_with_existing_last_path(self) -> None:
+        """Testa check_db_status quando o último banco existe no disco."""
+        import tempfile
+        from unittest.mock import patch
+        from backend.api import Api
+        from backend.db import init_db, seed_data
+
+        fd, temp_db = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        api_test = None
+        try:
+            conn = init_db(temp_db)
+            seed_data(conn)
+            conn.close()
+            with patch("backend.api.get_last_db_path", return_value=temp_db):
+                api_test = Api()
+                status = api_test.check_db_status()
+                self.assertTrue(status["inicializado"])
+                self.assertEqual(status["caminho_banco"], temp_db)
+        finally:
+            if api_test:
+                api_test._release_lock()
+            if os.path.exists(temp_db):
+                try:
+                    os.remove(temp_db)
+                except Exception:
+                    pass
+
+    def test_export_database_and_salvar_backup_em_caminho_errors(self) -> None:
+        """Testa exportação e salvamento de backup com validações de erro."""
+        import uuid
+        import tempfile
+        from backend.api import Api
+        path_inexistente = os.path.join(tempfile.gettempdir(), f"non_existent_{uuid.uuid4().hex}.db")
+        api_inexistente = Api(path_inexistente)
+
+        # export_database com banco inexistente
+        with self.assertRaises(FileNotFoundError):
+            api_inexistente.export_database()
+
+        # _salvar_backup_em_caminho com caminho vazio
+        with self.assertRaises(ValueError):
+            self.api._salvar_backup_em_caminho("   ")
+
+        # _salvar_backup_em_caminho com banco inexistente
+        with self.assertRaises(FileNotFoundError):
+            api_inexistente._salvar_backup_em_caminho("backup_teste.db")
+
+        # _salvar_backup_em_caminho com criação de pasta pai e arquivo existente
+        import shutil
+        from backend.db import init_db
+        temp_dir = tempfile.mkdtemp()
+        db_file = os.path.join(temp_dir, "origem.db")
+        conn = init_db(db_file)
+        conn.close()
+        api_local = Api(db_file)
+        try:
+            destino_nested = os.path.join(temp_dir, "nova_pasta", "subpasta", "backup.db")
+            res = api_local._salvar_backup_em_caminho(destino_nested)
+            self.assertTrue(res["sucesso"])
+            self.assertTrue(os.path.exists(destino_nested))
+        finally:
+            api_local._release_lock()
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_select_location_and_save_backup_dialogs(self) -> None:
+        """Testa diálogos nativos e webview para salvar backup."""
+        import sys
+        import uuid
+        from unittest.mock import patch, MagicMock
+        from backend.api import Api
+
+        import tempfile
+        import shutil
+        from backend.db import init_db
+
+        path_inexistente = os.path.join(tempfile.gettempdir(), f"non_existent_{uuid.uuid4().hex}.db")
+        api_inexistente = Api(path_inexistente)
+        with self.assertRaises(FileNotFoundError):
+            api_inexistente.select_location_and_save_backup()
+
+        temp_dir = tempfile.mkdtemp()
+        db_file = os.path.join(temp_dir, "banco_dialog.db")
+        conn = init_db(db_file)
+        conn.close()
+        api_dialog = Api(db_file)
+
+        try:
+            # Mock com webview window salvando com sucesso
+            mock_win = MagicMock()
+            mock_win.create_file_dialog.return_value = ["C:\\test\\backup.db"]
+            mock_webview = MagicMock()
+            mock_webview.windows = [mock_win]
+
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                with patch.object(api_dialog, "_salvar_backup_em_caminho", return_value={"sucesso": True}):
+                    res = api_dialog.select_location_and_save_backup()
+                    self.assertTrue(res["sucesso"])
+
+            # Mock com webview cancelado pelo usuário
+            mock_win.create_file_dialog.return_value = []
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                res_cancel = api_dialog.select_location_and_save_backup()
+                self.assertTrue(res_cancel["cancelado"])
+
+            # Mock sem webview windows -> fallback export_database
+            mock_webview.windows = []
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                with patch.object(api_dialog, "export_database", return_value={"sucesso": True, "nome_arquivo": "b.db", "conteudo_base64": "abc"}):
+                    res_fallback = api_dialog.select_location_and_save_backup()
+                    self.assertTrue(res_fallback["sucesso"])
+
+            # Mock exceção no diálogo
+            mock_win.create_file_dialog.side_effect = RuntimeError("Dialog error")
+            mock_webview.windows = [mock_win]
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                with self.assertRaises(ValueError):
+                    api_dialog.select_location_and_save_backup()
+        finally:
+            api_dialog._release_lock()
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_select_backup_directory_dialogs(self) -> None:
+        """Testa select_backup_directory com webview, tkinter e permissões."""
+        import sys
+        import tempfile
+        from unittest.mock import patch, MagicMock
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            # 1. Sucesso via webview
+            mock_win = MagicMock()
+            mock_win.create_file_dialog.return_value = [temp_dir]
+            mock_webview = MagicMock()
+            mock_webview.windows = [mock_win]
+
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                res = self.api.select_backup_directory()
+                self.assertTrue(res["sucesso"])
+                self.assertEqual(res["caminho"], temp_dir)
+
+            # 2. Cancelamento via webview
+            mock_win.create_file_dialog.return_value = None
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                with patch("tkinter.filedialog.askdirectory", return_value=""):
+                    res_cancel = self.api.select_backup_directory()
+                    self.assertTrue(res_cancel["cancelado"])
+
+            # 3. Fallback para tkinter
+            mock_webview.windows = []
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                with patch("tkinter.filedialog.askdirectory", return_value=temp_dir):
+                    res_tk = self.api.select_backup_directory()
+                    self.assertTrue(res_tk["sucesso"])
+
+            # 4. Falha de permissão no diretório
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                with patch("tkinter.filedialog.askdirectory", return_value=temp_dir):
+                    with patch("builtins.open", side_effect=PermissionError("Sem permissão")):
+                        res_perm = self.api.select_backup_directory()
+                        self.assertFalse(res_perm["sucesso"])
+                        self.assertIn("Sem permissão", res_perm["mensagem"])
+        finally:
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_execute_auto_backup_rotation_and_errors(self) -> None:
+        """Testa rotação de backups excedentes, configurações inválidas e tratamento de erros."""
+        import tempfile
+        import shutil
+        from unittest.mock import patch, MagicMock
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            # max_arquivos inválido ou menor que 1 (fallback para 10)
+            self.api.save_settings({
+                "backup_auto_ativo": "1",
+                "backup_auto_diretorio": temp_dir,
+                "backup_auto_max_arquivos": "-5",
+            })
+            res = self.api.execute_auto_backup()
+            self.assertTrue(res["sucesso"])
+
+            # Falha atômica durante backup sqlite
+            with patch("sqlite3.connect", side_effect=RuntimeError("Erro de snapshot")):
+                with self.assertRaises(RuntimeError):
+                    self.api.execute_auto_backup()
+
+            # Exceção em _registrar_status_backup tratada silenciosamente
+            with patch.object(self.api, "_get_connection", side_effect=Exception("DB Error")):
+                self.api._registrar_status_backup("Erro")
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_check_auto_backup_trigger_conditions(self) -> None:
+        """Testa condições do gatilho periódico e gatilho 'sempre'."""
+        import tempfile
+        import shutil
+        from datetime import datetime, timedelta
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            # Sem diretório configurado -> None
+            self.api.save_settings({
+                "backup_auto_ativo": "1",
+                "backup_auto_diretorio": "   ",
+                "backup_auto_gatilho": "abertura",
+            })
+            self.assertIsNone(self.api.check_auto_backup_trigger("abertura"))
+
+            # Gatilho 'sempre'
+            self.api.save_settings({
+                "backup_auto_ativo": "1",
+                "backup_auto_diretorio": temp_dir,
+                "backup_auto_gatilho": "sempre",
+            })
+            res_sempre = self.api.check_auto_backup_trigger("qualquer")
+            self.assertIsNotNone(res_sempre)
+
+            # Gatilho periódico com tempo decorrido
+            tempo_antigo = (datetime.now() - timedelta(hours=6)).strftime("%d/%m/%Y %H:%M:%S")
+            self.api.save_settings({
+                "backup_auto_ativo": "1",
+                "backup_auto_diretorio": temp_dir,
+                "backup_auto_gatilho": "periodico",
+                "backup_auto_intervalo_horas": "4",
+                "backup_auto_ultimo_sucesso": tempo_antigo,
+            })
+            res_per = self.api.check_auto_backup_trigger("periodico")
+            self.assertIsNotNone(res_per)
+
+            # Gatilho periódico sem tempo suficiente decorrido -> None
+            tempo_recente = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            self.api.save_settings({
+                "backup_auto_gatilho": "periodico",
+                "backup_auto_ultimo_sucesso": tempo_recente,
+            })
+            self.assertIsNone(self.api.check_auto_backup_trigger("periodico"))
+
+            # Gatilho periódico com data corrompida -> deve executar
+            self.api.save_settings({
+                "backup_auto_ultimo_sucesso": "data_invalida",
+            })
+            self.assertIsNotNone(self.api.check_auto_backup_trigger("periodico"))
+
+            # _on_app_exit executando fechamento
+            self.api.save_settings({
+                "backup_auto_gatilho": "fechamento",
+            })
+            self.api._on_app_exit()
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_import_database_valid_and_corrupt(self) -> None:
+        """Testa importação e restauração de banco SQLite com verificação de integridade."""
+        import base64
+        import tempfile
+        from backend.api import Api
+        from backend.db import init_db
+
+        fd, temp_db = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        try:
+            init_db(temp_db)
+            api_test = Api(temp_db)
+
+            # Cria um banco válido para codificar em base64
+            with open(temp_db, "rb") as f:
+                b64_valido = base64.b64encode(f.read()).decode("utf-8")
+
+            res = api_test.import_database(b64_valido)
+            self.assertTrue(res["sucesso"])
+
+            # Banco corrompido (não SQLite válido)
+            b64_corrompido = base64.b64encode(b"arquivo corrompido de texto puro").decode("utf-8")
+            with self.assertRaises(ValueError):
+                api_test.import_database(b64_corrompido)
+
+            # Base64 mal formatado
+            with self.assertRaises(ValueError):
+                api_test.import_database("base64_invalido_!!!")
+        finally:
+            api_test._release_lock()
+            if os.path.exists(temp_db):
+                try:
+                    os.remove(temp_db)
+                except Exception:
+                    pass
+
+    def test_rodada_fechada_ou_cancelada_blocks_actions(self) -> None:
+        """Garante que ações em rodadas fechadas ou canceladas são rigorosamente bloqueadas."""
+        # Cria rodada fechada
+        r_fechada = self.api.create_round(descricao="Rodada Encerrada")
+        self.api.update_round(r_fechada["id"], descricao="Rodada Encerrada", status="fechada")
+
+        # Bloqueio de inclusão de necessidade
+        with self.assertRaises(ValueError):
+            self.api.create_need(id_rodada=r_fechada["id"], id_produto=1)
+
+        # Bloqueio de cotação
+        with self.assertRaises(ValueError):
+            self.api.create_quote(
+                id_rodada=r_fechada["id"],
+                id_fornecedor=1,
+                id_produto=1,
+                preco_embalagem=10.0,
+            )
+
+        # Bloqueio de duplicação de necessidades para rodada fechada
+        with self.assertRaises(ValueError):
+            self.api.duplicate_round_needs(id_origem=1, id_destino=r_fechada["id"])
+
+        # Cria rodada cancelada
+        r_canc = self.api.create_round(descricao="Rodada Cancelada")
+        self.api.update_round(r_canc["id"], descricao="Rodada Cancelada", status="cancelada")
+
+        # Bloqueio em rodada cancelada
+        with self.assertRaises(ValueError):
+            self.api.create_need(id_rodada=r_canc["id"], id_produto=1)
+
+    def test_remove_product_and_supplier_with_and_without_history(self) -> None:
+        """Testa exclusão física vs bloqueio por histórico comercial."""
+        # Produto sem histórico -> deve excluir
+        p_novo = self.api.create_product(nome="Produto Limpo Exclusao")
+        res_del_p = self.api.remove_product(p_novo["id"])
+        self.assertTrue(res_del_p["sucesso"])
+
+        # Produto inexistente -> ValueError
+        with self.assertRaises(ValueError):
+            self.api.remove_product(99999)
+
+        # Produto com histórico (ex: ID 1 Detergente tem cotações e alocações) -> Bloqueado
+        with self.assertRaises(ValueError):
+            self.api.remove_product(1)
+
+        # Fornecedor sem histórico -> deve excluir
+        f_novo = self.api.create_supplier(nome="Fornecedor Limpo Exclusao")
+        res_del_f = self.api.remove_supplier(f_novo["id"])
+        self.assertTrue(res_del_f["sucesso"])
+
+        # Fornecedor inexistente -> ValueError
+        with self.assertRaises(ValueError):
+            self.api.remove_supplier(99999)
+
+        # Fornecedor com histórico (ex: Fornecedor 1) -> Bloqueado
+        with self.assertRaises(ValueError):
+            self.api.remove_supplier(1)
+
+    def test_remove_round_validations(self) -> None:
+        """Testa remoção de rodadas sem histórico e bloqueio quando há vínculos históricos."""
+        # Rodada sem histórico -> exclusão permitida
+        r_limpa = self.api.create_round(descricao="Rodada Vazia para Deletar")
+        res_del = self.api.remove_round(r_limpa["id"])
+        self.assertTrue(res_del["sucesso"])
+
+        # Rodada inexistente -> ValueError
+        with self.assertRaises(ValueError):
+            self.api.remove_round(99999)
+
+        # Rodada 1 possui histórico completo -> Bloqueada
+        with self.assertRaises(ValueError):
+            self.api.remove_round(1)
+
+    def test_save_quote_validations(self) -> None:
+        """Testa todas as validações de campos obrigatórios ao cadastrar cotação."""
+        # Embalagem vazia
+        with self.assertRaises(ValueError):
+            self.api.create_quote(id_rodada=4, id_fornecedor=1, id_produto=1, embalagem="   ")
+
+        # Unidade vazia
+        with self.assertRaises(ValueError):
+            self.api.create_quote(id_rodada=4, id_fornecedor=1, id_produto=1, unidade="   ")
+
+        # Qtd por embalagem <= 0
+        with self.assertRaises(ValueError):
+            self.api.create_quote(id_rodada=4, id_fornecedor=1, id_produto=1, qtd_por_embalagem=0)
+
+        # Preço negativo
+        with self.assertRaises(ValueError):
+            self.api.create_quote(id_rodada=4, id_fornecedor=1, id_produto=1, preco_embalagem=-5.0)
+
+        # Fornecedor inexistente
+        with self.assertRaises(ValueError):
+            self.api.create_quote(id_rodada=4, id_fornecedor=99999, id_produto=1)
+
+        # Sem ID e sem Nome de produto
+        with self.assertRaises(ValueError):
+            self.api.create_quote(id_rodada=4, id_fornecedor=1, id_produto=None, produto_nome="")
+
+        # Auto-cadastro por nome de produto quando id_produto é None
+        cot = self.api.create_quote(
+            id_rodada=4,
+            id_fornecedor=1,
+            produto_nome="Novo Produto Auto Cotação",
+            preco_embalagem=25.0,
+        )
+        self.assertGreater(cot["id_produto"], 0)
+
+        # Atualização (UPSERT) para cotação com mesmo produto já cadastrado
+        cot2 = self.api.create_quote(
+            id_rodada=4,
+            id_fornecedor=1,
+            produto_nome="Novo Produto Auto Cotação",
+            preco_embalagem=30.0,
+        )
+        self.assertEqual(cot2["id_produto"], cot["id_produto"])
+
+    def test_batch_save_allocations_and_remove_allocation_validations(self) -> None:
+        """Testa alocações em lote com dados inválidos e remoção."""
+        # Dados não numéricos na alocação
+        with self.assertRaises(ValueError):
+            self.api.save_allocations(
+                id_rodada=4,
+                alocacoes=[{"id_produto": "invalido", "id_fornecedor": 1, "quantidade": "abc"}],
+            )
+
+        # Alocação válida
+        res = self.api.save_allocations(
+            id_rodada=4,
+            alocacoes=[{"id_produto": 1, "id_fornecedor": 1, "quantidade": 50}],
+        )
+        self.assertTrue(res["sucesso"])
+        self.assertEqual(res["total_alocacoes"], 1)
+
+        # Remoção da alocação
+        alocs = self.api.list_allocations(id_rodada=4)
+        aloc_id = alocs[0]["id"]
+        res_del = self.api.remove_allocation(aloc_id)
+        self.assertTrue(res_del["sucesso"])
+
+    def test_excel_export_dialogs_and_encerrar_sistema(self) -> None:
+        """Testa exportação de planilhas com diálogo e encerramento do sistema."""
+        import sys
+        import tempfile
+        from unittest.mock import patch, MagicMock
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            caminho_xlsx = os.path.join(temp_dir, "planilha_teste.xlsx")
+            mock_win = MagicMock()
+            mock_win.create_file_dialog.return_value = [caminho_xlsx]
+            mock_webview = MagicMock()
+            mock_webview.windows = [mock_win]
+
+            # Salvar com sucesso via webview dialog
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                res_plan = self.api.export_quote_spreadsheet(id_rodada=1)
+                self.assertTrue(res_plan["sucesso"])
+                self.assertTrue(os.path.exists(caminho_xlsx))
+
+            # Cancelado pelo usuário
+            mock_win.create_file_dialog.return_value = None
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                res_canc = self.api.export_products_excel()
+                self.assertTrue(res_canc["cancelado"])
+
+            # Exceção no diálogo
+            mock_win.create_file_dialog.side_effect = RuntimeError("Save error")
+            with patch.dict(sys.modules, {"webview": mock_webview}):
+                res_err = self.api.export_suppliers_excel()
+                self.assertFalse(res_err["salvo_em_disco"])
+                self.assertIn("aviso", res_err)
+
+            # Teste encerrar_sistema com mock de threading.Thread.start para não matar o processo de testes
+            with patch("threading.Thread.start"):
+                res_exit = self.api.encerrar_sistema()
+                self.assertTrue(res_exit["sucesso"])
+        finally:
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+
+    def test_api_edge_cases_and_cleanups(self) -> None:
+        """Testa casos de borda restantes para atingir cobertura máxima em api.py."""
+        import tempfile
+        import os
+        import sys
+        from unittest.mock import patch, MagicMock
+        from backend.api import Api
+        from backend.db import init_db
+
+        # 1. create_supplier com nome vazio (linha 701)
+        with self.assertRaises(ValueError):
+            self.api.create_supplier(nome="   ")
+
+        # 2. create_round com descrição vazia (linha 819)
+        with self.assertRaises(ValueError):
+            self.api.create_round(descricao="   ")
+
+        # 3. duplicate_round_needs sucesso (linhas 895-896)
+        r1 = self.api.create_round(descricao="Rodada Origem Duplicacao")
+        self.api.create_need(id_rodada=r1["id"], id_produto=1)
+        r2 = self.api.create_round(descricao="Rodada Destino Duplicacao")
+        res_dup = self.api.duplicate_round_needs(id_origem=r1["id"], id_destino=r2["id"])
+        self.assertTrue(res_dup["sucesso"])
+        self.assertEqual(res_dup["itens_copiados"], 1)
+
+        # 4. create_need com id_produto inexistente e sem nome (linhas 941, 959)
+        with self.assertRaises(ValueError):
+            self.api.create_need(id_rodada=4, id_produto=99999, produto_nome="")
+
+        # save_quote com id_produto inexistente e sem nome (linhas 1076, 1094)
+        with self.assertRaises(ValueError):
+            self.api.create_quote(id_rodada=4, id_fornecedor=1, id_produto=99999, produto_nome="")
+
+        # 5. save_quote com prod_id inexistente mas produto_nome válido (linha 1076)
+        cot_fallback = self.api.create_quote(
+            id_rodada=4,
+            id_fornecedor=1,
+            id_produto=99999,
+            produto_nome="Produto Fallback Id Inexistente",
+            preco_embalagem=15.0,
+        )
+        self.assertGreater(cot_fallback["id_produto"], 0)
+
+        # 6. export_database com banco em arquivo físico real (linhas 181-186)
+        fd, real_db = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        try:
+            init_db(real_db)
+            api_real = Api(real_db)
+            exp = api_real.export_database()
+            self.assertTrue(exp["sucesso"])
+            self.assertIn("conteudo_base64", exp)
+
+            # _ensure_lock exceção com arquivo existente (linhas 77-78)
+            api_real._release_lock()
+            with patch("builtins.open", side_effect=PermissionError("Lock error")):
+                api_real._ensure_lock()
+
+            # _on_app_exit com banco físico real (linhas 501-503)
+            api_real.save_settings({"backup_auto_ativo": "0"})
+            api_real._on_app_exit()
+
+            # select_location_and_save_backup sem .xlsx (linha 1292) e pasta inexistente (linha 1296)
+            caminho_sem_ext = os.path.join(tempfile.gettempdir(), "nova_pasta_xlsx", "teste_plan")
+            mock_win = MagicMock()
+            mock_win.create_file_dialog.return_value = caminho_sem_ext  # retorna str sem lista
+            mock_wv = MagicMock()
+            mock_wv.windows = [mock_win]
+            with patch.dict(sys.modules, {"webview": mock_wv}):
+                res_plan = api_real.export_products_excel()
+                self.assertTrue(res_plan["sucesso"])
+                self.assertTrue(res_plan["caminho"].endswith(".xlsx"))
+                if os.path.exists(res_plan["caminho"]):
+                    os.remove(res_plan["caminho"])
+
+            # select_backup_directory com string única (linhas 271-272)
+            mock_win.create_file_dialog.return_value = tempfile.gettempdir()
+            with patch.dict(sys.modules, {"webview": mock_wv}):
+                res_dir_str = api_real.select_backup_directory()
+                self.assertTrue(res_dir_str["sucesso"])
+
+            # select_backup_directory tkinter cancelado e erro (linhas 286, 288-289, 297)
+            mock_wv.windows = []
+            with patch.dict(sys.modules, {"webview": mock_wv}):
+                with patch("tkinter.filedialog.askdirectory", return_value=""):
+                    self.assertTrue(api_real.select_backup_directory()["cancelado"])
+                with patch("tkinter.filedialog.askdirectory", side_effect=RuntimeError("Tk error")):
+                    self.assertFalse(api_real.select_backup_directory()["sucesso"])
+                with patch("tkinter.filedialog.askdirectory", return_value="   "):
+                    self.assertTrue(api_real.select_backup_directory()["cancelado"])
+
+            # execute_auto_backup com max_arquivos inválido e falha de escrita teste (linhas 339-340, 356-359)
+            temp_b_dir = tempfile.mkdtemp()
+            try:
+                api_real.save_settings({
+                    "backup_auto_ativo": "1",
+                    "backup_auto_diretorio": temp_b_dir,
+                    "backup_auto_max_arquivos": "invalido",
+                })
+                with patch("builtins.open", side_effect=PermissionError("Sem permissao")):
+                    with self.assertRaises(PermissionError):
+                        api_real.execute_auto_backup()
+
+                # Rotação com erro ao remover arquivo antigo (linhas 397-400)
+                for i in range(12):
+                    arq_rot = os.path.join(temp_b_dir, f"backup_auto_cotacao_20260101_{i:04d}.db")
+                    with open(arq_rot, "wb") as f:
+                        f.write(b"rot")
+
+                orig_remove = os.remove
+                def selective_rm(p):
+                    if "backup_auto_cotacao_20260101_" in p:
+                        raise PermissionError("Erro remove")
+                    return orig_remove(p)
+
+                with patch("os.remove", side_effect=selective_rm):
+                    api_real.execute_auto_backup()
+
+                # check_auto_backup_trigger com intervalo inválido e último sucesso vazio (linhas 454-455, 459, 472-476)
+                api_real.save_settings({
+                    "backup_auto_gatilho": "periodico",
+                    "backup_auto_intervalo_horas": "nao_numero",
+                    "backup_auto_ultimo_sucesso": "",
+                })
+                self.assertIsNotNone(api_real.check_auto_backup_trigger("periodico"))
+
+                with patch.object(api_real, "_get_connection", side_effect=sqlite3.OperationalError("db locked")):
+                    self.assertIsNone(api_real.check_auto_backup_trigger("periodico"))
+                with patch.object(api_real, "_get_connection", side_effect=RuntimeError("generic error")):
+                    self.assertIsNone(api_real.check_auto_backup_trigger("periodico"))
+
+                # Erro na rotação linha 399-400
+                with patch("os.listdir", side_effect=RuntimeError("Listdir error")):
+                    api_real.execute_auto_backup()
+
+                # import_database com integridade comprometida (linhas 523, 526)
+                with patch("sqlite3.connect") as mock_sql_conn:
+                    mock_c = MagicMock()
+                    mock_c.cursor.return_value.fetchone.return_value = ["database disk image is malformed"]
+                    mock_sql_conn.return_value = mock_c
+                    with self.assertRaises(ValueError):
+                        api_real.import_database(exp["conteudo_base64"])
+
+                with patch("sqlite3.connect", side_effect=RuntimeError("Connect fail")):
+                    with self.assertRaises(ValueError):
+                        api_real.import_database(exp["conteudo_base64"])
+
+                # _on_app_exit com exceção tratada (linhas 502-503)
+                with patch.object(api_real, "check_auto_backup_trigger", side_effect=Exception("Exit err")):
+                    api_real._on_app_exit()
+
+                # _start_auto_backup_worker thread execution (linhas 487-492)
+                with patch("threading.Thread") as mock_thread:
+                    api_real._backup_worker_started = False
+                    with patch("time.sleep", side_effect=[None, StopIteration]):
+                        try:
+                            api_real._start_auto_backup_worker()
+                            worker_target = mock_thread.call_args[1]["target"]
+                            worker_target()
+                        except StopIteration:
+                            pass
+
+                # _do_shutdown execução real com mock de os._exit (linhas 1368-1375)
+                with patch("threading.Thread") as mock_thread, patch("os._exit") as mock_exit, patch("time.sleep"):
+                    api_real.encerrar_sistema()
+                    shutdown_target = mock_thread.call_args[1]["target"]
+                    shutdown_target()
+                    mock_exit.assert_called_once_with(0)
+            finally:
+                import shutil
+                shutil.rmtree(temp_b_dir, ignore_errors=True)
+
+            api_real._release_lock()
+        finally:
+            if os.path.exists(real_db):
+                try:
+                    os.remove(real_db)
+                except Exception:
+                    pass
 
 
 if __name__ == "__main__":

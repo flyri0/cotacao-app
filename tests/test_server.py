@@ -4,9 +4,9 @@ import socket
 import tempfile
 import unittest
 import urllib.request
-from api import Api
-from db import init_db
-from server import start_http_server, is_server_already_running
+from backend.api import Api
+from backend.db import init_db
+from backend.server import start_http_server, is_server_already_running
 
 
 def get_free_port() -> int:
@@ -118,6 +118,127 @@ class TestHttpServer(unittest.TestCase):
             self.assertEqual(e.code, 404)
             data = json.loads(e.read().decode("utf-8"))
             self.assertFalse(data.get("sucesso"))
+
+
+
+    def test_options_cors_preflight(self):
+        """Valida que requisições OPTIONS retornam 200 com cabeçalhos CORS."""
+        url = f"http://127.0.0.1:{self.port}/api/ping"
+        req = urllib.request.Request(url, method="OPTIONS")
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(resp.headers.get("Access-Control-Allow-Origin"), "*")
+            self.assertIn("GET, POST, OPTIONS", resp.headers.get("Access-Control-Allow-Methods", ""))
+
+    def test_spa_routing_get_index(self):
+        """Valida que rotas desconhecidas via GET retornam o index.html da SPA."""
+        url = f"http://127.0.0.1:{self.port}/comparacao"
+        with urllib.request.urlopen(url, timeout=2.0) as resp:
+            self.assertEqual(resp.status, 200)
+            self.assertIn("text/html", resp.headers.get("Content-Type", ""))
+
+    def test_post_payload_variations_and_errors(self):
+        """Valida diferentes formatos de payload POST, erro 500 e rota fora de /api/."""
+        # 1. POST com Content-Length 0 (linha 123)
+        url_ping = f"http://127.0.0.1:{self.port}/api/get_settings"
+        req_vazio = urllib.request.Request(url_ping, data=b"", headers={"Content-Length": "0"})
+        with urllib.request.urlopen(req_vazio, timeout=2.0) as resp:
+            self.assertEqual(resp.status, 200)
+
+        # 2. POST com payload kwargs inválido (linhas 130-131: apenas args lista)
+        req_args_only = urllib.request.Request(
+            url_ping,
+            data=json.dumps({"args": [], "kwargs": "nao_dicionario"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req_args_only, timeout=2.0) as resp:
+            self.assertEqual(resp.status, 200)
+
+        # 3. POST com args não lista (linhas 132-133)
+        req_no_args = urllib.request.Request(
+            url_ping,
+            data=json.dumps({"args": "nao_lista"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req_no_args, timeout=2.0) as resp:
+            self.assertEqual(resp.status, 200)
+
+        # 4. POST causando erro 500 no método (linhas 136-137)
+        url_err = f"http://127.0.0.1:{self.port}/api/create_product"
+        req_500 = urllib.request.Request(
+            url_err,
+            data=json.dumps({"args": [""]}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req_500, timeout=2.0) as resp:
+                self.fail("Deveria retornar 500")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 500)
+            data = json.loads(e.read().decode("utf-8"))
+            self.assertFalse(data.get("sucesso"))
+
+        # 5. POST fora de /api/ -> 404 (linhas 140-141)
+        url_fora = f"http://127.0.0.1:{self.port}/outra_rota"
+        req_fora = urllib.request.Request(url_fora, data=b"{}", headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req_fora, timeout=2.0) as resp:
+                self.fail("Deveria retornar 404")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 404)
+
+    def test_send_json_serialization_error_and_logging(self):
+        """Valida fallback de erro de serialização em _send_json e flag --debug."""
+        import sys
+        from unittest.mock import patch, MagicMock
+        from backend.server import CotacaoHTTPRequestHandler
+
+        class DummyCotacaoHandler(CotacaoHTTPRequestHandler):
+            def __init__(self): pass
+
+        dh = DummyCotacaoHandler()
+        CotacaoHTTPRequestHandler._send_json(dh, {"objeto": object()})
+
+        # Testar log_message com --debug (linha 54)
+        with patch.object(sys, "argv", ["app.py", "--debug"]):
+            with patch("http.server.SimpleHTTPRequestHandler.log_message") as mock_super_log:
+                dh.log_message("Teste %s", "debug")
+                mock_super_log.assert_called_once()
+
+    def test_server_startup_options_and_watchdog(self):
+        """Valida inicialização do servidor com api_instance=None e o loop do watchdog."""
+        import time
+        from unittest.mock import patch
+        import backend.server as server
+        from backend.server import _heartbeat_watchdog_loop, start_http_server
+
+        # Testar _heartbeat_watchdog_loop expirado acionando os._exit (linhas 158-164)
+        server.ENABLE_WATCHDOG = True
+        server.LAST_HEARTBEAT = time.time() - (server.HEARTBEAT_TIMEOUT_SECONDS + 50)
+        try:
+            with patch("time.sleep"), patch("os._exit", side_effect=SystemExit(0)) as mock_exit:
+                try:
+                    _heartbeat_watchdog_loop()
+                except SystemExit:
+                    pass
+                mock_exit.assert_called_once_with(0)
+        finally:
+            server.ENABLE_WATCHDOG = False
+
+        # Testar start_http_server com api_instance=None e enable_watchdog=True (linhas 177, 193-194)
+        porta_temp = get_free_port()
+        with patch.object(server, "_heartbeat_watchdog_loop"):
+            srv = start_http_server(
+                port=porta_temp,
+                api_instance=None,
+                modo_execucao="navegador",
+                enable_watchdog=True,
+            )
+            try:
+                self.assertIsNotNone(srv)
+            finally:
+                srv.shutdown()
+                srv.server_close()
 
 
 if __name__ == "__main__":

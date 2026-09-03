@@ -26,7 +26,13 @@ hidden_imports = [
     'openpyxl.styles',
     'openpyxl.utils',
     'et_xmlfile',
-    'excel_service',
+    'backend',
+    'backend.api',
+    'backend.server',
+    'backend.core',
+    'backend.domain',
+    'backend.services',
+    'backend.services.excel_service',
 ]
 
 a = Analysis(

@@ -3,9 +3,9 @@ import sys
 import time
 import webbrowser
 from typing import Optional
-from api import Api
-from db import init_db
-from server import DEFAULT_PORT, is_server_already_running, start_http_server
+from backend.api import Api
+from backend.core.schema import init_db
+from backend.server import DEFAULT_PORT, is_server_already_running, start_http_server
 
 DEV_URL = "http://localhost:5173"
 

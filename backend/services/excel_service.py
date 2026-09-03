@@ -245,8 +245,9 @@ def process_quote_excel(
 
     # Mapa de produtos existentes para busca rápida
     cursor.execute("SELECT id, nome FROM produtos")
-    produtos_por_id = {r["id"]: r["nome"] for r in cursor.fetchall()}
-    produtos_por_nome = {r["nome"].strip().lower(): r["id"] for r in cursor.fetchall()}
+    produtos_rows = cursor.fetchall()
+    produtos_por_id = {r["id"]: r["nome"] for r in produtos_rows}
+    produtos_por_nome = {r["nome"].strip().lower(): r["id"] for r in produtos_rows}
 
     importados = 0
     ignorados = 0

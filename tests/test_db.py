@@ -1,6 +1,6 @@
 import sqlite3
 import unittest
-from db import (
+from backend.db import (
     create_schema,
     seed_data,
     seed_settings,
@@ -193,6 +193,213 @@ class TestDatabaseSchema(unittest.TestCase):
         # Alocações
         cursor.execute("SELECT COUNT(*) FROM alocacoes")
         self.assertGreater(cursor.fetchone()[0], 10)
+
+
+
+    def test_schema_legacy_migration(self) -> None:
+        """Testa migração de schema legado onde a coluna 'ativo' não existia."""
+        mem_conn = sqlite3.connect(":memory:")
+        mem_conn.row_factory = sqlite3.Row
+        cursor = mem_conn.cursor()
+        cursor.execute("CREATE TABLE produtos (id INTEGER PRIMARY KEY, nome TEXT NOT NULL);")
+        cursor.execute("CREATE TABLE fornecedores (id INTEGER PRIMARY KEY, nome TEXT NOT NULL);")
+        cursor.execute("CREATE TABLE necessidades (id INTEGER PRIMARY KEY, id_rodada INTEGER);")
+        cursor.execute("CREATE TABLE cotacoes (id INTEGER PRIMARY KEY, id_rodada INTEGER);")
+        cursor.execute("CREATE TABLE alocacoes (id INTEGER PRIMARY KEY, id_rodada INTEGER);")
+        mem_conn.commit()
+
+        # Invoca create_schema que deve detectar a ausência de 'ativo' e migrar
+        create_schema(mem_conn)
+
+        cursor.execute("PRAGMA table_info(produtos)")
+        cols_prod = [r["name"] for r in cursor.fetchall()]
+        self.assertIn("ativo", cols_prod)
+
+        cursor.execute("PRAGMA table_info(fornecedores)")
+        cols_forn = [r["name"] for r in cursor.fetchall()]
+        self.assertIn("ativo", cols_forn)
+
+        # Verifica que as tabelas antigas foram renomeadas
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%_old'")
+        old_tables = [r["name"] for r in cursor.fetchall()]
+        self.assertIn("necessidades_old", old_tables)
+        self.assertIn("cotacoes_old", old_tables)
+        self.assertIn("alocacoes_old", old_tables)
+        mem_conn.close()
+
+    def test_check_db_status_non_existent_path(self) -> None:
+        """Testa check_db_status_db apontando para caminho inexistente."""
+        from backend.db import check_db_status_db
+        res = check_db_status_db(self.conn, db_path="non_existent_test_12345.db")
+        self.assertFalse(res["inicializado"])
+        self.assertEqual(res["total_produtos"], 0)
+
+    def test_alternar_status_produto_e_fornecedor(self) -> None:
+        """Testa alternância de status ativo para produtos e fornecedores."""
+        from backend.db import (
+            alternar_status_produto_db,
+            alternar_status_fornecedor_db,
+        )
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO produtos (nome, ativo) VALUES ('Prod Teste', 1)")
+        p_id = cursor.lastrowid
+        cursor.execute("INSERT INTO fornecedores (nome, ativo) VALUES ('Forn Teste', 1)")
+        f_id = cursor.lastrowid
+        self.conn.commit()
+
+        # Toggle produto (1 -> 0)
+        self.assertTrue(alternar_status_produto_db(self.conn, p_id, ativo=None))
+        cursor.execute("SELECT ativo FROM produtos WHERE id = ?", (p_id,))
+        self.assertEqual(cursor.fetchone()["ativo"], 0)
+
+        # Toggle produto (0 -> 1)
+        self.assertTrue(alternar_status_produto_db(self.conn, p_id, ativo=None))
+        cursor.execute("SELECT ativo FROM produtos WHERE id = ?", (p_id,))
+        self.assertEqual(cursor.fetchone()["ativo"], 1)
+
+        # Definir explícito produto
+        alternar_status_produto_db(self.conn, p_id, ativo=0)
+        cursor.execute("SELECT ativo FROM produtos WHERE id = ?", (p_id,))
+        self.assertEqual(cursor.fetchone()["ativo"], 0)
+
+        # Toggle fornecedor (1 -> 0)
+        self.assertTrue(alternar_status_fornecedor_db(self.conn, f_id, ativo=None))
+        cursor.execute("SELECT ativo FROM fornecedores WHERE id = ?", (f_id,))
+        self.assertEqual(cursor.fetchone()["ativo"], 0)
+
+        # Definir explícito fornecedor
+        alternar_status_fornecedor_db(self.conn, f_id, ativo=1)
+        cursor.execute("SELECT ativo FROM fornecedores WHERE id = ?", (f_id,))
+        self.assertEqual(cursor.fetchone()["ativo"], 1)
+
+    def test_estatisticas_produto_e_fornecedor_errors_and_edge_cases(self) -> None:
+        """Testa estatísticas de produtos e fornecedores inexistentes e sem cotações."""
+        from backend.db import (
+            get_product_statistics_db,
+            get_supplier_statistics_db,
+        )
+        # Produto inexistente
+        with self.assertRaises(ValueError):
+            get_product_statistics_db(self.conn, 99999)
+
+        # Fornecedor inexistente
+        with self.assertRaises(ValueError):
+            get_supplier_statistics_db(self.conn, 99999)
+
+        # Produto sem cotações
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO produtos (nome) VALUES ('Prod Sem Cotacao')")
+        p_id = cursor.lastrowid
+        self.conn.commit()
+        stats_p = get_product_statistics_db(self.conn, p_id)
+        self.assertEqual(stats_p["total_cotacoes"], 0)
+        self.assertEqual(stats_p["menor_preco"], 0.0)
+
+        # Fornecedor sem cotações
+        cursor.execute("INSERT INTO fornecedores (nome) VALUES ('Forn Sem Cotacao')")
+        f_id = cursor.lastrowid
+        self.conn.commit()
+        stats_f = get_supplier_statistics_db(self.conn, f_id)
+        self.assertEqual(stats_f["total_cotacoes"], 0)
+        self.assertEqual(stats_f["total_alocacoes"], 0)
+
+    def test_editar_rodada_validations(self) -> None:
+        """Testa validações de negócio ao editar rodadas."""
+        from backend.db import update_round_db
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO rodadas (descricao, status, data_criacao) VALUES ('R1', 'aberta', '2026-09-03')")
+        r_id = cursor.lastrowid
+        self.conn.commit()
+
+        # Descrição vazia
+        with self.assertRaises(ValueError):
+            update_round_db(self.conn, r_id, descricao="   ", status="aberta")
+
+        # Status inválido
+        with self.assertRaises(ValueError):
+            update_round_db(self.conn, r_id, descricao="R1", status="invalido")
+
+        # Rodada inexistente
+        with self.assertRaises(ValueError):
+            update_round_db(self.conn, 99999, descricao="R99", status="aberta")
+
+        # Edição válida
+        res = update_round_db(self.conn, r_id, descricao="R1 Editada", status="fechada")
+        self.assertEqual(res["descricao"], "R1 Editada")
+        self.assertEqual(res["status"], "fechada")
+
+    def test_reset_db_and_init_db(self) -> None:
+        """Testa as funções de inicialização e reset de banco em arquivo."""
+        import tempfile
+        import os
+        from backend.db import reset_db, init_db
+
+        fd, temp_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+
+        try:
+            conn1 = reset_db(temp_path)
+            cur = conn1.cursor()
+            cur.execute("SELECT COUNT(*) FROM produtos")
+            self.assertGreater(cur.fetchone()[0], 0)
+            conn1.close()
+
+            # Testar init_db
+            conn2 = init_db(temp_path)
+            conn2.close()
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    def test_config_paths_and_sys_frozen(self) -> None:
+        """Testa caminhos de configuração e simula sys.frozen."""
+        import os
+        import sys
+        import tempfile
+        from unittest.mock import patch
+        from backend.db import (
+            get_app_config_path,
+            get_default_db_path,
+            get_last_db_path,
+            set_last_db_path,
+            get_db_path,
+        )
+
+        with patch.object(sys, "frozen", True, create=True), patch.object(sys, "executable", r"C:\app\cotacao.exe"):
+            cfg_path = get_app_config_path()
+            self.assertIn("app_config.json", cfg_path)
+            def_path = get_default_db_path()
+            self.assertIn("cotacao.db", def_path)
+
+        # Testar JSON corrompido em app_config.json
+        with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as f:
+            f.write("{corrupted json")
+            tmp_cfg = f.name
+
+        try:
+            with patch("backend.db.get_app_config_path", return_value=tmp_cfg):
+                self.assertIsNone(get_last_db_path())
+                # Testar set_last_db_path sobrepondo JSON corrompido
+                set_last_db_path(r"C:\test\cotacao.db")
+                # Testar get_db_path fallback
+                self.assertTrue(get_db_path().endswith("cotacao.db"))
+
+            # Testar get_db_path com caminho existente retornado por get_last_db_path
+            with patch("backend.db.get_last_db_path", return_value=tmp_cfg):
+                self.assertEqual(get_db_path(), tmp_cfg)
+
+            # Testar erro ao salvar app_config.json (linhas 60-61)
+            with patch("builtins.open", side_effect=PermissionError("Acesso negado")):
+                set_last_db_path(r"C:\test\cotacao.db")
+
+            # Testar exceção ao remover banco anterior em reset_db (linhas 1110-1111)
+            with patch("os.path.exists", return_value=True), patch("os.remove", side_effect=PermissionError("Bloqueado")):
+                with patch("backend.db.get_connection", return_value=self.conn), patch("backend.db.create_schema"), patch("backend.db.seed_data"):
+                    from backend.db import reset_db
+                    reset_db(tmp_cfg + ".db")
+        finally:
+            if os.path.exists(tmp_cfg):
+                os.remove(tmp_cfg)
 
 
 if __name__ == "__main__":

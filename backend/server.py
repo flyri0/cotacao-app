@@ -6,7 +6,7 @@ import threading
 import time
 import urllib.request
 from typing import Any, Optional
-from api import Api
+from backend.api import Api
 
 DEFAULT_PORT = 54321
 HEARTBEAT_TIMEOUT_SECONDS = 25
@@ -34,7 +34,10 @@ def is_server_already_running(port: int = DEFAULT_PORT) -> bool:
 
 def get_dist_directory() -> str:
     """Retorna o caminho absoluto do diretório estático frontend/dist."""
-    base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    if getattr(sys, "frozen", False):
+        base_dir = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_dir, "frontend", "dist")
 
 
