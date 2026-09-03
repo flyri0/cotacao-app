@@ -557,7 +557,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
               variant="light"
               color={themeColor}
               size="xs"
-              leftSection={<IconDownload size={14} />}
+              leftSection={<IconUpload size={14} />}
               loading={exportandoExcel}
               onClick={handleExportarExcel}
             >
@@ -567,10 +567,10 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
               variant="outline"
               color={themeColor}
               size="xs"
-              leftSection={<IconUpload size={14} />}
+              leftSection={<IconDownload size={14} />}
               onClick={openModalImportar}
             >
-              Importar Excel
+              Importar do Excel
             </Button>
           </Group>
         }
@@ -723,7 +723,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
               variant="filled"
               color={themeColor}
               size="xs"
-              leftSection={<IconUpload size={14} />}
+              leftSection={<IconDownload size={14} />}
               loading={importandoExcel}
               onClick={handleProcessarImportacaoExcel}
             >

@@ -821,7 +821,7 @@ export function CotacoesView({
               variant="light"
               color={themeColor}
               size="xs"
-              leftSection={<IconDownload size={14} />}
+              leftSection={<IconUpload size={14} />}
               loading={exportandoExcel}
               onClick={handleExportarPlanilhaModelo}
             >
@@ -831,11 +831,11 @@ export function CotacoesView({
               variant="outline"
               color={themeColor}
               size="xs"
-              leftSection={<IconUpload size={14} />}
+              leftSection={<IconDownload size={14} />}
               onClick={openModalImportar}
               disabled={isFechada}
             >
-              Importar Excel
+              Importar do Excel
             </Button>
             <RoundHeaderSelector
               rodadas={rodadas}
@@ -1129,7 +1129,7 @@ export function CotacoesView({
               variant="filled"
               color={themeColor}
               size="xs"
-              leftSection={<IconUpload size={14} />}
+              leftSection={<IconDownload size={14} />}
               loading={importandoExcel}
               onClick={handleProcessarImportacaoExcel}
             >
