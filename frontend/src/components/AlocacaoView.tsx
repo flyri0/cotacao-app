@@ -139,20 +139,36 @@ export function AlocacaoView({
           setNecessidades(listaNec)
           setCotacoes(listaCot)
 
-          // Se já existirem alocações salvas no banco para a rodada, carrega-as
-          if (listaAloc.length > 0) {
-            const carregadas: LinhaAlocacao[] = listaAloc.map((a, idx) => ({
-              key: `aloc-${a.id || idx}-${Math.random().toString(36).substring(2, 6)}`,
-              id: a.id,
-              id_produto: Number(a.id_produto),
-              produto_nome: a.produto_nome,
-              id_fornecedor: Number(a.id_fornecedor),
-              quantidade_alocada: Number(a.quantidade) || 0,
-            }))
-            setLinhas(carregadas)
-          } else {
-            // Se não houver alocações salvas, cria uma linha inicial para cada necessidade
-            const iniciais: LinhaAlocacao[] = listaNec.map((n, idx) => {
+          // Constrói as linhas de alocação garantindo que todas as necessidades da rodada estejam presentes
+          const linhasCarregadas: LinhaAlocacao[] = []
+
+          listaNec.forEach((n, idx) => {
+            // Verifica se já existem alocações salvas no banco para este produto
+            const alocsDoProd = listaAloc.filter(
+              (a) => Number(a.id_produto) === Number(n.id_produto),
+            )
+
+            if (alocsDoProd.length > 0) {
+              alocsDoProd.forEach((a, subIdx) => {
+                // Se houver apenas 1 linha e o usuário tiver pré-selecionado um fornecedor na Comparação
+                const fornFinal =
+                  alocsDoProd.length === 1 &&
+                  n.id_fornecedor_selecionado &&
+                  n.id_fornecedor_selecionado > 0
+                    ? Number(n.id_fornecedor_selecionado)
+                    : Number(a.id_fornecedor)
+
+                linhasCarregadas.push({
+                  key: `aloc-${a.id || idx}-${subIdx}-${Math.random().toString(36).substring(2, 6)}`,
+                  id: a.id,
+                  id_produto: Number(a.id_produto),
+                  produto_nome: a.produto_nome || n.produto_nome,
+                  id_fornecedor: fornFinal,
+                  quantidade_alocada: Number(a.quantidade) || 0,
+                })
+              })
+            } else {
+              // Sem alocação salva ainda: usa o fornecedor escolhido na Comparação ou o menor preço
               const cotsDoProd = listaCot
                 .filter((c) => Number(c.id_produto) === Number(n.id_produto))
                 .sort((a, b) => Number(a.preco_unitario) - Number(b.preco_unitario))
@@ -160,16 +176,22 @@ export function AlocacaoView({
               const melhorFornId =
                 cotsDoProd.length > 0 ? Number(cotsDoProd[0].id_fornecedor) : 0
 
-              return {
+              const fornEscolhido =
+                n.id_fornecedor_selecionado && n.id_fornecedor_selecionado > 0
+                  ? Number(n.id_fornecedor_selecionado)
+                  : melhorFornId
+
+              linhasCarregadas.push({
                 key: `init-${n.id_produto}-${idx}`,
                 id_produto: Number(n.id_produto),
                 produto_nome: n.produto_nome,
-                id_fornecedor: melhorFornId,
+                id_fornecedor: fornEscolhido,
                 quantidade_alocada: 0,
-              }
-            })
-            setLinhas(iniciais)
-          }
+              })
+            }
+          })
+
+          setLinhas(linhasCarregadas)
         }
       } catch (error) {
         console.error('Erro ao carregar dados de alocação:', error)
@@ -233,12 +255,28 @@ export function AlocacaoView({
     )
   }
 
-  // Atualiza fornecedor de uma linha específica
+  // Atualiza fornecedor de uma linha específica e sincroniza com a decisão da Comparação
   const handleUpdateFornecedor = (key: string, idFornStr: string | null) => {
     const idForn = idFornStr ? parseInt(idFornStr, 10) : 0
+    let idProdAfetado: number | null = null
+
     setLinhas((prev) =>
-      prev.map((l) => (l.key === key ? { ...l, id_fornecedor: idForn } : l)),
+      prev.map((l) => {
+        if (l.key === key) {
+          idProdAfetado = l.id_produto
+          return { ...l, id_fornecedor: idForn }
+        }
+        return l
+      }),
     )
+
+    if (idProdAfetado && selectedRodadaId && idForn > 0 && !isFechada) {
+      getApi()
+        .then((api) => {
+          api.set_selected_supplier(selectedRodadaId, idProdAfetado!, idForn).catch(() => {})
+        })
+        .catch(() => {})
+    }
   }
 
   // Ação "Dividir": Duplica a linha do mesmo produto com fornecedor e quantidade zerados
@@ -309,6 +347,15 @@ export function AlocacaoView({
     })
 
     setLinhas(novas)
+
+    if (selectedRodadaId && !isFechada) {
+      getApi()
+        .then((api) => {
+          api.reset_selected_suppliers(selectedRodadaId).catch(() => {})
+        })
+        .catch(() => {})
+    }
+
     notifications.show({
       title: 'Fornecedores Sugeridos',
       message: 'Selecionado o fornecedor com menor preço unitário para cada produto.',

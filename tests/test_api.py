@@ -434,6 +434,64 @@ class TestApi(unittest.TestCase):
         nec2 = self.api.create_need(id_rodada=4, produto_nome=novo_prod_nome)
         self.assertFalse(nec2.get("produto_novo"))
 
+    def test_set_and_reset_selected_supplier_api(self) -> None:
+        # Rodada 4 está aberta
+        # Cadastra necessidade para produto 1
+        self.api.create_need(id_rodada=4, id_produto=1)
+
+        # Seleciona fornecedor 2 para o produto 1 na rodada 4
+        res = self.api.set_selected_supplier(id_rodada=4, id_produto=1, id_fornecedor=2)
+        self.assertTrue(res["sucesso"])
+        self.assertEqual(res["id_fornecedor_selecionado"], 2)
+
+        # Verifica se list_needs traz o id_fornecedor_selecionado
+        necs = self.api.list_needs(id_rodada=4)
+        nec = next((n for n in necs if n["id_produto"] == 1), None)
+        self.assertIsNotNone(nec)
+        self.assertEqual(nec["id_fornecedor_selecionado"], 2)
+
+        # Salva uma alocação para produto 1 com quantidade
+        self.api.save_allocations(
+            id_rodada=4,
+            alocacoes=[{"id_produto": 1, "id_fornecedor": 2, "quantidade": 50}],
+        )
+
+        # Agora muda o fornecedor selecionado para o fornecedor 3
+        res2 = self.api.set_selected_supplier(id_rodada=4, id_produto=1, id_fornecedor=3)
+        self.assertTrue(res2["sucesso"])
+        self.assertEqual(res2["id_fornecedor_selecionado"], 3)
+
+        # Verifica se a alocação existente foi sincronizada para o fornecedor 3 preservando a quantidade
+        alocs = self.api.list_allocations(id_rodada=4)
+        aloc = next((a for a in alocs if a["id_produto"] == 1), None)
+        self.assertIsNotNone(aloc)
+        self.assertEqual(aloc["id_fornecedor"], 3)
+        self.assertEqual(aloc["quantidade"], 50)
+
+        # Restaura os fornecedores padrão com reset
+        res_reset = self.api.reset_selected_suppliers(id_rodada=4)
+        self.assertTrue(res_reset["sucesso"])
+
+        necs_apos_reset = self.api.list_needs(id_rodada=4)
+        nec_reset = next((n for n in necs_apos_reset if n["id_produto"] == 1), None)
+        self.assertIsNone(nec_reset["id_fornecedor_selecionado"])
+
+        # Teste de validações
+        # Produto não presente na rodada
+        with self.assertRaises(ValueError):
+            self.api.set_selected_supplier(id_rodada=4, id_produto=999999, id_fornecedor=1)
+
+        # Fornecedor inexistente
+        with self.assertRaises(ValueError):
+            self.api.set_selected_supplier(id_rodada=4, id_produto=1, id_fornecedor=999999)
+
+        # Rodada fechada deve bloquear
+        # Rodada 2 está fechada no seed
+        with self.assertRaises(ValueError):
+            self.api.set_selected_supplier(id_rodada=2, id_produto=1, id_fornecedor=1)
+        with self.assertRaises(ValueError):
+            self.api.reset_selected_suppliers(id_rodada=2)
+
     # -------------------------------------------------------------------------
     # Testes de Cotações e Normalização de Preço
     # -------------------------------------------------------------------------

@@ -33,6 +33,7 @@ export interface Necessidade {
   id: number
   id_rodada: number
   id_produto: number
+  id_fornecedor_selecionado?: number | null
   produto_nome: string
   produto_categoria?: string | null
   quantidade?: number
@@ -251,6 +252,19 @@ export interface PywebviewApi {
     produto_nome?: string | null,
   ) => Promise<Necessidade & { produto_novo?: boolean }>
   remove_need: (id_necessidade: number) => Promise<{ sucesso: boolean; id: number }>
+  set_selected_supplier: (
+    id_rodada: number,
+    id_produto: number,
+    id_fornecedor?: number | null,
+  ) => Promise<{
+    sucesso: boolean
+    id_rodada: number
+    id_produto: number
+    id_fornecedor_selecionado: number | null
+  }>
+  reset_selected_suppliers: (
+    id_rodada: number,
+  ) => Promise<{ sucesso: boolean; id_rodada: number }>
 
   list_quotes: (id_rodada: number) => Promise<Cotacao[]>
   create_quote: (

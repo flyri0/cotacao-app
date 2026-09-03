@@ -20,8 +20,10 @@ import { notifications } from '@mantine/notifications'
 import {
   IconArrowDown,
   IconArrowUp,
+  IconCheck,
   IconChevronDown,
   IconFilterOff,
+  IconRotate,
   IconScale,
   IconSearch,
   IconSortAscending,
@@ -49,6 +51,7 @@ function formatMoney(valor: number, maxDigits = 4): string {
 export interface LinhaComparacao {
   id: number
   id_produto: number
+  id_fornecedor_selecionado?: number | null
   produto_nome: string
   produto_categoria: string | null
   cotacoesPorFornecedor: Record<number, Cotacao>
@@ -84,7 +87,14 @@ export function ComparacaoView({
   const [necessidades, setNecessidades] = useState<Necessidade[]>([])
   const [cotacoes, setCotacoes] = useState<Cotacao[]>([])
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
+  const [fornecedoresSelecionados, setFornecedoresSelecionados] = useState<
+    Record<number, number | null>
+  >({})
   const [loading, setLoading] = useState(true)
+
+  const rodadaAtual = rodadas.find((r) => r.id === selectedRodadaId)
+  const isFechada =
+    rodadaAtual?.status === 'fechada' || rodadaAtual?.status === 'cancelada'
 
   // Filtros locais da planilha
   const [filtroTexto, setFiltroTexto] = useState('')
@@ -120,6 +130,12 @@ export function ComparacaoView({
         ])
         setNecessidades(listaNec)
         setCotacoes(listaCot)
+
+        const selecoes: Record<number, number | null> = {}
+        listaNec.forEach((n) => {
+          selecoes[n.id_produto] = n.id_fornecedor_selecionado || null
+        })
+        setFornecedoresSelecionados(selecoes)
       }
     } catch (error) {
       console.error('Erro ao carregar mapa comparativo:', error)
@@ -185,6 +201,7 @@ export function ComparacaoView({
       return {
         id: nec.id,
         id_produto: nec.id_produto,
+        id_fornecedor_selecionado: nec.id_fornecedor_selecionado,
         produto_nome: nec.produto_nome,
         produto_categoria: nec.produto_categoria || null,
         cotacoesPorFornecedor,
@@ -238,6 +255,96 @@ export function ComparacaoView({
   }, [dadosLinhas])
 
   const temFiltroAtivo = Boolean(filtroTexto.trim() || filtroCategoria || sortField)
+
+  // Verifica se há itens transferidos do menor preço na rodada
+  const temItemTransferido = useMemo(() => {
+    return dadosLinhas.some((linha) => {
+      const menorCot = linha.ranking.length > 0 ? linha.ranking[0] : null
+      const menorFornId = menorCot?.id_fornecedor
+      const fornEscolhido =
+        fornecedoresSelecionados[linha.id_produto] !== undefined
+          ? fornecedoresSelecionados[linha.id_produto]
+          : (linha.id_fornecedor_selecionado || menorFornId)
+      return (
+        menorFornId &&
+        fornEscolhido &&
+        fornEscolhido !== menorFornId
+      )
+    })
+  }, [dadosLinhas, fornecedoresSelecionados])
+
+  // Seleciona um fornecedor diretamente ao clicar em uma célula de cotação
+  const handleSelecionarFornecedor = async (
+    idProduto: number,
+    idFornecedor: number,
+    produtoNome: string,
+    fornecedorNome: string,
+  ) => {
+    if (!selectedRodadaId) return
+    if (isFechada) {
+      notifications.show({
+        title: 'Rodada Concluída',
+        message: 'Não é possível alterar decisões de compra em uma rodada fechada.',
+        color: 'yellow',
+      })
+      return
+    }
+
+    // Atualização otimista imediata
+    setFornecedoresSelecionados((prev) => ({
+      ...prev,
+      [idProduto]: idFornecedor,
+    }))
+
+    try {
+      const api = await getApi()
+      await api.set_selected_supplier(selectedRodadaId, idProduto, idFornecedor)
+      notifications.show({
+        title: 'Fornecedor Selecionado',
+        message: `"${produtoNome}" alocado para "${fornecedorNome}".`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+        autoClose: 1600,
+      })
+    } catch (err: any) {
+      console.error('Erro ao selecionar fornecedor:', err)
+      notifications.show({
+        title: 'Erro ao registrar escolha',
+        message: err?.message || 'Falha ao salvar fornecedor selecionado.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+      carregarDados(selectedRodadaId)
+    }
+  }
+
+  // Restaura todas as escolhas para o menor preço original
+  const handleRestaurarMenoresPrecos = async () => {
+    if (!selectedRodadaId || isFechada) return
+
+    try {
+      const api = await getApi()
+      await api.reset_selected_suppliers(selectedRodadaId)
+      setFornecedoresSelecionados({})
+      setNecessidades((prev) =>
+        prev.map((n) => ({ ...n, id_fornecedor_selecionado: null })),
+      )
+      notifications.show({
+        title: 'Menores Preços Restaurados',
+        message: 'Todas as escolhas da rodada foram redefinidas para o menor preço de cada item.',
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      })
+    } catch (err: any) {
+      console.error('Erro ao restaurar menores preços:', err)
+      notifications.show({
+        title: 'Erro',
+        message: 'Falha ao restaurar menores preços.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    }
+  }
 
   return (
     <Stack gap="xs" style={{ width: '100%' }}>
@@ -296,53 +403,116 @@ export function ComparacaoView({
         />
       ) : (
         <Stack gap="xs" style={{ width: '100%' }}>
-          {/* Barra de Filtros e Busca Rápida */}
+          {/* Barra de Filtros, Legenda e Busca Rápida */}
           <Paper withBorder radius="sm" p="xs">
-            <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-              <Group gap="xs" wrap="wrap" align="center">
-                <TextInput
-                  size="xs"
-                  placeholder="Buscar produto ou marca..."
-                  leftSection={<IconSearch size={14} />}
-                  value={filtroTexto}
-                  onChange={(e) => setFiltroTexto(e.currentTarget.value)}
-                  style={{ width: 240 }}
-                />
+            <Stack gap={8}>
+              <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                <Group gap="xs" wrap="wrap" align="center">
+                  <TextInput
+                    size="xs"
+                    placeholder="Buscar produto ou marca..."
+                    leftSection={<IconSearch size={14} />}
+                    value={filtroTexto}
+                    onChange={(e) => setFiltroTexto(e.currentTarget.value)}
+                    style={{ width: 240 }}
+                  />
 
-                <Select
-                  size="xs"
-                  placeholder="Todas as categorias"
-                  data={categoriasUnicas}
-                  value={filtroCategoria}
-                  onChange={setFiltroCategoria}
-                  clearable
-                  style={{ width: 190 }}
-                />
+                  <Select
+                    size="xs"
+                    placeholder="Todas as categorias"
+                    data={categoriasUnicas}
+                    value={filtroCategoria}
+                    onChange={setFiltroCategoria}
+                    clearable
+                    style={{ width: 190 }}
+                  />
 
-                {temFiltroAtivo && (
+                  {temFiltroAtivo && (
+                    <Button
+                      variant="subtle"
+                      color="gray"
+                      size="xs"
+                      leftSection={<IconFilterOff size={14} />}
+                      onClick={() => {
+                        setFiltroTexto('')
+                        setFiltroCategoria(null)
+                        setSortField(null)
+                      }}
+                    >
+                      Limpar filtros
+                    </Button>
+                  )}
+                </Group>
+
+                <Badge size="xs" variant="light" color="gray">
+                  Exibindo {dadosFiltrados.length} de {dadosLinhas.length} produtos
+                  {sortField
+                    ? ` • ${sortField === 'produto' ? 'Produto' : 'Categoria'} (${sortDirection === 'asc' ? 'A→Z' : 'Z→A'})`
+                    : ''}
+                </Badge>
+              </Group>
+
+              {/* Barra de Legenda Semântica e Ação de Restauração */}
+              <Group
+                justify="space-between"
+                align="center"
+                wrap="wrap"
+                gap="xs"
+                style={{
+                  borderTop: '1px solid var(--mantine-color-default-border)',
+                  paddingTop: 6,
+                }}
+              >
+                <Group gap={6} align="center" wrap="wrap">
+                  <Text size="11px" fw={700} c="dimmed" tt="uppercase">
+                    Legenda de Decisão:
+                  </Text>
+                  <Badge
+                    size="xs"
+                    variant="filled"
+                    color="teal"
+                    radius="xs"
+                    style={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Verde: Selecionado (Decisão de Compra)
+                  </Badge>
+                  <Badge
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    radius="xs"
+                    style={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Azul: Menor Preço (Preterido)
+                  </Badge>
+                  <Badge
+                    size="xs"
+                    variant="default"
+                    radius="xs"
+                    style={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Neutro: Outras Cotações
+                  </Badge>
+                  <Text size="11px" c="dimmed" fs="italic">
+                    • Clique na célula para direcionar o produto para aquele fornecedor
+                  </Text>
+                </Group>
+
+                {temItemTransferido && (
                   <Button
                     variant="subtle"
                     color="gray"
                     size="xs"
-                    leftSection={<IconFilterOff size={14} />}
-                    onClick={() => {
-                      setFiltroTexto('')
-                      setFiltroCategoria(null)
-                      setSortField(null)
-                    }}
+                    leftSection={<IconRotate size={14} />}
+                    onClick={handleRestaurarMenoresPrecos}
+                    disabled={isFechada}
+                    title="Restaurar todas as escolhas da rodada para o fornecedor de menor preço"
                   >
-                    Limpar filtros
+                    Restaurar Menores Preços
                   </Button>
                 )}
               </Group>
-
-              <Badge size="xs" variant="light" color="gray">
-                Exibindo {dadosFiltrados.length} de {dadosLinhas.length} produtos
-                {sortField
-                  ? ` • ${sortField === 'produto' ? 'Produto' : 'Categoria'} (${sortDirection === 'asc' ? 'A→Z' : 'Z→A'})`
-                  : ''}
-              </Badge>
-            </Group>
+            </Stack>
           </Paper>
 
           {/* Super-Planilha de Alta Densidade com Congelamento de Painéis */}
@@ -681,7 +851,6 @@ export function ComparacaoView({
                   ) : (
                     dadosFiltrados.map((linha) => {
                       const ranking = linha.ranking || []
-                      const menorPreco = ranking[0]?.preco_unitario
 
                       return (
                         <Table.Tr key={linha.id}>
@@ -748,7 +917,7 @@ export function ComparacaoView({
                             </Text>
                           </Table.Td>
 
-                          {/* Colunas dos Fornecedores (Células Heat Map) */}
+                          {/* Colunas dos Fornecedores (Células Interativas de Decisão) */}
                           {fornecedoresNaTabela.map((forn) => {
                             const cot = linha.cotacoesPorFornecedor[forn.id]
 
@@ -776,48 +945,91 @@ export function ComparacaoView({
                               )
                             }
 
-                            const isVencedor =
-                              cot.preco_unitario === menorPreco
-                            const index = ranking.findIndex(
-                              (c) => c.id === cot.id,
+                            const menorCot = ranking.length > 0 ? ranking[0] : null
+                            const menorPreco = menorCot?.preco_unitario
+                            const menorFornId = menorCot?.id_fornecedor
+                            const fornEscolhidoId =
+                              fornecedoresSelecionados[linha.id_produto] !== undefined
+                                ? fornecedoresSelecionados[linha.id_produto]
+                                : (linha.id_fornecedor_selecionado || menorFornId)
+
+                            const isSelecionado = forn.id === fornEscolhidoId
+                            const isMenorPreco = cot.preco_unitario === menorPreco
+                            const isTransferido = Boolean(
+                              fornEscolhidoId &&
+                                menorFornId &&
+                                fornEscolhidoId !== menorFornId,
                             )
-                            const posicao = isVencedor ? 1 : index + 1
+                            const isMenorPrecoPreterido =
+                              isTransferido && isMenorPreco
                             const { economiaPct } = linha
 
-                            // Cores semânticas de alta visibilidade e contraste para cada posição
+                            // Cores semânticas segundo regra de compras do usuário:
+                            // 1. Verde = Selecionado (mesmo não sendo o menor preço)
+                            // 2. Azul = Menor preço original que foi transferido/preterido
+                            // 3. Neutro = Demais posições (VERMELHO REMOVIDO TOTALMENTE)
                             let bgCell = 'transparent'
-                            let textPrecoColor = undefined
+                            let textPrecoColor: string | undefined = undefined
+                            let borderCell =
+                              '1px solid var(--mantine-color-default-border)'
 
-                            if (posicao === 1) {
+                            if (isSelecionado) {
                               bgCell = isDark
                                 ? 'rgba(43, 138, 62, 0.40)'
                                 : '#d3f9d8'
                               textPrecoColor = isDark ? '#8ce99a' : '#14532d'
-                            } else if (posicao === 2) {
+                              borderCell = isDark
+                                ? '2px solid #2b8a3e'
+                                : '2px solid #2b8a3e'
+                            } else if (isMenorPrecoPreterido) {
                               bgCell = isDark
-                                ? 'rgba(245, 159, 0, 0.32)'
-                                : '#fff3bf'
-                              textPrecoColor = isDark ? '#ffd43b' : '#713f12'
-                            } else if (posicao >= 3) {
-                              bgCell = isDark
-                                ? 'rgba(224, 49, 49, 0.32)'
-                                : '#ffe3e3'
-                              textPrecoColor = isDark ? '#ffa8a8' : '#7f1d1d'
+                                ? 'rgba(25, 113, 194, 0.35)'
+                                : '#d0ebff'
+                              textPrecoColor = isDark ? '#74c0fc' : '#1864ab'
+                              borderCell = isDark
+                                ? '1px solid #1971c2'
+                                : '1px solid #74c0fc'
+                            } else {
+                              // Limpo e neutro sem vermelho
+                              bgCell = isDark ? 'transparent' : '#ffffff'
+                              textPrecoColor = undefined
                             }
+
+                            const isClickable = !isFechada
 
                             return (
                               <Table.Td
                                 key={forn.id}
+                                onClick={() => {
+                                  if (isClickable) {
+                                    handleSelecionarFornecedor(
+                                      linha.id_produto,
+                                      forn.id,
+                                      linha.produto_nome,
+                                      forn.nome,
+                                    )
+                                  }
+                                }}
                                 style={{
                                   backgroundColor: bgCell,
                                   textAlign: 'center',
                                   verticalAlign: 'middle',
                                   padding: '3px 6px',
-                                  borderRight:
-                                    '1px solid var(--mantine-color-default-border)',
-                                  borderBottom:
-                                    '1px solid var(--mantine-color-default-border)',
+                                  borderRight: borderCell,
+                                  borderBottom: borderCell,
+                                  borderLeft: isSelecionado ? borderCell : undefined,
+                                  borderTop: isSelecionado ? borderCell : undefined,
+                                  cursor: isClickable ? 'pointer' : 'default',
+                                  userSelect: 'none',
+                                  transition: 'background-color 150ms ease, box-shadow 150ms ease',
                                 }}
+                                title={
+                                  isFechada
+                                    ? 'Rodada concluída'
+                                    : isSelecionado
+                                    ? 'Fornecedor selecionado para compra. Clique em outro para transferir.'
+                                    : `Clique para direcionar a compra de "${linha.produto_nome}" para ${forn.nome}`
+                                }
                               >
                                 <div
                                   style={{
@@ -826,7 +1038,7 @@ export function ComparacaoView({
                                     lineHeight: 1.15,
                                   }}
                                 >
-                                  {/* Linha 1: Preço Unitário + Troféu e % Economia no Vencedor */}
+                                  {/* Linha 1: Preço Unitário + Troféu / Checkmark e Economia */}
                                   <div
                                     style={{
                                       display: 'flex',
@@ -835,9 +1047,20 @@ export function ComparacaoView({
                                       gap: 4,
                                     }}
                                   >
-                                    {isVencedor && (
+                                    {isSelecionado && isMenorPreco && (
                                       <span style={{ fontSize: '11px' }}>
                                         🏆
+                                      </span>
+                                    )}
+                                    {isSelecionado && !isMenorPreco && (
+                                      <span
+                                        style={{
+                                          fontSize: '11px',
+                                          fontWeight: 700,
+                                          color: textPrecoColor,
+                                        }}
+                                      >
+                                        ✓
                                       </span>
                                     )}
                                     <Text
@@ -848,7 +1071,8 @@ export function ComparacaoView({
                                     >
                                       {formatMoney(cot.preco_unitario)}
                                     </Text>
-                                    {isVencedor &&
+                                    {isSelecionado &&
+                                      isMenorPreco &&
                                       economiaPct !== null &&
                                       economiaPct > 0.1 && (
                                         <Text
@@ -862,22 +1086,35 @@ export function ComparacaoView({
                                       )}
                                   </div>
 
-                                  {/* Linha 2: Marca com Destaque Nítido */}
+                                  {/* Linha 2: Marca com Destaque Nítido e Indicador de Decisão */}
                                   <div
                                     style={{
                                       display: 'flex',
+                                      alignItems: 'center',
                                       justifyContent: 'center',
+                                      gap: 4,
                                       marginTop: 2,
                                       marginBottom: 1,
+                                      flexWrap: 'wrap',
                                     }}
                                   >
                                     {cot.marca ? (
                                       <Badge
                                         size="xs"
                                         variant={
-                                          isVencedor ? 'filled' : 'light'
+                                          isSelecionado
+                                            ? 'filled'
+                                            : isMenorPrecoPreterido
+                                            ? 'light'
+                                            : 'light'
                                         }
-                                        color={isVencedor ? 'teal' : 'gray'}
+                                        color={
+                                          isSelecionado
+                                            ? 'teal'
+                                            : isMenorPrecoPreterido
+                                            ? 'blue'
+                                            : 'gray'
+                                        }
                                         radius="xs"
                                         style={{
                                           fontSize: '9px',
@@ -894,6 +1131,40 @@ export function ComparacaoView({
                                       <Text size="9px" c="dimmed" fs="italic">
                                         (Sem marca)
                                       </Text>
+                                    )}
+
+                                    {isMenorPrecoPreterido && (
+                                      <Badge
+                                        size="xs"
+                                        variant="outline"
+                                        color="blue"
+                                        radius="xs"
+                                        style={{
+                                          fontSize: '8px',
+                                          height: 13,
+                                          padding: '0 3px',
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        MENOR PREÇO
+                                      </Badge>
+                                    )}
+
+                                    {isSelecionado && !isMenorPreco && (
+                                      <Badge
+                                        size="xs"
+                                        variant="filled"
+                                        color="teal"
+                                        radius="xs"
+                                        style={{
+                                          fontSize: '8px',
+                                          height: 13,
+                                          padding: '0 3px',
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        ESCOLHIDO
+                                      </Badge>
                                     )}
                                   </div>
 

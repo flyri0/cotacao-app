@@ -26,6 +26,15 @@ def create_schema(conn: sqlite3.Connection) -> None:
                 cursor.execute(f"ALTER TABLE {table} RENAME TO {table}_old")
             conn.commit()
 
+    # Migração da coluna id_fornecedor_selecionado na tabela necessidades
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='necessidades'")
+    if cursor.fetchone():
+        cursor.execute("PRAGMA table_info(necessidades)")
+        nec_cols = [row["name"] for row in cursor.fetchall()]
+        if "id_fornecedor_selecionado" not in nec_cols:
+            cursor.execute("ALTER TABLE necessidades ADD COLUMN id_fornecedor_selecionado INTEGER REFERENCES fornecedores(id) ON DELETE SET NULL")
+            conn.commit()
+
     # 2. Criação das tabelas atualizadas (Cria do zero ou usa as que já existem)
     cursor.executescript(
         """
@@ -67,8 +76,10 @@ def create_schema(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             id_rodada INTEGER NOT NULL,
             id_produto INTEGER NOT NULL,
+            id_fornecedor_selecionado INTEGER,
             FOREIGN KEY (id_rodada) REFERENCES rodadas (id) ON DELETE CASCADE,
             FOREIGN KEY (id_produto) REFERENCES produtos (id),
+            FOREIGN KEY (id_fornecedor_selecionado) REFERENCES fornecedores (id) ON DELETE SET NULL,
             UNIQUE (id_rodada, id_produto)
         );
 

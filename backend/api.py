@@ -53,6 +53,8 @@ from backend.domain.necessidades import (
     list_needs_db,
     create_need_db,
     remove_need_db,
+    set_selected_supplier_db,
+    reset_selected_suppliers_db,
 )
 from backend.domain.cotacoes import (
     list_quotes_db,
@@ -569,6 +571,19 @@ class Api:
     def remove_need(self, id_necessidade: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return remove_need_db(conn, id_necessidade)
+
+    def set_selected_supplier(
+        self,
+        id_rodada: int,
+        id_produto: int,
+        id_fornecedor: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            return set_selected_supplier_db(conn, id_rodada, id_produto, id_fornecedor)
+
+    def reset_selected_suppliers(self, id_rodada: int) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            return reset_selected_suppliers_db(conn, id_rodada)
 
     # -------------------------------------------------------------------------
     # COTAÇÕES

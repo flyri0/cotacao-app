@@ -69,6 +69,8 @@ from backend.domain.necessidades import (
     list_needs_db,
     create_need_db,
     remove_need_db,
+    set_selected_supplier_db,
+    reset_selected_suppliers_db,
 )
 
 from backend.domain.cotacoes import (
