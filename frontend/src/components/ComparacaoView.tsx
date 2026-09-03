@@ -1,10 +1,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
+  ActionIcon,
   Badge,
   Button,
   Center,
   Group,
   Loader,
+  Menu,
   Paper,
   Select,
   SimpleGrid,
@@ -16,9 +18,14 @@ import {
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
+  IconArrowDown,
+  IconArrowUp,
+  IconChevronDown,
   IconFilterOff,
   IconScale,
   IconSearch,
+  IconSortAscending,
+  IconSortDescending,
   IconTruck,
   IconX,
 } from '@tabler/icons-react'
@@ -51,6 +58,9 @@ export interface LinhaComparacao {
   economiaPct: number | null
 }
 
+type SortField = 'produto' | 'categoria' | null
+type SortDirection = 'asc' | 'desc'
+
 interface ComparacaoViewProps {
   rodadaAtivaId?: number
   onRodadaChange?: (id: number) => void
@@ -79,6 +89,10 @@ export function ComparacaoView({
   // Filtros locais da planilha
   const [filtroTexto, setFiltroTexto] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState<string | null>(null)
+
+  // Ordenação alfabética estilo Excel (apenas em Produto e Categoria)
+  const [sortField, setSortField] = useState<SortField>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   const carregarDados = async (rodadaId?: number) => {
     try {
@@ -182,9 +196,9 @@ export function ComparacaoView({
     })
   }, [necessidades, cotacoes])
 
-  // Linhas filtradas pela busca rápida e categoria
+  // Linhas filtradas e ordenadas (alfabeticamente estilo Excel)
   const dadosFiltrados = useMemo(() => {
-    return dadosLinhas.filter((linha) => {
+    let list = dadosLinhas.filter((linha) => {
       if (filtroCategoria && linha.produto_categoria !== filtroCategoria) {
         return false
       }
@@ -198,7 +212,18 @@ export function ComparacaoView({
       }
       return true
     })
-  }, [dadosLinhas, filtroCategoria, filtroTexto])
+
+    if (sortField) {
+      list = [...list].sort((a, b) => {
+        const valA = (sortField === 'produto' ? a.produto_nome : a.produto_categoria) || ''
+        const valB = (sortField === 'produto' ? b.produto_nome : b.produto_categoria) || ''
+        const cmp = valA.localeCompare(valB, 'pt-BR', { sensitivity: 'base' })
+        return sortDirection === 'asc' ? cmp : -cmp
+      })
+    }
+
+    return list
+  }, [dadosLinhas, filtroCategoria, filtroTexto, sortField, sortDirection])
 
   // Indicadores rápidos
   const stats = useMemo(() => {
@@ -212,7 +237,7 @@ export function ComparacaoView({
     return { totalItens, totalComCotacao, percentual }
   }, [dadosLinhas])
 
-  const temFiltroAtivo = Boolean(filtroTexto.trim() || filtroCategoria)
+  const temFiltroAtivo = Boolean(filtroTexto.trim() || filtroCategoria || sortField)
 
   return (
     <Stack gap="xs" style={{ width: '100%' }}>
@@ -235,12 +260,12 @@ export function ComparacaoView({
         }
       />
 
-      {/* Cartões KPIs Padronizados (StatCard) */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+      {/* Cartões KPIs Padronizados (Apenas Cobertura e Fornecedores) */}
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
         <StatCard
           label="Cobertura de Cotações"
           value={`${stats.totalComCotacao} de ${stats.totalItens}`}
-          subtitle="Itens com preço cotado"
+          subtitle="Itens com preço cotado na rodada"
           icon={IconScale}
           color={themeColor}
           badge={{
@@ -256,15 +281,6 @@ export function ComparacaoView({
           icon={IconTruck}
           color="teal"
           badge={{ label: 'Ativos', color: 'teal' }}
-        />
-
-        <StatCard
-          label="Critério de Destaque"
-          value="Menor Preço"
-          subtitle="Verde: 1º | Amarelo: 2º | Vermelho: 3º+"
-          color="teal"
-          valueColor="teal"
-          badge={{ label: 'Show de Cores', color: 'teal' }}
         />
       </SimpleGrid>
 
@@ -312,6 +328,7 @@ export function ComparacaoView({
                     onClick={() => {
                       setFiltroTexto('')
                       setFiltroCategoria(null)
+                      setSortField(null)
                     }}
                   >
                     Limpar filtros
@@ -321,6 +338,9 @@ export function ComparacaoView({
 
               <Badge size="xs" variant="light" color="gray">
                 Exibindo {dadosFiltrados.length} de {dadosLinhas.length} produtos
+                {sortField
+                  ? ` • ${sortField === 'produto' ? 'Produto' : 'Categoria'} (${sortDirection === 'asc' ? 'A→Z' : 'Z→A'})`
+                  : ''}
               </Badge>
             </Group>
           </Paper>
@@ -357,7 +377,7 @@ export function ComparacaoView({
                   }}
                 >
                   <Table.Tr>
-                    {/* Cabeçalho Fixo 1: Produto */}
+                    {/* Cabeçalho Fixo 1: Produto (Com Filtro/Ordenação Estilo Excel) */}
                     <Table.Th
                       style={{
                         position: 'sticky',
@@ -370,19 +390,121 @@ export function ComparacaoView({
                         backgroundColor: isDark
                           ? 'var(--mantine-color-dark-7)'
                           : '#f8f9fa',
-                        padding: '6px 8px',
+                        padding: '5px 8px',
                         borderBottom:
                           '2px solid var(--mantine-color-default-border)',
                         borderRight:
                           '1px solid var(--mantine-color-default-border)',
                       }}
                     >
-                      <Text fw={700} size="xs" tt="uppercase" c="dimmed">
-                        Produto
-                      </Text>
+                      <Group
+                        justify="space-between"
+                        align="center"
+                        wrap="nowrap"
+                        gap={4}
+                      >
+                        <Text fw={700} size="xs" tt="uppercase" c="dimmed">
+                          Produto
+                        </Text>
+                        <Menu
+                          shadow="md"
+                          width={175}
+                          position="bottom-start"
+                          radius="xs"
+                          withinPortal
+                        >
+                          <Menu.Target>
+                            <ActionIcon
+                              variant={sortField === 'produto' ? 'filled' : 'subtle'}
+                              color={sortField === 'produto' ? themeColor : 'gray'}
+                              size="xs"
+                              title="Filtrar e ordenar produto de A a Z ou Z a A"
+                              style={{
+                                border:
+                                  sortField === 'produto'
+                                    ? 'none'
+                                    : '1px solid var(--mantine-color-default-border)',
+                                backgroundColor:
+                                  sortField === 'produto'
+                                    ? undefined
+                                    : isDark
+                                    ? 'var(--mantine-color-dark-6)'
+                                    : '#ffffff',
+                              }}
+                            >
+                              {sortField === 'produto' ? (
+                                sortDirection === 'asc' ? (
+                                  <IconArrowUp size={11} />
+                                ) : (
+                                  <IconArrowDown size={11} />
+                                )
+                              ) : (
+                                <IconChevronDown size={11} />
+                              )}
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Label>Classificar Produtos</Menu.Label>
+                            <Menu.Item
+                              leftSection={<IconSortAscending size={14} />}
+                              onClick={() => {
+                                setSortField('produto')
+                                setSortDirection('asc')
+                              }}
+                              style={{
+                                fontWeight:
+                                  sortField === 'produto' &&
+                                  sortDirection === 'asc'
+                                    ? 700
+                                    : 400,
+                                color:
+                                  sortField === 'produto' &&
+                                  sortDirection === 'asc'
+                                    ? `var(--mantine-color-${themeColor}-6)`
+                                    : undefined,
+                              }}
+                            >
+                              Classificar de A a Z
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<IconSortDescending size={14} />}
+                              onClick={() => {
+                                setSortField('produto')
+                                setSortDirection('desc')
+                              }}
+                              style={{
+                                fontWeight:
+                                  sortField === 'produto' &&
+                                  sortDirection === 'desc'
+                                    ? 700
+                                    : 400,
+                                color:
+                                  sortField === 'produto' &&
+                                  sortDirection === 'desc'
+                                    ? `var(--mantine-color-${themeColor}-6)`
+                                    : undefined,
+                              }}
+                            >
+                              Classificar de Z a A
+                            </Menu.Item>
+                            {sortField === 'produto' && (
+                              <>
+                                <Menu.Divider />
+                                <Menu.Item
+                                  color="red"
+                                  leftSection={<IconFilterOff size={14} />}
+                                  onClick={() => setSortField(null)}
+                                >
+                                  Remover classificação
+                                </Menu.Item>
+                              </>
+                            )}
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Group>
                     </Table.Th>
 
-                    {/* Cabeçalho Fixo 2: Categoria */}
+                    {/* Cabeçalho Fixo 2: Categoria (Com Filtro/Ordenação Estilo Excel) */}
                     <Table.Th
                       style={{
                         position: 'sticky',
@@ -395,16 +517,118 @@ export function ComparacaoView({
                         backgroundColor: isDark
                           ? 'var(--mantine-color-dark-7)'
                           : '#f8f9fa',
-                        padding: '6px 8px',
+                        padding: '5px 8px',
                         borderBottom:
                           '2px solid var(--mantine-color-default-border)',
                         borderRight:
                           '2px solid var(--mantine-color-default-border)',
                       }}
                     >
-                      <Text fw={700} size="xs" tt="uppercase" c="dimmed">
-                        Categoria
-                      </Text>
+                      <Group
+                        justify="space-between"
+                        align="center"
+                        wrap="nowrap"
+                        gap={4}
+                      >
+                        <Text fw={700} size="xs" tt="uppercase" c="dimmed">
+                          Categoria
+                        </Text>
+                        <Menu
+                          shadow="md"
+                          width={175}
+                          position="bottom-start"
+                          radius="xs"
+                          withinPortal
+                        >
+                          <Menu.Target>
+                            <ActionIcon
+                              variant={sortField === 'categoria' ? 'filled' : 'subtle'}
+                              color={sortField === 'categoria' ? themeColor : 'gray'}
+                              size="xs"
+                              title="Filtrar e ordenar categoria de A a Z ou Z a A"
+                              style={{
+                                border:
+                                  sortField === 'categoria'
+                                    ? 'none'
+                                    : '1px solid var(--mantine-color-default-border)',
+                                backgroundColor:
+                                  sortField === 'categoria'
+                                    ? undefined
+                                    : isDark
+                                    ? 'var(--mantine-color-dark-6)'
+                                    : '#ffffff',
+                              }}
+                            >
+                              {sortField === 'categoria' ? (
+                                sortDirection === 'asc' ? (
+                                  <IconArrowUp size={11} />
+                                ) : (
+                                  <IconArrowDown size={11} />
+                                )
+                              ) : (
+                                <IconChevronDown size={11} />
+                              )}
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Label>Classificar Categorias</Menu.Label>
+                            <Menu.Item
+                              leftSection={<IconSortAscending size={14} />}
+                              onClick={() => {
+                                setSortField('categoria')
+                                setSortDirection('asc')
+                              }}
+                              style={{
+                                fontWeight:
+                                  sortField === 'categoria' &&
+                                  sortDirection === 'asc'
+                                    ? 700
+                                    : 400,
+                                color:
+                                  sortField === 'categoria' &&
+                                  sortDirection === 'asc'
+                                    ? `var(--mantine-color-${themeColor}-6)`
+                                    : undefined,
+                              }}
+                            >
+                              Classificar de A a Z
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<IconSortDescending size={14} />}
+                              onClick={() => {
+                                setSortField('categoria')
+                                setSortDirection('desc')
+                              }}
+                              style={{
+                                fontWeight:
+                                  sortField === 'categoria' &&
+                                  sortDirection === 'desc'
+                                    ? 700
+                                    : 400,
+                                color:
+                                  sortField === 'categoria' &&
+                                  sortDirection === 'desc'
+                                    ? `var(--mantine-color-${themeColor}-6)`
+                                    : undefined,
+                              }}
+                            >
+                              Classificar de Z a A
+                            </Menu.Item>
+                            {sortField === 'categoria' && (
+                              <>
+                                <Menu.Divider />
+                                <Menu.Item
+                                  color="red"
+                                  leftSection={<IconFilterOff size={14} />}
+                                  onClick={() => setSortField(null)}
+                                >
+                                  Remover classificação
+                                </Menu.Item>
+                              </>
+                            )}
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Group>
                     </Table.Th>
 
                     {/* Cabeçalhos Dinâmicos: Nome do Fornecedor (Sem Pedido Mínimo) */}
