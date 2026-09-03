@@ -1,24 +1,27 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
+  Badge,
+  Button,
   Center,
+  Group,
   Loader,
+  Paper,
+  Select,
   SimpleGrid,
   Stack,
+  Table,
   Text,
+  TextInput,
   useComputedColorScheme,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
+  IconFilterOff,
   IconScale,
+  IconSearch,
   IconTruck,
   IconX,
 } from '@tabler/icons-react'
-import {
-  MantineReactTable,
-  useMantineReactTable,
-  type MRT_ColumnDef,
-} from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import { PageHeader } from './common/PageHeader'
 import { RoundHeaderSelector } from './common/RoundHeaderSelector'
 import { StatCard } from './common/StatCard'
@@ -59,7 +62,9 @@ export function ComparacaoView({
   onRodadaChange,
   themeColor = 'blue',
 }: ComparacaoViewProps) {
-  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const computedColorScheme = useComputedColorScheme('light', {
+    getInitialValueInEffect: true,
+  })
   const isDark = computedColorScheme === 'dark'
 
   const [rodadas, setRodadas] = useState<Rodada[]>([])
@@ -70,6 +75,10 @@ export function ComparacaoView({
   const [cotacoes, setCotacoes] = useState<Cotacao[]>([])
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Filtros locais da planilha
+  const [filtroTexto, setFiltroTexto] = useState('')
+  const [filtroCategoria, setFiltroCategoria] = useState<string | null>(null)
 
   const carregarDados = async (rodadaId?: number) => {
     try {
@@ -122,7 +131,7 @@ export function ComparacaoView({
     return participantes.length > 0 ? participantes : fornecedores
   }, [fornecedores, cotacoes])
 
-  // Lista de categorias únicas para o filtro seletivo
+  // Lista de categorias únicas para o seletor de filtros
   const categoriasUnicas = useMemo(() => {
     const cats = new Set<string>()
     necessidades.forEach((n) => {
@@ -173,6 +182,24 @@ export function ComparacaoView({
     })
   }, [necessidades, cotacoes])
 
+  // Linhas filtradas pela busca rápida e categoria
+  const dadosFiltrados = useMemo(() => {
+    return dadosLinhas.filter((linha) => {
+      if (filtroCategoria && linha.produto_categoria !== filtroCategoria) {
+        return false
+      }
+      if (filtroTexto.trim()) {
+        const q = filtroTexto.toLowerCase().trim()
+        const matchNome = linha.produto_nome.toLowerCase().includes(q)
+        const matchMarca = Object.values(linha.cotacoesPorFornecedor).some(
+          (c) => c.marca && c.marca.toLowerCase().includes(q),
+        )
+        if (!matchNome && !matchMarca) return false
+      }
+      return true
+    })
+  }, [dadosLinhas, filtroCategoria, filtroTexto])
+
   // Indicadores rápidos
   const stats = useMemo(() => {
     const totalItens = dadosLinhas.length
@@ -185,273 +212,7 @@ export function ComparacaoView({
     return { totalItens, totalComCotacao, percentual }
   }, [dadosLinhas])
 
-  // Definição das colunas da Mantine React Table
-  const columns = useMemo<MRT_ColumnDef<LinhaComparacao>[]>(() => {
-    const cols: MRT_ColumnDef<LinhaComparacao>[] = [
-      {
-        accessorKey: 'produto_nome',
-        header: 'Produto',
-        size: 200,
-        enablePinning: true,
-        enableColumnFilter: true,
-        mantineFilterTextInputProps: {
-          size: 'xs',
-          placeholder: 'Buscar produto...',
-        },
-        mantineTableBodyCellProps: {
-          style: {
-            padding: '3px 6px',
-            verticalAlign: 'middle',
-          },
-        },
-        Cell: ({ cell }) => (
-          <Text fw={600} size="xs" lineClamp={2} style={{ lineHeight: 1.15 }}>
-            {cell.getValue<string>()}
-          </Text>
-        ),
-      },
-      {
-        accessorKey: 'produto_categoria',
-        header: 'Categoria',
-        size: 120,
-        enablePinning: true,
-        enableColumnFilter: true,
-        filterVariant: 'select',
-        mantineFilterSelectProps: {
-          data: categoriasUnicas,
-          size: 'xs',
-          clearable: true,
-          placeholder: 'Todas as categorias',
-        },
-        mantineTableBodyCellProps: {
-          style: {
-            padding: '3px 6px',
-            verticalAlign: 'middle',
-          },
-        },
-        Cell: ({ cell }) => {
-          const cat = cell.getValue<string | null>()
-          return (
-            <Text size="xs" truncate="end" c={!cat ? 'dimmed' : undefined} style={{ lineHeight: 1.15 }}>
-              {cat || '-'}
-            </Text>
-          )
-        },
-      },
-    ]
-
-    // Colunas dinâmicas para cada fornecedor
-    fornecedoresNaTabela.forEach((forn) => {
-      cols.push({
-        id: `forn_${forn.id}`,
-        header: forn.nome,
-        size: 150,
-        enableColumnFilter: false,
-        enableColumnActions: false,
-        Header: () => (
-          <div style={{ lineHeight: 1.15, width: '100%', textAlign: 'center', overflow: 'hidden' }}>
-            <Text fw={700} size="xs" truncate="end">
-              {forn.nome}
-            </Text>
-            {forn.pedido_minimo > 0 && (
-              <Text size="10px" c="dimmed" fw={400} truncate="end">
-                Mín: {formatMoney(forn.pedido_minimo)}
-              </Text>
-            )}
-          </div>
-        ),
-        accessorFn: (row) => {
-          const cot = row.cotacoesPorFornecedor[forn.id]
-          return cot ? cot.preco_unitario : null
-        },
-        sortingFn: (rowA, rowB) => {
-          const valA =
-            rowA.original.cotacoesPorFornecedor[forn.id]?.preco_unitario ??
-            Infinity
-          const valB =
-            rowB.original.cotacoesPorFornecedor[forn.id]?.preco_unitario ??
-            Infinity
-          return valA - valB
-        },
-        mantineTableBodyCellProps: ({ row }) => {
-          const cot = row.original.cotacoesPorFornecedor[forn.id]
-          if (!cot) {
-            return {
-              style: {
-                padding: '3px 6px',
-                textAlign: 'center',
-                verticalAlign: 'middle',
-              },
-            }
-          }
-
-          const ranking = row.original.ranking || []
-          const menorPreco = ranking[0]?.preco_unitario
-          const isVencedor = cot.preco_unitario === menorPreco
-          const index = ranking.findIndex((c) => c.id === cot.id)
-          const posicao = isVencedor ? 1 : index + 1
-
-          let backgroundColor = 'transparent'
-          if (posicao === 1) {
-            backgroundColor = isDark ? 'rgba(43, 138, 62, 0.35)' : '#d3f9d8'
-          } else if (posicao === 2) {
-            backgroundColor = isDark ? 'rgba(245, 159, 0, 0.28)' : '#fff3bf'
-          } else if (posicao >= 3) {
-            backgroundColor = isDark ? 'rgba(224, 49, 49, 0.28)' : '#ffe3e3'
-          }
-
-          return {
-            style: {
-              backgroundColor,
-              padding: '3px 6px',
-              textAlign: 'center',
-              verticalAlign: 'middle',
-            },
-          }
-        },
-        Cell: ({ row }) => {
-          const cot = row.original.cotacoesPorFornecedor[forn.id]
-          if (!cot) {
-            return (
-              <Text size="xs" c="dimmed" ta="center">
-                -
-              </Text>
-            )
-          }
-
-          const ranking = row.original.ranking || []
-          const menorPreco = ranking[0]?.preco_unitario
-          const isVencedor = cot.preco_unitario === menorPreco
-          const index = ranking.findIndex((c) => c.id === cot.id)
-          const posicao = isVencedor ? 1 : index + 1
-          const { economiaPct } = row.original
-
-          let textPrecoColor = undefined
-          if (posicao === 1) {
-            textPrecoColor = isDark ? '#8ce99a' : '#14532d'
-          } else if (posicao === 2) {
-            textPrecoColor = isDark ? '#ffd43b' : '#713f12'
-          } else if (posicao >= 3) {
-            textPrecoColor = isDark ? '#ffa8a8' : '#7f1d1d'
-          }
-
-          return (
-            <div style={{ width: '100%', overflow: 'hidden', lineHeight: 1.15 }}>
-              {/* Linha 1: Preço unitário + (🏆 ou % economia se vencedor) */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 3,
-                }}
-              >
-                {isVencedor && <span style={{ fontSize: '11px' }}>🏆</span>}
-                <Text
-                  fw={700}
-                  size="xs"
-                  c={textPrecoColor}
-                  style={{ whiteSpace: 'nowrap' }}
-                >
-                  {formatMoney(cot.preco_unitario)}
-                </Text>
-                {isVencedor && economiaPct !== null && economiaPct > 0.1 && (
-                  <Text
-                    size="10px"
-                    fw={700}
-                    c={textPrecoColor}
-                    style={{ whiteSpace: 'nowrap' }}
-                  >
-                    (-{economiaPct.toFixed(0)}%)
-                  </Text>
-                )}
-              </div>
-
-              {/* Linha 2: Marca, Embalagem e Preço da Embalagem */}
-              <Text
-                size="10px"
-                c="dimmed"
-                truncate="end"
-                ta="center"
-                style={{ marginTop: 1 }}
-              >
-                {cot.marca ? `[${cot.marca}] ` : ''}{cot.embalagem} ({formatMoney(cot.preco_embalagem, 2)})
-              </Text>
-            </div>
-          )
-        },
-      })
-    })
-
-    return cols
-  }, [fornecedoresNaTabela, categoriasUnicas, isDark])
-
-  // Configuração da Mantine React Table
-  const table = useMantineReactTable({
-    columns,
-    data: dadosLinhas,
-    localization: MRT_Localization_PT_BR,
-    enableDensityToggle: false,
-    enableFullScreenToggle: false,
-    enableHiding: false,
-    enableColumnActions: false,
-    enablePagination: false,
-    enableBottomToolbar: false,
-    enableTopToolbar: true,
-    enableColumnPinning: true,
-    enableStickyHeader: true,
-    enableColumnFilters: true,
-    enableGlobalFilter: true,
-    enableSorting: true,
-    initialState: {
-      density: 'xs',
-      columnPinning: {
-        left: ['produto_nome', 'produto_categoria'],
-      },
-      showGlobalFilter: true,
-    },
-    mantineSearchTextInputProps: {
-      size: 'xs',
-      placeholder: 'Pesquisar produto ou marca...',
-    },
-    mantineTableContainerProps: {
-      style: {
-        maxHeight: 'calc(100vh - 240px)',
-        borderTop: '1px solid var(--mantine-color-default-border)',
-      },
-    },
-    mantineTableHeadCellProps: {
-      style: {
-        padding: '4px 6px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
-      },
-    },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '3px 6px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTopToolbarProps: {
-      style: {
-        minHeight: 46,
-        padding: 'var(--mantine-spacing-xs) var(--mantine-spacing-sm)',
-        alignItems: 'center',
-      },
-    },
-    mantineTableProps: {
-      striped: false,
-      highlightOnHover: true,
-      withTableBorder: true,
-      withColumnBorders: true,
-    },
-    mantinePaperProps: {
-      withBorder: true,
-      radius: 'sm',
-      shadow: 'none',
-    },
-  })
+  const temFiltroAtivo = Boolean(filtroTexto.trim() || filtroCategoria)
 
   return (
     <Stack gap="xs" style={{ width: '100%' }}>
@@ -459,7 +220,7 @@ export function ComparacaoView({
         icon={IconScale}
         iconColor={themeColor}
         title="Mapa Comparativo de Cotações"
-        subtitle="Normalização por unidade de medida"
+        subtitle="Normalização por unidade de medida com painéis congelados"
         rightSection={
           <RoundHeaderSelector
             rodadas={rodadas}
@@ -507,7 +268,7 @@ export function ComparacaoView({
         />
       </SimpleGrid>
 
-      {/* Tabela Mantine React Table */}
+      {/* Conteúdo Principal */}
       {loading ? (
         <Center p="xl">
           <Loader size="lg" />
@@ -518,11 +279,427 @@ export function ComparacaoView({
           description="Adicione produtos na aba Necessidades para visualizar o comparativo de preços."
         />
       ) : (
-        <MantineReactTable table={table} />
+        <Stack gap="xs" style={{ width: '100%' }}>
+          {/* Barra de Filtros e Busca Rápida */}
+          <Paper withBorder radius="sm" p="xs">
+            <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+              <Group gap="xs" wrap="wrap" align="center">
+                <TextInput
+                  size="xs"
+                  placeholder="Buscar produto ou marca..."
+                  leftSection={<IconSearch size={14} />}
+                  value={filtroTexto}
+                  onChange={(e) => setFiltroTexto(e.currentTarget.value)}
+                  style={{ width: 240 }}
+                />
+
+                <Select
+                  size="xs"
+                  placeholder="Todas as categorias"
+                  data={categoriasUnicas}
+                  value={filtroCategoria}
+                  onChange={setFiltroCategoria}
+                  clearable
+                  style={{ width: 190 }}
+                />
+
+                {temFiltroAtivo && (
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    size="xs"
+                    leftSection={<IconFilterOff size={14} />}
+                    onClick={() => {
+                      setFiltroTexto('')
+                      setFiltroCategoria(null)
+                    }}
+                  >
+                    Limpar filtros
+                  </Button>
+                )}
+              </Group>
+
+              <Badge size="xs" variant="light" color="gray">
+                Exibindo {dadosFiltrados.length} de {dadosLinhas.length} produtos
+              </Badge>
+            </Group>
+          </Paper>
+
+          {/* Super-Planilha de Alta Densidade com Congelamento de Painéis */}
+          <Paper withBorder radius="sm" style={{ overflow: 'hidden' }}>
+            <Table.ScrollContainer
+              minWidth={500}
+              style={{
+                maxHeight: 'calc(100vh - 285px)',
+                overflowY: 'auto',
+              }}
+            >
+              <Table
+                withTableBorder
+                withColumnBorders
+                highlightOnHover
+                verticalSpacing={2}
+                horizontalSpacing={4}
+                style={{
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
+                  fontSize: 'var(--app-font-base, 13px)',
+                }}
+              >
+                <Table.Thead
+                  style={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 10,
+                    backgroundColor: isDark
+                      ? 'var(--mantine-color-dark-7)'
+                      : '#f8f9fa',
+                  }}
+                >
+                  <Table.Tr>
+                    {/* Cabeçalho Fixo 1: Produto */}
+                    <Table.Th
+                      style={{
+                        position: 'sticky',
+                        left: 0,
+                        top: 0,
+                        zIndex: 12,
+                        width: 220,
+                        minWidth: 220,
+                        maxWidth: 220,
+                        backgroundColor: isDark
+                          ? 'var(--mantine-color-dark-7)'
+                          : '#f8f9fa',
+                        padding: '6px 8px',
+                        borderBottom:
+                          '2px solid var(--mantine-color-default-border)',
+                        borderRight:
+                          '1px solid var(--mantine-color-default-border)',
+                      }}
+                    >
+                      <Text fw={700} size="xs" tt="uppercase" c="dimmed">
+                        Produto
+                      </Text>
+                    </Table.Th>
+
+                    {/* Cabeçalho Fixo 2: Categoria */}
+                    <Table.Th
+                      style={{
+                        position: 'sticky',
+                        left: 220,
+                        top: 0,
+                        zIndex: 12,
+                        width: 130,
+                        minWidth: 130,
+                        maxWidth: 130,
+                        backgroundColor: isDark
+                          ? 'var(--mantine-color-dark-7)'
+                          : '#f8f9fa',
+                        padding: '6px 8px',
+                        borderBottom:
+                          '2px solid var(--mantine-color-default-border)',
+                        borderRight:
+                          '2px solid var(--mantine-color-default-border)',
+                      }}
+                    >
+                      <Text fw={700} size="xs" tt="uppercase" c="dimmed">
+                        Categoria
+                      </Text>
+                    </Table.Th>
+
+                    {/* Cabeçalhos Dinâmicos: Nome do Fornecedor (Sem Pedido Mínimo) */}
+                    {fornecedoresNaTabela.map((forn) => (
+                      <Table.Th
+                        key={forn.id}
+                        style={{
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 9,
+                          textAlign: 'center',
+                          width: 160,
+                          minWidth: 150,
+                          backgroundColor: isDark
+                            ? 'var(--mantine-color-dark-7)'
+                            : '#f8f9fa',
+                          padding: '6px 8px',
+                          borderBottom:
+                            '2px solid var(--mantine-color-default-border)',
+                          borderRight:
+                            '1px solid var(--mantine-color-default-border)',
+                        }}
+                      >
+                        <Text
+                          fw={700}
+                          size="xs"
+                          truncate="end"
+                          ta="center"
+                          title={forn.nome}
+                        >
+                          {forn.nome}
+                        </Text>
+                      </Table.Th>
+                    ))}
+                  </Table.Tr>
+                </Table.Thead>
+
+                <Table.Tbody>
+                  {dadosFiltrados.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td
+                        colSpan={2 + fornecedoresNaTabela.length}
+                        style={{ textAlign: 'center', padding: '32px' }}
+                      >
+                        <Text size="xs" c="dimmed">
+                          Nenhum produto encontrado com os filtros selecionados.
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    dadosFiltrados.map((linha) => {
+                      const ranking = linha.ranking || []
+                      const menorPreco = ranking[0]?.preco_unitario
+
+                      return (
+                        <Table.Tr key={linha.id}>
+                          {/* Coluna 1 Fixa: Produto */}
+                          <Table.Td
+                            style={{
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 5,
+                              width: 220,
+                              minWidth: 220,
+                              maxWidth: 220,
+                              backgroundColor: isDark
+                                ? 'var(--mantine-color-dark-7)'
+                                : '#ffffff',
+                              padding: '4px 8px',
+                              borderRight:
+                                '1px solid var(--mantine-color-default-border)',
+                              borderBottom:
+                                '1px solid var(--mantine-color-default-border)',
+                              verticalAlign: 'middle',
+                            }}
+                          >
+                            <Text
+                              fw={600}
+                              size="xs"
+                              lineClamp={2}
+                              style={{ lineHeight: 1.15 }}
+                            >
+                              {linha.produto_nome}
+                            </Text>
+                          </Table.Td>
+
+                          {/* Coluna 2 Fixa: Categoria */}
+                          <Table.Td
+                            style={{
+                              position: 'sticky',
+                              left: 220,
+                              zIndex: 5,
+                              width: 130,
+                              minWidth: 130,
+                              maxWidth: 130,
+                              backgroundColor: isDark
+                                ? 'var(--mantine-color-dark-7)'
+                                : '#ffffff',
+                              padding: '4px 8px',
+                              borderRight:
+                                '2px solid var(--mantine-color-default-border)',
+                              borderBottom:
+                                '1px solid var(--mantine-color-default-border)',
+                              boxShadow: '2px 0 4px -2px rgba(0,0,0,0.08)',
+                              verticalAlign: 'middle',
+                            }}
+                          >
+                            <Text
+                              size="xs"
+                              truncate="end"
+                              c={
+                                !linha.produto_categoria ? 'dimmed' : undefined
+                              }
+                              style={{ lineHeight: 1.15 }}
+                            >
+                              {linha.produto_categoria || '-'}
+                            </Text>
+                          </Table.Td>
+
+                          {/* Colunas dos Fornecedores (Células Heat Map) */}
+                          {fornecedoresNaTabela.map((forn) => {
+                            const cot = linha.cotacoesPorFornecedor[forn.id]
+
+                            if (!cot) {
+                              return (
+                                <Table.Td
+                                  key={forn.id}
+                                  style={{
+                                    textAlign: 'center',
+                                    verticalAlign: 'middle',
+                                    padding: '4px 6px',
+                                    borderRight:
+                                      '1px solid var(--mantine-color-default-border)',
+                                    borderBottom:
+                                      '1px solid var(--mantine-color-default-border)',
+                                    backgroundColor: isDark
+                                      ? 'transparent'
+                                      : '#fdfdfd',
+                                  }}
+                                >
+                                  <Text size="xs" c="dimmed">
+                                    -
+                                  </Text>
+                                </Table.Td>
+                              )
+                            }
+
+                            const isVencedor =
+                              cot.preco_unitario === menorPreco
+                            const index = ranking.findIndex(
+                              (c) => c.id === cot.id,
+                            )
+                            const posicao = isVencedor ? 1 : index + 1
+                            const { economiaPct } = linha
+
+                            // Cores semânticas de alta visibilidade e contraste para cada posição
+                            let bgCell = 'transparent'
+                            let textPrecoColor = undefined
+
+                            if (posicao === 1) {
+                              bgCell = isDark
+                                ? 'rgba(43, 138, 62, 0.40)'
+                                : '#d3f9d8'
+                              textPrecoColor = isDark ? '#8ce99a' : '#14532d'
+                            } else if (posicao === 2) {
+                              bgCell = isDark
+                                ? 'rgba(245, 159, 0, 0.32)'
+                                : '#fff3bf'
+                              textPrecoColor = isDark ? '#ffd43b' : '#713f12'
+                            } else if (posicao >= 3) {
+                              bgCell = isDark
+                                ? 'rgba(224, 49, 49, 0.32)'
+                                : '#ffe3e3'
+                              textPrecoColor = isDark ? '#ffa8a8' : '#7f1d1d'
+                            }
+
+                            return (
+                              <Table.Td
+                                key={forn.id}
+                                style={{
+                                  backgroundColor: bgCell,
+                                  textAlign: 'center',
+                                  verticalAlign: 'middle',
+                                  padding: '3px 6px',
+                                  borderRight:
+                                    '1px solid var(--mantine-color-default-border)',
+                                  borderBottom:
+                                    '1px solid var(--mantine-color-default-border)',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: '100%',
+                                    overflow: 'hidden',
+                                    lineHeight: 1.15,
+                                  }}
+                                >
+                                  {/* Linha 1: Preço Unitário + Troféu e % Economia no Vencedor */}
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: 4,
+                                    }}
+                                  >
+                                    {isVencedor && (
+                                      <span style={{ fontSize: '11px' }}>
+                                        🏆
+                                      </span>
+                                    )}
+                                    <Text
+                                      fw={700}
+                                      size="xs"
+                                      c={textPrecoColor}
+                                      style={{ whiteSpace: 'nowrap' }}
+                                    >
+                                      {formatMoney(cot.preco_unitario)}
+                                    </Text>
+                                    {isVencedor &&
+                                      economiaPct !== null &&
+                                      economiaPct > 0.1 && (
+                                        <Text
+                                          size="10px"
+                                          fw={700}
+                                          c={textPrecoColor}
+                                          style={{ whiteSpace: 'nowrap' }}
+                                        >
+                                          (-{economiaPct.toFixed(0)}%)
+                                        </Text>
+                                      )}
+                                  </div>
+
+                                  {/* Linha 2: Marca com Destaque Nítido */}
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'center',
+                                      marginTop: 2,
+                                      marginBottom: 1,
+                                    }}
+                                  >
+                                    {cot.marca ? (
+                                      <Badge
+                                        size="xs"
+                                        variant={
+                                          isVencedor ? 'filled' : 'light'
+                                        }
+                                        color={isVencedor ? 'teal' : 'gray'}
+                                        radius="xs"
+                                        style={{
+                                          fontSize: '9px',
+                                          height: 15,
+                                          padding: '0 4px',
+                                          fontWeight: 700,
+                                          textTransform: 'uppercase',
+                                          maxWidth: 135,
+                                        }}
+                                      >
+                                        {cot.marca}
+                                      </Badge>
+                                    ) : (
+                                      <Text size="9px" c="dimmed" fs="italic">
+                                        (Sem marca)
+                                      </Text>
+                                    )}
+                                  </div>
+
+                                  {/* Linha 3: Embalagem e Preço da Embalagem */}
+                                  <Text
+                                    size="10px"
+                                    c="dimmed"
+                                    truncate="end"
+                                    ta="center"
+                                    style={{ lineHeight: 1.1 }}
+                                  >
+                                    {cot.embalagem} (
+                                    {formatMoney(cot.preco_embalagem, 2)})
+                                  </Text>
+                                </div>
+                              </Table.Td>
+                            )
+                          })}
+                        </Table.Tr>
+                      )
+                    })
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Paper>
+        </Stack>
       )}
     </Stack>
   )
 }
 
 export default ComparacaoView
-
