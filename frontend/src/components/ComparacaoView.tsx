@@ -133,7 +133,16 @@ export function ComparacaoView({
 
         const selecoes: Record<number, number | null> = {}
         listaNec.forEach((n) => {
-          selecoes[n.id_produto] = n.id_fornecedor_selecionado || null
+          if (n.id_fornecedor_selecionado) {
+            selecoes[n.id_produto] = n.id_fornecedor_selecionado
+          } else {
+            const cotsDoProd = listaCot
+              .filter((c) => Number(c.id_produto) === Number(n.id_produto))
+              .sort((a, b) => Number(a.preco_unitario) - Number(b.preco_unitario))
+            if (cotsDoProd.length > 0) {
+              selecoes[n.id_produto] = Number(cotsDoProd[0].id_fornecedor)
+            }
+          }
         })
         setFornecedoresSelecionados(selecoes)
       }
@@ -262,10 +271,10 @@ export function ComparacaoView({
       const menorCot = linha.ranking.length > 0 ? linha.ranking[0] : null
       const menorFornId = menorCot?.id_fornecedor
       const fornEscolhido =
-        fornecedoresSelecionados[linha.id_produto] !== undefined
-          ? fornecedoresSelecionados[linha.id_produto]
-          : (linha.id_fornecedor_selecionado || menorFornId)
-      return (
+        fornecedoresSelecionados[linha.id_produto] ||
+        linha.id_fornecedor_selecionado ||
+        menorFornId
+      return Boolean(
         menorFornId &&
         fornEscolhido &&
         fornEscolhido !== menorFornId
@@ -325,7 +334,16 @@ export function ComparacaoView({
     try {
       const api = await getApi()
       await api.reset_selected_suppliers(selectedRodadaId)
-      setFornecedoresSelecionados({})
+      const selecoes: Record<number, number | null> = {}
+      necessidades.forEach((n) => {
+        const cotsDoProd = cotacoes
+          .filter((c) => Number(c.id_produto) === Number(n.id_produto))
+          .sort((a, b) => Number(a.preco_unitario) - Number(b.preco_unitario))
+        if (cotsDoProd.length > 0) {
+          selecoes[n.id_produto] = Number(cotsDoProd[0].id_fornecedor)
+        }
+      })
+      setFornecedoresSelecionados(selecoes)
       setNecessidades((prev) =>
         prev.map((n) => ({ ...n, id_fornecedor_selecionado: null })),
       )
@@ -949,9 +967,9 @@ export function ComparacaoView({
                             const menorPreco = menorCot?.preco_unitario
                             const menorFornId = menorCot?.id_fornecedor
                             const fornEscolhidoId =
-                              fornecedoresSelecionados[linha.id_produto] !== undefined
-                                ? fornecedoresSelecionados[linha.id_produto]
-                                : (linha.id_fornecedor_selecionado || menorFornId)
+                              fornecedoresSelecionados[linha.id_produto] ||
+                              linha.id_fornecedor_selecionado ||
+                              menorFornId
 
                             const isSelecionado = forn.id === fornEscolhidoId
                             const isMenorPreco = cot.preco_unitario === menorPreco
@@ -965,7 +983,7 @@ export function ComparacaoView({
                             const { economiaPct } = linha
 
                             // Cores semânticas segundo regra de compras do usuário:
-                            // 1. Verde = Selecionado (mesmo não sendo o menor preço)
+                            // 1. Verde = Selecionado (mesmo não sendo o menor preço, pré-selecionado por padrão no menor preço)
                             // 2. Azul = Menor preço original que foi transferido/preterido
                             // 3. Neutro = Demais posições (VERMELHO REMOVIDO TOTALMENTE)
                             let bgCell = 'transparent'
@@ -1133,11 +1151,12 @@ export function ComparacaoView({
                                       </Text>
                                     )}
 
-                                    {isMenorPrecoPreterido && (
+                                    {/* Tag de Menor Preço SEMPRE visível no menor preço */}
+                                    {isMenorPreco && (
                                       <Badge
                                         size="xs"
-                                        variant="outline"
-                                        color="blue"
+                                        variant={isSelecionado ? 'filled' : 'outline'}
+                                        color={isSelecionado ? 'teal' : 'blue'}
                                         radius="xs"
                                         style={{
                                           fontSize: '8px',
