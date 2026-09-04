@@ -490,6 +490,7 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
     }),
     columns,
     data: fornecedores,
+    getRowId: (row) => String(row.id),
     enableRowActions: false,
   })
 

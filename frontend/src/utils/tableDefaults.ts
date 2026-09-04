@@ -19,7 +19,7 @@ export function getVirtualizedTableProps<TData extends MRT_RowData>(
 ): Partial<MRT_TableOptions<TData>> {
   const {
     enableTopToolbar = true,
-    enableRowVirtualization = true,
+    enableRowVirtualization = false,
     enableColumnFilters = true,
     enableGlobalFilter = true,
     overscan = 8,
