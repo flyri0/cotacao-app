@@ -53,6 +53,7 @@ import {
 import { EditProductModal } from './produtos'
 import { SUGESTOES_EMBALAGEM, SUGESTOES_UNIDADES } from '../constants'
 import { downloadBase64File, formatMoney, getVirtualizedTableProps } from '../utils'
+import { useDataCacheSubscription } from '../hooks'
 import { getApi } from '../services/api'
 import type {
   Cotacao,
@@ -365,9 +366,9 @@ export function CotacoesView({
     return 0
   }, [form.values.qtd_por_embalagem, form.values.preco_embalagem])
 
-  const carregarDadosIniciais = async () => {
+  const carregarDadosIniciais = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent && cotacoes.length === 0) setLoading(true)
       const api = await getApi()
       const [listaRodadas, listaProdutos, listaFornecedores] = await Promise.all([
         api.list_rounds(),
@@ -382,13 +383,13 @@ export function CotacoesView({
       // Se houver uma rodada ativa definida externamente ou seleciona a mais recente
       if (rodadaAtivaId) {
         setSelectedRodadaId(rodadaAtivaId)
-        await carregarCotacoesENecessidades(rodadaAtivaId)
+        await carregarCotacoesENecessidades(rodadaAtivaId, silent)
       } else if (listaRodadas.length > 0) {
         const primeiraAberta =
           listaRodadas.find((r) => r.status === 'aberta') || listaRodadas[0]
         setSelectedRodadaId(primeiraAberta.id)
         onRodadaChange?.(primeiraAberta.id)
-        await carregarCotacoesENecessidades(primeiraAberta.id)
+        await carregarCotacoesENecessidades(primeiraAberta.id, silent)
       }
     } catch (error) {
       console.error('Erro ao carregar dados iniciais de cotações:', error)
@@ -399,13 +400,13 @@ export function CotacoesView({
         icon: <IconX size={16} />,
       })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
-  const carregarCotacoesENecessidades = async (idRodada: number) => {
+  const carregarCotacoesENecessidades = async (idRodada: number, silent = false) => {
     try {
-      setLoading(true)
+      if (!silent && cotacoes.length === 0) setLoading(true)
       const api = await getApi()
       const [listaCotacoes, listaNecessidades] = await Promise.all([
         api.list_quotes(idRodada),
@@ -416,9 +417,17 @@ export function CotacoesView({
     } catch (error) {
       console.error('Erro ao carregar cotações:', error)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  useDataCacheSubscription(['quotes', 'products', 'suppliers', 'rounds', 'needs'], () => {
+    if (selectedRodadaId) {
+      carregarCotacoesENecessidades(selectedRodadaId, true)
+    } else {
+      carregarDadosIniciais(true)
+    }
+  })
 
   const handleAbrirEdicaoProduto = (produto: Produto) => {
     setProdutoParaEditar(produto)

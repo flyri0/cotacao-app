@@ -41,6 +41,7 @@ import {
 import { EmptyState, PageHeader, RoundHeaderSelector, StatCard } from './common'
 import { formatMoney } from '../utils'
 import { getApi } from '../services/api'
+import { useDataCacheSubscription } from '../hooks'
 import type { Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
 
 export interface LinhaComparacao {
@@ -107,9 +108,9 @@ export function ComparacaoView({
   const [tableScrollWidth, setTableScrollWidth] = useState(0)
   const isSyncingScroll = useRef(false)
 
-  const carregarDados = async (rodadaId?: number) => {
+  const carregarDados = async (rodadaId?: number, silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const api = await getApi()
       const [listaRodadas, listaFornecedores] = await Promise.all([
         api.list_rounds(),
@@ -156,20 +157,30 @@ export function ComparacaoView({
       }
     } catch (error) {
       console.error('Erro ao carregar mapa comparativo:', error)
-      notifications.show({
-        title: 'Erro de comunicação',
-        message: 'Não foi possível carregar as informações comparativas.',
-        color: 'red',
-        icon: <IconX size={16} />,
-      })
+      if (!silent) {
+        notifications.show({
+          title: 'Erro de comunicação',
+          message: 'Não foi possível carregar as informações comparativas.',
+          color: 'red',
+          icon: <IconX size={16} />,
+        })
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
   useEffect(() => {
     carregarDados(selectedRodadaId || undefined)
   }, [])
+
+  useDataCacheSubscription(
+    ['quotes', 'needs', 'suppliers', 'rounds'],
+    () => {
+      carregarDados(selectedRodadaId || undefined, true)
+    },
+    [selectedRodadaId],
+  )
 
   // Fornecedores participantes com cotação na rodada (ou todos cadastrados se nenhum cotou)
   const fornecedoresNaTabela = useMemo(() => {

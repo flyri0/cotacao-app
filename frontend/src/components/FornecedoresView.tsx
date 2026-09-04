@@ -40,6 +40,7 @@ import {
 import { PageHeader, SectionCard } from './common'
 import { EditSupplierModal } from './fornecedores'
 import { formatMoney, getVirtualizedTableProps } from '../utils'
+import { useDataCacheSubscription } from '../hooks'
 import { getApi } from '../services/api'
 import type { Fornecedor } from '../types'
 
@@ -86,9 +87,9 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
     },
   })
 
-  const carregarFornecedores = async () => {
+  const carregarFornecedores = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent && fornecedores.length === 0) setLoading(true)
       const api = await getApi()
       const data = await api.list_suppliers(false)
       setFornecedores(data)
@@ -101,9 +102,13 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         icon: <IconX size={16} />,
       })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  useDataCacheSubscription('suppliers', () => {
+    carregarFornecedores(true)
+  })
 
   useEffect(() => {
     carregarFornecedores()

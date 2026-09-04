@@ -38,6 +38,7 @@ import {
 import { AppAutocomplete, AppSelect, PageHeader } from './common'
 import { formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
+import { useDataCacheSubscription } from '../hooks'
 import type {
   CotacaoHistoricoItem,
   EstatisticasFornecedor,
@@ -105,42 +106,42 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     }
   }
 
-  const carregarEstatisticasProduto = async (idProduto: number) => {
+  const carregarEstatisticasProduto = async (idProduto: number, silent = false) => {
     try {
-      setLoadingProdStats(true)
+      if (!silent) setLoadingProdStats(true)
       const api = await getApi()
       const stats = await api.get_product_statistics(idProduto)
       setEstatisticasProduto(stats)
     } catch (error: any) {
       console.error('Erro ao obter estatísticas do produto:', error)
     } finally {
-      setLoadingProdStats(false)
+      if (!silent) setLoadingProdStats(false)
     }
   }
 
-  const carregarEstatisticasFornecedor = async (idFornecedor: number) => {
+  const carregarEstatisticasFornecedor = async (idFornecedor: number, silent = false) => {
     try {
-      setLoadingFornStats(true)
+      if (!silent) setLoadingFornStats(true)
       const api = await getApi()
       const stats = await api.get_supplier_statistics(idFornecedor)
       setEstatisticasFornecedor(stats)
     } catch (error: any) {
       console.error('Erro ao obter estatísticas do fornecedor:', error)
     } finally {
-      setLoadingFornStats(false)
+      if (!silent) setLoadingFornStats(false)
     }
   }
 
-  const carregarHistoricoGlobal = async () => {
+  const carregarHistoricoGlobal = async (silent = false) => {
     try {
-      setLoadingGlobal(true)
+      if (!silent) setLoadingGlobal(true)
       const api = await getApi()
       const lista = await api.get_global_quotes_history()
       setHistoricoGlobal(lista)
     } catch (error: any) {
       console.error('Erro ao obter histórico global:', error)
     } finally {
-      setLoadingGlobal(false)
+      if (!silent) setLoadingGlobal(false)
     }
   }
 
@@ -148,6 +149,17 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     carregarDadosIniciais()
     carregarHistoricoGlobal()
   }, [])
+
+  useDataCacheSubscription(
+    ['products', 'suppliers', 'rounds', 'quotes', 'allocations'],
+    () => {
+      carregarDadosIniciais()
+      if (produtoSelecionadoId) carregarEstatisticasProduto(produtoSelecionadoId, true)
+      if (fornecedorSelecionadoId) carregarEstatisticasFornecedor(fornecedorSelecionadoId, true)
+      carregarHistoricoGlobal(true)
+    },
+    [produtoSelecionadoId, fornecedorSelecionadoId],
+  )
 
   const handleSelectProdutoNome = (nome: string) => {
     setProdutoBusca(nome)

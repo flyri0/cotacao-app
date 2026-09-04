@@ -43,6 +43,7 @@ import {
 import { AppAutocomplete, PageHeader, SectionCard } from './common'
 import { BatchCategoryModal, EditProductModal } from './produtos'
 import { downloadBase64File, getVirtualizedTableProps } from '../utils'
+import { useDataCacheSubscription } from '../hooks'
 import { getApi } from '../services/api'
 import type { Produto } from '../types'
 
@@ -225,9 +226,9 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
     return Array.from(set)
   }, [produtos])
 
-  const carregarProdutos = async () => {
+  const carregarProdutos = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent && produtos.length === 0) setLoading(true)
       const api = await getApi()
       const data = await api.list_products(false)
       setProdutos(data)
@@ -240,9 +241,13 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         icon: <IconX size={16} />,
       })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  useDataCacheSubscription('products', () => {
+    carregarProdutos(true)
+  })
 
   useEffect(() => {
     carregarProdutos()

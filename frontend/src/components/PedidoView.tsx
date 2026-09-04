@@ -23,7 +23,7 @@ import {
 import { PageHeader, RoundHeaderSelector, EmptyState } from './common'
 import { PedidoAccordionItem } from './pedido/PedidoAccordionItem'
 import type { ItemPedidoLinha, PedidoPorFornecedor } from './pedido/DanfeDocument'
-import { useActiveRound } from '../hooks'
+import { useActiveRound, useDataCacheSubscription } from '../hooks'
 import { formatMoney, calculatePackaging } from '../utils'
 import { getApi } from '../services/api'
 import type { Alocacao, Cotacao, Fornecedor } from '../types'
@@ -55,12 +55,12 @@ export function PedidoView({
   const [accordionValue, setAccordionValue] = useState<string[]>([])
 
   // Carrega fornecedores e rodadas
-  const carregarDadosIniciais = useCallback(async () => {
+  const carregarDadosIniciais = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const api = await getApi()
       const [idAtivo, forns] = await Promise.all([
-        carregarRodadas(),
+        carregarRodadas(undefined, silent),
         api.list_suppliers(),
       ])
       setFornecedores(forns)
@@ -75,21 +75,23 @@ export function PedidoView({
       }
     } catch (error) {
       console.error('Erro ao carregar dados do pedido:', error)
-      notifications.show({
-        title: 'Erro de comunicação',
-        message: 'Não foi possível carregar as informações do pedido.',
-        color: 'red',
-        icon: <IconX size={16} />,
-      })
+      if (!silent) {
+        notifications.show({
+          title: 'Erro de comunicação',
+          message: 'Não foi possível carregar as informações do pedido.',
+          color: 'red',
+          icon: <IconX size={16} />,
+        })
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [carregarRodadas])
 
   // Carrega cotações e alocações da rodada ativa
-  const carregarDadosRodada = useCallback(async (idRodada: number) => {
+  const carregarDadosRodada = useCallback(async (idRodada: number, silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const api = await getApi()
       const [cots, alocs] = await Promise.all([
         api.list_quotes(idRodada),
@@ -99,14 +101,16 @@ export function PedidoView({
       setAlocacoes(alocs)
     } catch (error) {
       console.error('Erro ao carregar itens da rodada:', error)
-      notifications.show({
-        title: 'Erro',
-        message: 'Falha ao buscar cotações e alocações da rodada.',
-        color: 'red',
-        icon: <IconX size={16} />,
-      })
+      if (!silent) {
+        notifications.show({
+          title: 'Erro',
+          message: 'Falha ao buscar cotações e alocações da rodada.',
+          color: 'red',
+          icon: <IconX size={16} />,
+        })
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
@@ -119,6 +123,18 @@ export function PedidoView({
       carregarDadosRodada(selectedRodadaId)
     }
   }, [selectedRodadaId, carregarDadosRodada])
+
+  useDataCacheSubscription(
+    ['allocations', 'quotes', 'suppliers', 'rounds'],
+    () => {
+      if (selectedRodadaId) {
+        carregarDadosRodada(selectedRodadaId, true)
+      } else {
+        carregarDadosIniciais(true)
+      }
+    },
+    [selectedRodadaId, carregarDadosRodada, carregarDadosIniciais],
+  )
 
   // Processamento e Agrupamento dos Pedidos por Fornecedor
   const pedidosAgrupados = useMemo<PedidoPorFornecedor[]>(() => {

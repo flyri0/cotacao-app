@@ -43,6 +43,7 @@ import {
   SectionCard,
 } from './common'
 import { getVirtualizedTableProps } from '../utils'
+import { useDataCacheSubscription } from '../hooks'
 import { getApi } from '../services/api'
 import type { Necessidade, Produto, Rodada } from '../types'
 
@@ -193,9 +194,9 @@ export function NecessidadesView({
     )
   }, [produtos, form.values.produtoNome])
 
-  const carregarDadosIniciais = async () => {
+  const carregarDadosIniciais = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent && necessidades.length === 0) setLoading(true)
       const api = await getApi()
       const [listaRodadas, listaProdutos] = await Promise.all([
         api.list_rounds(),
@@ -225,22 +226,30 @@ export function NecessidadesView({
         icon: <IconX size={16} />,
       })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
-  const carregarNecessidades = async (rodadaId: number) => {
+  const carregarNecessidades = async (rodadaId: number, silent = false) => {
     try {
-      setLoading(true)
+      if (!silent && necessidades.length === 0) setLoading(true)
       const api = await getApi()
       const nec = await api.list_needs(rodadaId)
       setNecessidades(nec)
     } catch (error) {
       console.error('Erro ao carregar necessidades:', error)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  useDataCacheSubscription(['needs', 'products', 'rounds'], () => {
+    if (selectedRodadaId) {
+      carregarNecessidades(selectedRodadaId, true)
+    } else {
+      carregarDadosIniciais(true)
+    }
+  })
 
   useEffect(() => {
     carregarDadosIniciais()

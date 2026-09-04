@@ -4,12 +4,20 @@ from typing import Optional
 from backend.core.config import get_db_path
 
 def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
-    """Retorna uma conexão com o banco SQLite configurada com suporte a chaves estrangeiras."""
+    """Retorna uma conexão com o banco SQLite configurada com suporte a chaves estrangeiras e alta performance."""
     if db_path is None:
         db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
+    if db_path != ":memory:":
+        try:
+            conn.execute("PRAGMA journal_mode = WAL;")
+            conn.execute("PRAGMA synchronous = NORMAL;")
+        except Exception:
+            pass
+    conn.execute("PRAGMA cache_size = -64000;")
+    conn.execute("PRAGMA temp_store = MEMORY;")
     return conn
 
 

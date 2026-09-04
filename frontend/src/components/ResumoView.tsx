@@ -30,6 +30,7 @@ import {
 import { PageHeader, RoundHeaderSelector, StatCard } from './common'
 import { calculatePackaging, formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
+import { useDataCacheSubscription } from '../hooks'
 import type { Alocacao, Cotacao, Fornecedor, Rodada } from '../types'
 
 interface ResumoViewProps {
@@ -71,9 +72,9 @@ export function ResumoView({
   const [alocacoes, setAlocacoes] = useState<Alocacao[]>([])
   const [loading, setLoading] = useState(true)
 
-  const carregarDados = async (rodadaId?: number) => {
+  const carregarDados = async (rodadaId?: number, silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const api = await getApi()
       const [listaRodadas, listaFornecedores] = await Promise.all([
         api.list_rounds(),
@@ -101,20 +102,30 @@ export function ResumoView({
       }
     } catch (error) {
       console.error('Erro ao carregar dados do resumo:', error)
-      notifications.show({
-        title: 'Erro de comunicação',
-        message: 'Não foi possível carregar as informações do resumo.',
-        color: 'red',
-        icon: <IconX size={16} />,
-      })
+      if (!silent) {
+        notifications.show({
+          title: 'Erro de comunicação',
+          message: 'Não foi possível carregar as informações do resumo.',
+          color: 'red',
+          icon: <IconX size={16} />,
+        })
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
   useEffect(() => {
     carregarDados(selectedRodadaId || undefined)
   }, [])
+
+  useDataCacheSubscription(
+    ['allocations', 'quotes', 'suppliers', 'rounds'],
+    () => {
+      carregarDados(selectedRodadaId || undefined, true)
+    },
+    [selectedRodadaId],
+  )
 
   // Resumo Financeiro por Fornecedor
   const dadosFornecedores = useMemo<ResumoFornecedorRow[]>(() => {

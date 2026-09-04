@@ -17,9 +17,9 @@ export function useActiveRound(
   const [loadingRodadas, setLoadingRodadas] = useState(true)
 
   const carregarRodadas = useCallback(
-    async (forcarId?: number): Promise<number | null> => {
+    async (forcarId?: number, silent = false): Promise<number | null> => {
       try {
-        setLoadingRodadas(true)
+        if (!silent) setLoadingRodadas(true)
         const api = await getApi()
         const lista = await api.list_rounds()
         setRodadas(lista)
@@ -33,7 +33,7 @@ export function useActiveRound(
         }
         return idAlvo
       } finally {
-        setLoadingRodadas(false)
+        if (!silent) setLoadingRodadas(false)
       }
     },
     [selectedRodadaId, onRodadaChange],

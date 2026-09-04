@@ -36,6 +36,16 @@ export default function App() {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
 
   const [activeTab, setActiveTab] = useState<TabType>('produtos')
+  const [visitedTabs, setVisitedTabs] = useState<Set<TabType>>(() => new Set<TabType>(['produtos']))
+
+  useEffect(() => {
+    setVisitedTabs((prev) => {
+      if (prev.has(activeTab)) return prev
+      const next = new Set(prev)
+      next.add(activeTab)
+      return next
+    })
+  }, [activeTab])
   const [navbarCollapsed, setNavbarCollapsed] = useState<boolean>(false)
   const [bancoInicializado, setBancoInicializado] = useState<boolean | null>(null)
   const [rodadaAtivaId, setRodadaAtivaId] = useState<number | undefined>(undefined)
@@ -180,77 +190,99 @@ export default function App() {
 
       <AppShell.Main>
         <Container fluid px={4} style={{ width: '100%', maxWidth: '100%' }}>
-          {activeTab === 'produtos' && <ProdutosView themeColor={themeColor} />}
-          {activeTab === 'fornecedores' && <FornecedoresView themeColor={themeColor} />}
-          {activeTab === 'rodadas' && (
-            <RodadasView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onSelecionarRodada={(id, aba) => {
-                setRodadaAtivaId(id)
-                if (
-                  aba === 'necessidades' ||
-                  aba === 'cotacoes' ||
-                  aba === 'comparacao' ||
-                  aba === 'alocacao' ||
-                  aba === 'resumo' ||
-                  aba === 'pedido'
-                ) {
-                  setActiveTab(aba)
-                }
-              }}
-            />
-          )}
-          {activeTab === 'necessidades' && (
-            <NecessidadesView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'cotacoes' && (
-            <CotacoesView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'comparacao' && (
-            <ComparacaoView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'alocacao' && (
-            <AlocacaoView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'resumo' && (
-            <ResumoView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'pedido' && (
-            <PedidoView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'estatisticas' && <EstatisticasView themeColor={themeColor} />}
-          {activeTab === 'configuracoes' && (
-            <ConfiguracoesView
-              configuracoes={configuracoes}
-              themeColor={themeColor}
-              onConfiguracoesAlteradas={(novas) => setConfiguracoes(novas)}
-            />
-          )}
+          <div style={{ display: activeTab === 'produtos' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('produtos') && <ProdutosView themeColor={themeColor} />}
+          </div>
+          <div style={{ display: activeTab === 'fornecedores' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('fornecedores') && <FornecedoresView themeColor={themeColor} />}
+          </div>
+          <div style={{ display: activeTab === 'rodadas' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('rodadas') && (
+              <RodadasView
+                rodadaAtivaId={rodadaAtivaId}
+                themeColor={themeColor}
+                onSelecionarRodada={(id, aba) => {
+                  setRodadaAtivaId(id)
+                  if (
+                    aba === 'necessidades' ||
+                    aba === 'cotacoes' ||
+                    aba === 'comparacao' ||
+                    aba === 'alocacao' ||
+                    aba === 'resumo' ||
+                    aba === 'pedido'
+                  ) {
+                    setActiveTab(aba)
+                  }
+                }}
+              />
+            )}
+          </div>
+          <div style={{ display: activeTab === 'necessidades' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('necessidades') && (
+              <NecessidadesView
+                rodadaAtivaId={rodadaAtivaId}
+                themeColor={themeColor}
+                onRodadaChange={setRodadaAtivaId}
+              />
+            )}
+          </div>
+          <div style={{ display: activeTab === 'cotacoes' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('cotacoes') && (
+              <CotacoesView
+                rodadaAtivaId={rodadaAtivaId}
+                themeColor={themeColor}
+                onRodadaChange={setRodadaAtivaId}
+              />
+            )}
+          </div>
+          <div style={{ display: activeTab === 'comparacao' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('comparacao') && (
+              <ComparacaoView
+                rodadaAtivaId={rodadaAtivaId}
+                themeColor={themeColor}
+                onRodadaChange={setRodadaAtivaId}
+              />
+            )}
+          </div>
+          <div style={{ display: activeTab === 'alocacao' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('alocacao') && (
+              <AlocacaoView
+                rodadaAtivaId={rodadaAtivaId}
+                themeColor={themeColor}
+                onRodadaChange={setRodadaAtivaId}
+              />
+            )}
+          </div>
+          <div style={{ display: activeTab === 'resumo' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('resumo') && (
+              <ResumoView
+                rodadaAtivaId={rodadaAtivaId}
+                themeColor={themeColor}
+                onRodadaChange={setRodadaAtivaId}
+              />
+            )}
+          </div>
+          <div style={{ display: activeTab === 'pedido' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('pedido') && (
+              <PedidoView
+                rodadaAtivaId={rodadaAtivaId}
+                themeColor={themeColor}
+                onRodadaChange={setRodadaAtivaId}
+              />
+            )}
+          </div>
+          <div style={{ display: activeTab === 'estatisticas' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('estatisticas') && <EstatisticasView themeColor={themeColor} />}
+          </div>
+          <div style={{ display: activeTab === 'configuracoes' ? 'block' : 'none', height: '100%', width: '100%' }}>
+            {visitedTabs.has('configuracoes') && (
+              <ConfiguracoesView
+                configuracoes={configuracoes}
+                themeColor={themeColor}
+                onConfiguracoesAlteradas={(novas) => setConfiguracoes(novas)}
+              />
+            )}
+          </div>
         </Container>
       </AppShell.Main>
 

@@ -1,7 +1,67 @@
 import type { PywebviewApi } from '../types'
+import {
+  apiCache,
+  getCacheConfigForRead,
+  getInvalidationTagsForMutation,
+} from './apiCache'
+
+export { apiCache }
 
 let cachedApi: PywebviewApi | null = null
 let heartbeatStarted = false
+
+/**
+ * Envolve a API nativa ou HTTP com uma camada transparente de Cache em RAM.
+ * Leituras retornam em 0ms quando em cache.
+ * Mutações invalidam automaticamente as tags afetadas.
+ */
+function createCachedApiProxy(targetApi: PywebviewApi): PywebviewApi {
+  return new Proxy(targetApi, {
+    get: (target, prop: string) => {
+      const original = (target as any)[prop]
+      if (typeof original !== 'function') {
+        return original
+      }
+
+      return async (...args: any[]) => {
+        // 1. Verifica se é método de leitura cacheável
+        const cacheConfig = getCacheConfigForRead(prop, args)
+        if (cacheConfig && apiCache.has(cacheConfig.key)) {
+          return apiCache.get(cacheConfig.key)
+        }
+
+        // 2. Executa a chamada real na bridge/HTTP
+        const result = await original.apply(target, args)
+
+        // Se era leitura cacheável, armazena no cache
+        if (cacheConfig) {
+          apiCache.set(cacheConfig.key, result, cacheConfig.tags)
+        }
+
+        // 3. Se for mutação, invalida as tags correspondentes
+        const tagsToInvalidate = getInvalidationTagsForMutation(prop, args)
+        if (tagsToInvalidate === 'ALL') {
+          apiCache.clear()
+        } else if (Array.isArray(tagsToInvalidate) && tagsToInvalidate.length > 0) {
+          apiCache.invalidateTags(tagsToInvalidate)
+        }
+
+        return result
+      }
+    },
+  })
+}
+
+/**
+ * Invalida manualmente tags do cache ou limpa todo o cache.
+ */
+export function invalidateApiCache(tag?: string): void {
+  if (!tag) {
+    apiCache.clear()
+  } else {
+    apiCache.invalidateTags([tag])
+  }
+}
 
 /**
  * Inicia o heartbeat de conexão quando executando no navegador padrão.
@@ -70,7 +130,8 @@ function createHttpApiProxy(): PywebviewApi {
 }
 
 /**
- * Retorna a instância da API (pywebview bridge nativa ou HTTP Proxy para navegador).
+ * Retorna a instância da API (pywebview bridge nativa ou HTTP Proxy para navegador)
+ * encapsulada com a camada de cache em memória.
  */
 export async function getApi(): Promise<PywebviewApi> {
   if (cachedApi) {
@@ -79,7 +140,7 @@ export async function getApi(): Promise<PywebviewApi> {
 
   // 1. Se pywebview já estiver injetado no window
   if (window.pywebview?.api) {
-    cachedApi = window.pywebview.api
+    cachedApi = createCachedApiProxy(window.pywebview.api)
     return cachedApi
   }
 
@@ -110,13 +171,13 @@ export async function getApi(): Promise<PywebviewApi> {
   })
 
   if (pywebviewApi) {
-    cachedApi = pywebviewApi
+    cachedApi = createCachedApiProxy(pywebviewApi)
     return cachedApi
   }
 
   // 3. Caso não seja pywebview, retorna o Proxy HTTP transparente para navegador padrão
   console.info('[Modo de Execução] Operando via Navegador Padrão com micro-servidor local.')
-  cachedApi = createHttpApiProxy()
+  cachedApi = createCachedApiProxy(createHttpApiProxy())
   return cachedApi
 }
 

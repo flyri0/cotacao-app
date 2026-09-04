@@ -40,6 +40,7 @@ import {
 } from './common'
 import { calculatePackaging, formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
+import { useDataCacheSubscription } from '../hooks'
 import type { Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
 
 interface AlocacaoViewProps {
@@ -104,9 +105,9 @@ export function AlocacaoView({
   }, [isFechada])
 
   const carregarDados = useCallback(
-    async (rodadaId?: number) => {
+    async (rodadaId?: number, silent = false) => {
       try {
-        setLoading(true)
+        if (!silent) setLoading(true)
         const api = await getApi()
         const [listaRodadas, listaFornecedores] = await Promise.all([
           api.list_rounds(),
@@ -188,14 +189,16 @@ export function AlocacaoView({
         }
       } catch (error) {
         console.error('Erro ao carregar dados de alocação:', error)
-        notifications.show({
-          title: 'Erro de comunicação',
-          message: 'Não foi possível carregar as alocações da rodada.',
-          color: 'red',
-          icon: <IconX size={16} />,
-        })
+        if (!silent) {
+          notifications.show({
+            title: 'Erro de comunicação',
+            message: 'Não foi possível carregar as alocações da rodada.',
+            color: 'red',
+            icon: <IconX size={16} />,
+          })
+        }
       } finally {
-        setLoading(false)
+        if (!silent) setLoading(false)
       }
     },
     [selectedRodadaId, onRodadaChange],
@@ -204,6 +207,14 @@ export function AlocacaoView({
   useEffect(() => {
     carregarDados(selectedRodadaId || undefined)
   }, [])
+
+  useDataCacheSubscription(
+    ['quotes', 'needs', 'suppliers', 'rounds'],
+    () => {
+      carregarDados(selectedRodadaId || undefined, true)
+    },
+    [selectedRodadaId, carregarDados],
+  )
 
   // Dispara Autosave com debounce de 600ms quando 'linhas' são modificadas
   useEffect(() => {

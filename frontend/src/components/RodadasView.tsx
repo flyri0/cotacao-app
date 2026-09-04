@@ -40,6 +40,7 @@ import {
 } from 'mantine-react-table'
 import { AppSelect, EmptyState, PageHeader, StatCard } from './common'
 import { formatMoney, getVirtualizedTableProps } from '../utils'
+import { useDataCacheSubscription } from '../hooks'
 import { getApi } from '../services/api'
 import type { RodadaComMetricas } from '../types'
 
@@ -95,9 +96,9 @@ export function RodadasView({
     },
   })
 
-  const carregarRodadas = async () => {
+  const carregarRodadas = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent && rodadas.length === 0) setLoading(true)
       const api = await getApi()
       const lista = await api.list_rounds_with_metrics()
       setRodadas(lista)
@@ -110,9 +111,13 @@ export function RodadasView({
         icon: <IconX size={16} />,
       })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  useDataCacheSubscription('rounds', () => {
+    carregarRodadas(true)
+  })
 
   useEffect(() => {
     carregarRodadas()
