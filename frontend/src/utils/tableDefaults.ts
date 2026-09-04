@@ -4,6 +4,9 @@ import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 interface VirtualTableConfig {
   enableRowSelection?: boolean
   enableTopToolbar?: boolean
+  enableRowVirtualization?: boolean
+  enableColumnFilters?: boolean
+  enableGlobalFilter?: boolean
   overscan?: number
 }
 
@@ -14,7 +17,13 @@ interface VirtualTableConfig {
 export function getVirtualizedTableProps<TData extends MRT_RowData>(
   config: VirtualTableConfig = {}
 ): Partial<MRT_TableOptions<TData>> {
-  const { enableTopToolbar = true, overscan = 8 } = config
+  const {
+    enableTopToolbar = true,
+    enableRowVirtualization = true,
+    enableColumnFilters = true,
+    enableGlobalFilter = true,
+    overscan = 8,
+  } = config
 
   return {
     localization: MRT_Localization_PT_BR,
@@ -23,13 +32,18 @@ export function getVirtualizedTableProps<TData extends MRT_RowData>(
     enablePagination: false,       // Desativa o controle de linhas por página
     enableBottomToolbar: false,     // Remove a barra inferior vazia
     enableTopToolbar,
-    enableRowVirtualization: true,  // Virtualização nativa de linhas
+    enableColumnFilters,
+    enableGlobalFilter,
+    enableRowVirtualization,        // Virtualização de linhas quando compatível
     enableStickyHeader: true,       // Mantém o cabeçalho fixo no topo da tabela
-    rowVirtualizerOptions: {
-      overscan,
-    },
+    rowVirtualizerOptions: enableRowVirtualization
+      ? {
+          overscan,
+        }
+      : undefined,
     initialState: {
       density: 'xs',
+      showColumnFilters: false,
     },
     mantinePaperProps: {
       withBorder: true,

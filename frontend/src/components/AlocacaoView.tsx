@@ -471,7 +471,7 @@ export function AlocacaoView({
       {
         accessorKey: 'produto_nome',
         header: 'Produto',
-        size: 220,
+        size: 260,
         Cell: ({ row, table }) => {
           const item = row.original
           const allRows = (table.options.data as LinhaAlocacao[]) || []
@@ -482,8 +482,8 @@ export function AlocacaoView({
             : 0
 
           return (
-            <Group gap={6} wrap="nowrap">
-              <Text fw={600} size="xs" truncate="end" style={{ flex: 1 }}>
+            <Group gap={6} wrap="nowrap" align="center">
+              <Text fw={600} size="xs" style={{ flex: 1, wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
                 {item.produto_nome}
               </Text>
               {isDividido && (
@@ -503,7 +503,7 @@ export function AlocacaoView({
       {
         accessorKey: 'quantidade_alocada',
         header: 'Qtd a Comprar',
-        size: 95,
+        size: 105,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
@@ -519,9 +519,18 @@ export function AlocacaoView({
         },
       },
       {
-        accessorKey: 'id_fornecedor',
+        id: 'fornecedor',
         header: 'Fornecedor',
         size: 220,
+        accessorFn: (row) => {
+          if (!row.id_fornecedor) return 'Sem Fornecedor'
+          const cot = cotacoes.find(
+            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
+          )
+          if (cot) return cot.fornecedor_nome
+          const f = fornecedores.find((forn) => forn.id === row.id_fornecedor)
+          return f ? f.nome : 'Sem Fornecedor'
+        },
         Cell: ({ row }) => {
           const item = row.original
           const cotsDoProd = cotacoes.filter(
@@ -565,6 +574,12 @@ export function AlocacaoView({
         id: 'preco_unitario',
         header: 'Preço Unitário',
         size: 150,
+        accessorFn: (row) => {
+          const cot = cotacoes.find(
+            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
+          )
+          return cot ? cot.preco_unitario : 0
+        },
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
@@ -587,7 +602,7 @@ export function AlocacaoView({
           const isMenor = menorPreco !== undefined && cot.preco_unitario <= menorPreco
 
           return (
-            <div style={{ textAlign: 'right', width: '100%', overflow: 'hidden' }}>
+            <div style={{ textAlign: 'right', width: '100%' }}>
               <Text fw={700} size="xs" c={isMenor ? 'teal' : undefined} style={{ whiteSpace: 'nowrap' }}>
                 {formatMoney(cot.preco_unitario)} / {cot.unidade || 'UN'}
               </Text>
@@ -607,7 +622,13 @@ export function AlocacaoView({
       {
         id: 'embalagem_cotada',
         header: 'Embalagem',
-        size: 160,
+        size: 180,
+        accessorFn: (row) => {
+          const cot = cotacoes.find(
+            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
+          )
+          return cot ? `${cot.marca ? `[${cot.marca}] ` : ''}${cot.embalagem}` : ''
+        },
         Cell: ({ row }) => {
           const item = row.original
           const cot = cotacoes.find(
@@ -625,11 +646,11 @@ export function AlocacaoView({
           }
 
           return (
-            <div style={{ width: '100%', overflow: 'hidden' }}>
-              <Text size="xs" fw={600} truncate="end">
+            <div style={{ width: '100%' }}>
+              <Text size="xs" fw={600} style={{ wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
                 {cot.marca ? `[${cot.marca}] ` : ''}{cot.embalagem}
               </Text>
-              <Text size="10px" c="dimmed" truncate="end">
+              <Text size="10px" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
                 {formatMoney(cot.preco_embalagem)} ({cot.qtd_por_embalagem} {cot.unidade || 'UN'})
               </Text>
             </div>
@@ -639,7 +660,19 @@ export function AlocacaoView({
       {
         id: 'embalagens_comprar',
         header: 'Compra Efetiva',
-        size: 160,
+        size: 170,
+        accessorFn: (row) => {
+          const cot = cotacoes.find(
+            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
+          )
+          if (!row.id_fornecedor || row.quantidade_alocada <= 0 || !cot) return 0
+          const { embComprar } = calculatePackaging(
+            row.quantidade_alocada,
+            cot.qtd_por_embalagem,
+            cot.preco_embalagem,
+          )
+          return embComprar
+        },
         Cell: ({ row }) => {
           const item = row.original
           const cot = cotacoes.find(
@@ -663,11 +696,11 @@ export function AlocacaoView({
           )
 
           return (
-            <div style={{ width: '100%', overflow: 'hidden' }}>
-              <Text size="xs" fw={600} truncate="end">
+            <div style={{ width: '100%' }}>
+              <Text size="xs" fw={600} style={{ whiteSpace: 'nowrap' }}>
                 {embComprar} {embComprar === 1 ? 'embalagem' : 'embalagens'}
               </Text>
-              <Text size="10px" c="dimmed" truncate="end">
+              <Text size="10px" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
                 Total: <b>{qtdEfetiva}</b> {cot.unidade || 'UN'}
                 {sobra > 0 && (
                   <Text span c={themeColor} fw={600}>
@@ -683,7 +716,19 @@ export function AlocacaoView({
       {
         id: 'subtotal',
         header: 'Subtotal',
-        size: 130,
+        size: 120,
+        accessorFn: (row) => {
+          const cot = cotacoes.find(
+            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
+          )
+          if (!row.id_fornecedor || row.quantidade_alocada <= 0 || !cot) return 0
+          const { subtotal } = calculatePackaging(
+            row.quantidade_alocada,
+            cot.qtd_por_embalagem,
+            cot.preco_embalagem,
+          )
+          return subtotal
+        },
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
@@ -718,7 +763,9 @@ export function AlocacaoView({
       {
         id: 'acoes',
         header: 'Ações',
-        size: 85,
+        size: 80,
+        enableColumnFilter: false,
+        enableSorting: false,
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
@@ -770,10 +817,13 @@ export function AlocacaoView({
   const table = useMantineReactTable({
     ...getVirtualizedTableProps<LinhaAlocacao>({
       enableTopToolbar: true,
+      enableRowVirtualization: false,
+      enableColumnFilters: true,
+      enableGlobalFilter: true,
     }),
     columns,
     data: linhas,
-    memoMode: 'rows',
+    getRowId: (row) => row.key,
     enableRowActions: false,
   })
 

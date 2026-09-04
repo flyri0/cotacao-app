@@ -349,7 +349,9 @@ export function ResumoView({
   const tableFornecedores = useMantineReactTable({
     ...getVirtualizedTableProps<ResumoFornecedorRow>({
       enableTopToolbar: false,
+      enableRowVirtualization: false,
     }),
+    getRowId: (row) => String(row.id_fornecedor),
     columns: columnsFornecedores,
     data: dadosFornecedores,
     renderDetailPanel: ({ row }) => {

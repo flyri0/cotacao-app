@@ -4,7 +4,6 @@ import {
   Badge,
   Box,
   Button,
-  Card,
   Center,
   Group,
   Loader,
@@ -30,7 +29,6 @@ import {
   IconLockOpen,
   IconPlus,
   IconRotate,
-  IconSearch,
   IconTrash,
   IconTrendingUp,
   IconX,
@@ -58,8 +56,6 @@ export function RodadasView({
 }: RodadasViewProps) {
   const [rodadas, setRodadas] = useState<RodadaComMetricas[]>([])
   const [loading, setLoading] = useState(true)
-  const [busca, setBusca] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState<'todas' | 'abertas' | 'fechadas' | 'canceladas'>('todas')
 
   // Modais
   const [modalCriarOpened, { open: openModalCriar, close: closeModalCriar }] =
@@ -135,25 +131,9 @@ export function RodadasView({
     }
   }
 
-  // Filtragem e Busca
-  const rodadasFiltradas = useMemo(() => {
-    return rodadas.filter((r) => {
-      const matchBusca =
-        r.descricao.toLowerCase().includes(busca.toLowerCase()) ||
-        String(r.id).includes(busca)
-
-      if (!matchBusca) return false
-      if (filtroStatus === 'abertas') return r.status === 'aberta'
-      if (filtroStatus === 'fechadas') return r.status === 'fechada'
-      if (filtroStatus === 'canceladas') return r.status === 'cancelada'
-      return true
-    })
-  }, [rodadas, busca, filtroStatus])
-
   // KPIs
   const totalAbertas = useMemo(() => rodadas.filter((r) => r.status === 'aberta').length, [rodadas])
   const totalFechadas = useMemo(() => rodadas.filter((r) => r.status === 'fechada').length, [rodadas])
-  const totalCanceladas = useMemo(() => rodadas.filter((r) => r.status === 'cancelada').length, [rodadas])
   const totalFinanceiro = useMemo(
     () => rodadas.filter((r) => r.status !== 'cancelada').reduce((acc, r) => acc + (r.valor_total_alocado || 0), 0),
     [rodadas],
@@ -364,7 +344,15 @@ export function RodadasView({
       {
         accessorKey: 'status',
         header: 'Status',
-        size: 110,
+        size: 130,
+        filterVariant: 'select',
+        mantineFilterSelectProps: {
+          data: [
+            { label: 'Aberta', value: 'aberta' },
+            { label: 'Fechada', value: 'fechada' },
+            { label: 'Cancelada', value: 'cancelada' },
+          ],
+        },
         Cell: ({ row }) => {
           const r = row.original
           if (r.status === 'aberta') {
@@ -518,9 +506,15 @@ export function RodadasView({
   )
 
   const table = useMantineReactTable({
-    ...getVirtualizedTableProps<RodadaComMetricas>({ enableTopToolbar: false }),
+    ...getVirtualizedTableProps<RodadaComMetricas>({
+      enableTopToolbar: true,
+      enableRowVirtualization: false,
+      enableColumnFilters: true,
+      enableGlobalFilter: true,
+    }),
     columns,
-    data: rodadasFiltradas,
+    data: rodadas,
+    getRowId: (row) => String(row.id),
   })
 
   return (
@@ -592,88 +586,26 @@ export function RodadasView({
         </SimpleGrid>
       </Box>
 
-      <Box style={{ flexShrink: 0 }}>
-        {/* Barra de Filtros e Busca */}
-        <Card withBorder p="xs" radius="sm">
-          <Group justify="space-between">
-            <Group gap="xs" style={{ flex: 1, maxWidth: 400 }}>
-              <TextInput
-                placeholder="Buscar rodada por nome ou ID..."
-                leftSection={<IconSearch size={14} />}
-                value={busca}
-                onChange={(e) => setBusca(e.currentTarget.value)}
-                style={{ flex: 1 }}
-                size="xs"
-              />
-            </Group>
-
-            <Group gap={4}>
-              <Text size="11px" c="dimmed" fw={700}>
-                Status:
-              </Text>
-              <Button
-                size="compact-xs"
-                variant={filtroStatus === 'todas' ? 'filled' : 'light'}
-                color="gray"
-                onClick={() => setFiltroStatus('todas')}
-              >
-                Todas ({rodadas.length})
-              </Button>
-              <Button
-                size="compact-xs"
-                variant={filtroStatus === 'abertas' ? 'filled' : 'light'}
-                color="teal"
-                onClick={() => setFiltroStatus('abertas')}
-              >
-                Abertas ({totalAbertas})
-              </Button>
-              <Button
-                size="compact-xs"
-                variant={filtroStatus === 'fechadas' ? 'filled' : 'light'}
-                color="gray"
-                onClick={() => setFiltroStatus('fechadas')}
-              >
-                Fechadas ({totalFechadas})
-              </Button>
-              <Button
-                size="compact-xs"
-                variant={filtroStatus === 'canceladas' ? 'filled' : 'light'}
-                color="red"
-                onClick={() => setFiltroStatus('canceladas')}
-              >
-                Canceladas ({totalCanceladas})
-              </Button>
-            </Group>
-          </Group>
-        </Card>
-      </Box>
-
-      {/* Tabela Virtualizada de Rodadas */}
+      {/* Tabela Mantine React Table de Rodadas */}
       <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {loading ? (
-          <Center p="xl">
+          <Center p="xl" style={{ flex: 1 }}>
             <Loader size="lg" />
           </Center>
-        ) : rodadasFiltradas.length === 0 ? (
+        ) : rodadas.length === 0 ? (
           <EmptyState
             title="Nenhuma rodada encontrada"
-            description={
-              busca
-                ? 'Tente ajustar os termos da busca para encontrar o ciclo desejado.'
-                : 'Clique no botão acima para criar sua primeira rodada de cotação.'
-            }
+            description="Clique no botão acima para criar sua primeira rodada de cotação."
             action={
-              !busca && (
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="blue"
-                  leftSection={<IconPlus size={14} />}
-                  onClick={openModalCriar}
-                >
-                  Criar Primeira Rodada
-                </Button>
-              )
+              <Button
+                size="xs"
+                variant="light"
+                color={themeColor}
+                leftSection={<IconPlus size={14} />}
+                onClick={openModalCriar}
+              >
+                Criar Nova Rodada
+              </Button>
             }
           />
         ) : (

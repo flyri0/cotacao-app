@@ -55,24 +55,24 @@ export function QuantityInput({
       rightSectionPointerEvents="none"
       rightSection={
         hasUnit ? (
-          <Text size="xs" fw={700} c="dimmed" mr={4}>
+          <Text size="10px" fw={700} c="dimmed" mr={4}>
             {unit}
           </Text>
         ) : null
       }
       styles={{
         root: {
-          width: width || (hasUnit ? 105 : 75),
+          width: width || (hasUnit ? 100 : 75),
           marginLeft: 'auto',
         },
         input: {
           fontWeight: 600,
           textAlign: 'right',
-          paddingRight: hasUnit ? 40 : 8,
-          paddingLeft: 8,
-          height: 26,
-          minHeight: 26,
-          fontSize: 'var(--app-font-base, 13px)',
+          paddingRight: hasUnit ? 38 : 6,
+          paddingLeft: 6,
+          height: 24,
+          minHeight: 24,
+          fontSize: '11.5px',
         },
       }}
     />
