@@ -1,13 +1,19 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import {
+  ActionIcon,
   Badge,
   Button,
   Center,
+  FileInput,
   Group,
+  Kbd,
   Loader,
+  Modal,
   Paper,
   Stack,
   Text,
+  TextInput,
+  Tooltip,
   useComputedColorScheme,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
@@ -18,22 +24,27 @@ import {
   IconAlertCircle,
   IconCheck,
   IconDownload,
+  IconEdit,
+  IconFileSpreadsheet,
   IconPackage,
+  IconPlus,
   IconPower,
   IconTag,
   IconTrash,
   IconUpload,
   IconX,
 } from '@tabler/icons-react'
-import { MantineReactTable, useMantineReactTable } from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../../locales/mrtPtBr'
-import { PageHeader } from '../../components/ui/PageHeader'
-import { getApi } from '../../services/api'
-import type { Produto } from '../../types'
-
-import { useProdutosColumns } from './useProdutosColumns'
-import { ProdutosForm } from './ProdutosForm'
-import { ProdutosModals } from './ProdutosModals'
+import {
+  MantineReactTable,
+  useMantineReactTable,
+  type MRT_ColumnDef,
+} from 'mantine-react-table'
+import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
+import { PageHeader } from './common/PageHeader'
+import { SectionCard } from './common/SectionCard'
+import { AppAutocomplete } from './common/AppSelect'
+import { getApi } from '../services/api'
+import type { Produto } from '../types'
 
 function downloadBase64File(
   base64Data: string,
@@ -56,7 +67,7 @@ function downloadBase64File(
   document.body.removeChild(a)
 }
 
-export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
+export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -64,13 +75,15 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [produtoEmEdicao, setProdutoEmEdicao] = useState<Produto | null>(null)
-  const [modalEditarOpened, { open: openModalEditar, close: closeModalEditar }] = useDisclosure(false)
+  const [modalEditarOpened, { open: openModalEditar, close: closeModalEditar }] =
+    useDisclosure(false)
 
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
   const isDark = computedColorScheme === 'dark'
 
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
-  const [modalMassaCategoriaOpened, { open: openModalMassaCategoria, close: closeModalMassaCategoria }] = useDisclosure(false)
+  const [modalMassaCategoriaOpened, { open: openModalMassaCategoria, close: closeModalMassaCategoria }] =
+    useDisclosure(false)
   const [novaCategoriaEmMassa, setNovaCategoriaEmMassa] = useState('')
   const [salvandoMassa, setSalvandoMassa] = useState(false)
 
@@ -202,16 +215,24 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
   const categoriaRef = useRef<HTMLInputElement>(null)
 
   const form = useForm({
-    initialValues: { nome: '', categoria: '' },
+    initialValues: {
+      nome: '',
+      categoria: '',
+    },
     validate: {
-      nome: (value) => (value.trim().length === 0 ? 'O nome do produto é obrigatório' : null),
+      nome: (value) =>
+        value.trim().length === 0 ? 'O nome do produto é obrigatório' : null,
     },
   })
 
   const formEdicao = useForm({
-    initialValues: { nome: '', categoria: '' },
+    initialValues: {
+      nome: '',
+      categoria: '',
+    },
     validate: {
-      nome: (value) => (value.trim().length === 0 ? 'O nome do produto é obrigatório' : null),
+      nome: (value) =>
+        value.trim().length === 0 ? 'O nome do produto é obrigatório' : null,
     },
   })
 
@@ -253,7 +274,10 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
     try {
       setSubmitting(true)
       const api = await getApi()
-      const novoProduto = await api.create_product(values.nome, values.categoria || null)
+      const novoProduto = await api.create_product(
+        values.nome,
+        values.categoria || null,
+      )
 
       notifications.show({
         title: 'Produto Adicionado',
@@ -284,7 +308,10 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
 
   const handleAbrirEdicao = (p: Produto) => {
     setProdutoEmEdicao(p)
-    formEdicao.setValues({ nome: p.nome, categoria: p.categoria || '' })
+    formEdicao.setValues({
+      nome: p.nome,
+      categoria: p.categoria || '',
+    })
     openModalEditar()
   }
 
@@ -293,7 +320,11 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
     try {
       setSalvandoEdicao(true)
       const api = await getApi()
-      await api.update_product(produtoEmEdicao.id, values.nome, values.categoria || null)
+      await api.update_product(
+        produtoEmEdicao.id,
+        values.nome,
+        values.categoria || null,
+      )
 
       notifications.show({
         title: 'Produto Atualizado',
@@ -347,7 +378,8 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
     }
   }
 
-  const [modalImportarOpened, { open: openModalImportar, close: closeModalImportar }] = useDisclosure(false)
+  const [modalImportarOpened, { open: openModalImportar, close: closeModalImportar }] =
+    useDisclosure(false)
   const [arquivoExcel, setArquivoExcel] = useState<File | null>(null)
   const [importandoExcel, setImportandoExcel] = useState(false)
   const [exportandoExcel, setExportandoExcel] = useState(false)
@@ -516,14 +548,98 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
     })
   }
 
-  const columns = useProdutosColumns({
-    themeColor,
-    togglingId,
-    deletingId,
-    handleToggleAtivo,
-    handleAbrirEdicao,
-    handleRemover,
-  })
+  const columns = useMemo<MRT_ColumnDef<Produto>[]>(
+    () => [
+      {
+        accessorKey: 'nome',
+        header: 'Produto',
+        size: 260,
+        Cell: ({ cell, row }) => (
+          <Text fw={600} size="xs" c={row.original.ativo === 0 ? 'dimmed' : undefined} truncate="end">
+            {cell.getValue<string>()}
+          </Text>
+        ),
+      },
+      {
+        accessorKey: 'categoria',
+        header: 'Categoria',
+        size: 160,
+        Cell: ({ cell }) => {
+          const val = cell.getValue<string | null>()
+          return (
+            <Text size="xs" c={!val ? 'dimmed' : undefined} truncate="end">
+              {val || '-'}
+            </Text>
+          )
+        },
+      },
+      {
+        accessorKey: 'ativo',
+        header: 'Status',
+        size: 100,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
+        Cell: ({ row }) => (
+          <Badge
+            color={row.original.ativo === 0 ? 'gray' : 'teal'}
+            variant={row.original.ativo === 0 ? 'light' : 'filled'}
+            size="xs"
+          >
+            {row.original.ativo === 0 ? 'Inativo' : 'Ativo'}
+          </Badge>
+        ),
+      },
+      {
+        id: 'acoes',
+        header: 'Ações',
+        size: 110,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
+        Cell: ({ row }) => {
+          const isAtivo = row.original.ativo !== 0
+          return (
+            <Group gap={4} wrap="nowrap" justify="center">
+              <Tooltip label={isAtivo ? 'Desativar produto' : 'Ativar produto'}>
+                <ActionIcon
+                  color={isAtivo ? 'teal' : 'gray'}
+                  variant="subtle"
+                  size="sm"
+                  loading={togglingId === row.original.id}
+                  onClick={() => handleToggleAtivo(row.original)}
+                >
+                  <IconPower size={16} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip label="Editar produto">
+                <ActionIcon
+                  color={themeColor}
+                  variant="subtle"
+                  size="sm"
+                  onClick={() => handleAbrirEdicao(row.original)}
+                >
+                  <IconEdit size={16} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip label="Excluir produto">
+                <ActionIcon
+                  color="red"
+                  variant="subtle"
+                  size="sm"
+                  loading={deletingId === row.original.id}
+                  onClick={() => handleRemover(row.original.id, row.original.nome)}
+                >
+                  <IconTrash size={16} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          )
+        },
+      },
+    ],
+    [deletingId, togglingId, themeColor],
+  )
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
@@ -668,16 +784,61 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
         }
       />
 
-      <ProdutosForm
-        form={form}
-        handleSubmit={handleSubmit}
-        submitting={submitting}
-        themeColor={themeColor}
-        categoriasSugeridas={categoriasSugeridas}
-        nomeRef={nomeRef}
-        categoriaRef={categoriaRef}
-      />
+      {/* Formulário de Cadastro com Fluxo Rápido por Teclado */}
+      <SectionCard
+        title="Novo Produto"
+        subtitle="Preencha e tecle Enter para salvar"
+        kbdHint="Enter"
+      >
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Group align="flex-end" gap="xs">
+            <TextInput
+              ref={nomeRef}
+              label="Nome do Produto"
+              size="xs"
+              placeholder="Ex: Detergente Neutro 500ml"
+              required
+              style={{ flex: 2 }}
+              {...form.getInputProps('nome')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  if (form.values.nome.trim()) {
+                    categoriaRef.current?.focus()
+                  }
+                }
+              }}
+            />
+            <AppAutocomplete
+              ref={categoriaRef}
+              label="Categoria"
+              size="xs"
+              placeholder="Ex: Limpeza, Descartáveis"
+              data={categoriasSugeridas}
+              style={{ flex: 1.5 }}
+              {...form.getInputProps('categoria')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  form.onSubmit(handleSubmit)()
+                }
+              }}
+            />
+            <Button
+              type="submit"
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              leftSection={<IconPlus size={14} />}
+              loading={submitting}
+            >
+              Adicionar <Kbd ml={4} size="xs">Enter</Kbd>
+            </Button>
+          </Group>
+        </form>
+      </SectionCard>
 
+      {/* Mantine React Table */}
       {loading ? (
         <Center p="xl">
           <Loader size="lg" />
@@ -686,31 +847,149 @@ export function Produtos({ themeColor = 'blue' }: { themeColor?: string }) {
         <MantineReactTable table={table} />
       )}
 
-      <ProdutosModals
-        themeColor={themeColor}
-        modalEditarOpened={modalEditarOpened}
-        closeModalEditar={closeModalEditar}
-        produtoEmEdicao={produtoEmEdicao}
-        formEdicao={formEdicao}
-        handleSalvarEdicao={handleSalvarEdicao}
-        salvandoEdicao={salvandoEdicao}
-        categoriasSugeridas={categoriasSugeridas}
-        modalImportarOpened={modalImportarOpened}
-        closeModalImportar={closeModalImportar}
-        arquivoExcel={arquivoExcel}
-        setArquivoExcel={setArquivoExcel}
-        importandoExcel={importandoExcel}
-        handleProcessarImportacaoExcel={handleProcessarImportacaoExcel}
-        modalMassaCategoriaOpened={modalMassaCategoriaOpened}
-        closeModalMassaCategoria={closeModalMassaCategoria}
-        selectedProductIds={selectedProductIds}
-        novaCategoriaEmMassa={novaCategoriaEmMassa}
-        setNovaCategoriaEmMassa={setNovaCategoriaEmMassa}
-        salvandoMassa={salvandoMassa}
-        handleAlterarCategoriaEmMassa={handleAlterarCategoriaEmMassa}
-      />
+      {/* Modal de Edição de Produto */}
+      <Modal
+        opened={modalEditarOpened}
+        onClose={closeModalEditar}
+        title={
+          <Group gap="xs">
+            <IconEdit size={18} />
+            <Text fw={700}>
+              Editar Produto: {produtoEmEdicao?.nome}
+            </Text>
+          </Group>
+        }
+        centered
+        radius="sm"
+        size="lg"
+      >
+        <form onSubmit={formEdicao.onSubmit(handleSalvarEdicao)}>
+          <Stack gap="sm">
+            <TextInput
+              label="Nome do Produto"
+              size="xs"
+              placeholder="Ex: Detergente Neutro 500ml"
+              required
+              {...formEdicao.getInputProps('nome')}
+            />
+
+            <AppAutocomplete
+              label="Categoria"
+              size="xs"
+              placeholder="Ex: Limpeza, Descartáveis"
+              data={categoriasSugeridas}
+              {...formEdicao.getInputProps('categoria')}
+            />
+
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditar}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvandoEdicao}>
+                Salvar Alterações
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
+
+      {/* Modal de Importação Excel de Produtos */}
+      <Modal
+        opened={modalImportarOpened}
+        onClose={closeModalImportar}
+        title={
+          <Group gap="xs">
+            <IconFileSpreadsheet size={18} />
+            <Text fw={700}>Importar Produtos via Planilha Excel (.xlsx)</Text>
+          </Group>
+        }
+        centered
+        radius="sm"
+      >
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
+            Faça upload de uma planilha contendo colunas: <b>Nome do Produto</b>, <b>Categoria</b> e <b>Unidade Padrão</b>.
+          </Text>
+
+          <FileInput
+            label="Arquivo Excel (.xlsx)"
+            size="xs"
+            placeholder="Selecione o arquivo de produtos..."
+            accept=".xlsx,.xls"
+            value={arquivoExcel}
+            onChange={setArquivoExcel}
+            leftSection={<IconFileSpreadsheet size={14} />}
+            clearable
+            required
+          />
+
+          <Group justify="flex-end" gap="xs" mt="md">
+            <Button variant="subtle" color="gray" size="xs" onClick={closeModalImportar}>
+              Cancelar
+            </Button>
+            <Button
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              leftSection={<IconDownload size={14} />}
+              loading={importandoExcel}
+              onClick={handleProcessarImportacaoExcel}
+            >
+              Importar Produtos
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Modal de Alteração de Categoria em Massa */}
+      <Modal
+        opened={modalMassaCategoriaOpened}
+        onClose={closeModalMassaCategoria}
+        title={
+          <Group gap="xs">
+            <IconTag size={18} />
+            <Text fw={700}>
+              Alterar Categoria em Massa ({selectedProductIds.length} produto{selectedProductIds.length > 1 ? 's' : ''})
+            </Text>
+          </Group>
+        }
+        centered
+        radius="sm"
+        size="md"
+      >
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
+            Informe a nova categoria para todos os {selectedProductIds.length} produtos selecionados.
+          </Text>
+
+          <AppAutocomplete
+            label="Nova Categoria"
+            size="xs"
+            placeholder="Selecione ou digite a nova categoria..."
+            data={categoriasSugeridas}
+            value={novaCategoriaEmMassa}
+            onChange={setNovaCategoriaEmMassa}
+          />
+
+          <Group justify="flex-end" gap="xs" mt="md">
+            <Button variant="subtle" color="gray" size="xs" onClick={closeModalMassaCategoria}>
+              Cancelar
+            </Button>
+            <Button
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              loading={salvandoMassa}
+              onClick={handleAlterarCategoriaEmMassa}
+            >
+              Aplicar a Todos
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   )
 }
 
-export default Produtos
+export default ProdutosView
+

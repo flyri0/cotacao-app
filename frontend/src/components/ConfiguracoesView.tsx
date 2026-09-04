@@ -1,14 +1,25 @@
 import { useEffect, useState, useRef } from 'react'
 import {
   Alert,
+  Badge,
   Button,
+  Card,
+  Divider,
   FileInput,
   Group,
   Modal,
+  NumberInput,
+  Paper,
+  SegmentedControl,
+  SimpleGrid,
+  Slider,
   Stack,
+  Switch,
+  Table,
   Text,
   TextInput,
   ThemeIcon,
+  Title,
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core'
@@ -18,20 +29,65 @@ import { notifications } from '@mantine/notifications'
 import {
   IconAlertCircle,
   IconAlertTriangle,
+  IconBriefcase,
+  IconBrowser,
+  IconBuildingStore,
   IconCheck,
+  IconClock,
+  IconCoins,
+  IconDatabase,
+  IconDatabaseExport,
   IconDatabaseImport,
+  IconDeviceDesktop,
+  IconDeviceFloppy,
+  IconDimensions,
+  IconFolder,
   IconFolderCheck,
+  IconFolderOpen,
+  IconMoon,
+  IconPackage,
+  IconPalette,
+  IconReceipt,
+  IconScale,
   IconSettings,
+  IconShoppingCart,
+  IconSun,
   IconTrash,
+  IconTrendingUp,
+  IconTypography,
   IconX,
 } from '@tabler/icons-react'
-import { PageHeader } from '../../components/ui/PageHeader'
-import { getApi } from '../../services/api'
-import type { ConfiguracoesApp } from '../../types'
+import { PageHeader } from './common/PageHeader'
+import { AppSelect } from './common/AppSelect'
+import { getApi } from '../services/api'
+import type { ConfiguracoesApp } from '../types'
 
-import { DensidadeSection } from './DensidadeSection'
-import { IdentidadeVisualSection } from './IdentidadeVisualSection'
-import { DatabaseSection } from './DatabaseSection'
+export const OPCOES_ICONES = [
+  { value: 'Scale', label: 'Balança de Comparação (Padrão)', icon: <IconScale size={18} /> },
+  { value: 'ShoppingCart', label: 'Carrinho de Compras', icon: <IconShoppingCart size={18} /> },
+  { value: 'BuildingStore', label: 'Loja / Fornecedor', icon: <IconBuildingStore size={18} /> },
+  { value: 'Package', label: 'Pacote / Mercadoria', icon: <IconPackage size={18} /> },
+  { value: 'TrendingUp', label: 'Gráfico / Estatística', icon: <IconTrendingUp size={18} /> },
+  { value: 'Coins', label: 'Moedas / Economia', icon: <IconCoins size={18} /> },
+  { value: 'Briefcase', label: 'Maleta Comercial', icon: <IconBriefcase size={18} /> },
+  { value: 'Receipt', label: 'Recibo / Cotação', icon: <IconReceipt size={18} /> },
+]
+
+export const OPCOES_CORES = [
+  { value: 'blue', label: 'Azul Clássico (Padrão)', color: '#228be6' },
+  { value: 'teal', label: 'Verde Petróleo', color: '#12b886' },
+  { value: 'indigo', label: 'Índigo Moderno', color: '#4c6ef5' },
+  { value: 'cyan', label: 'Ciano Vibrante', color: '#15aabf' },
+  { value: 'green', label: 'Verde Floresta', color: '#40c057' },
+  { value: 'violet', label: 'Violeta / Roxo', color: '#7950f2' },
+  { value: 'orange', label: 'Laranja Comercial', color: '#fd7e14' },
+]
+
+export const OPCOES_ESQUEMA_COR = [
+  { value: 'light', label: 'Modo Claro (Light)', icon: <IconSun size={18} /> },
+  { value: 'dark', label: 'Modo Escuro (Dark)', icon: <IconMoon size={18} /> },
+  { value: 'auto', label: 'Automático do Sistema (Auto)', icon: <IconDeviceDesktop size={18} /> },
+]
 
 interface ConfiguracoesViewProps {
   configuracoes?: ConfiguracoesApp
@@ -473,38 +529,449 @@ export function ConfiguracoesView({
       />
 
       {/* SEÇÃO 1: Densidade da Interface & Tamanho do Texto (Acessibilidade & Compactação) */}
-      <DensidadeSection
-        form={form}
-        computedColorScheme={computedColorScheme}
-        handleMudarDensidade={handleMudarDensidade}
-        handleMudarTamanhoFonte={handleMudarTamanhoFonte}
-        handleMudarModoExecucao={handleMudarModoExecucao}
-      />
+      <Card withBorder radius="sm" p="sm">
+        <Title order={4} mb={2} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <IconDimensions size={18} />
+          Densidade & Acessibilidade Tipográfica
+        </Title>
+        <Text size="xs" c="dimmed" mb="sm">
+          Ajuste a densidade de linhas e o tamanho da fonte para o seu estilo de uso. A aplicação atualiza instantaneamente.
+        </Text>
+
+        <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
+          {/* Opção 1: Densidade */}
+          <Paper withBorder p="xs" radius="sm">
+            <Group gap={6} mb={4} align="center">
+              <ThemeIcon size={22} radius="xs" variant="light" color="blue">
+                <IconDimensions size={14} />
+              </ThemeIcon>
+              <Text fw={700} size="xs">
+                Densidade da Interface
+              </Text>
+            </Group>
+            <Text size="11px" c="dimmed" mb="xs">
+              Reduz paddings de tabelas, cards e cabeçalhos para exibir mais dados na tela.
+            </Text>
+            <SegmentedControl
+              fullWidth
+              size="xs"
+              value={form.values.app_densidade}
+              onChange={handleMudarDensidade}
+              data={[
+                { label: 'Compacto (Padrão)', value: 'compacto' },
+                { label: 'Confortável', value: 'confortavel' },
+              ]}
+            />
+          </Paper>
+
+          {/* Opção 2: Tamanho da Fonte */}
+          <Paper withBorder p="xs" radius="sm">
+            <Group gap={6} mb={4} align="center">
+              <ThemeIcon size={22} radius="xs" variant="light" color="indigo">
+                <IconTypography size={14} />
+              </ThemeIcon>
+              <Text fw={700} size="xs">
+                Tamanho da Fonte
+              </Text>
+            </Group>
+            <Text size="11px" c="dimmed" mb="xs">
+              Altere o tamanho geral das fontes para facilitar a leitura sem distorcer o layout.
+            </Text>
+            <Slider
+              mt="md"
+              mb="xl"
+              min={10}
+              max={20}
+              step={0.5}
+              marks={[
+                { value: 10, label: '10px' },
+                { value: 13.5, label: '13.5px' },
+                { value: 16, label: '16px' },
+                { value: 20, label: '20px' },
+              ]}
+              value={parseFloat(form.values.app_tamanho_fonte) || 13.5}
+              onChange={handleMudarTamanhoFonte}
+            />
+          </Paper>
+
+          {/* Opção 3: Modo de Inicialização (Desktop vs Navegador) */}
+          <Paper withBorder p="xs" radius="sm">
+            <Group gap={6} mb={4} align="center">
+              <ThemeIcon size={22} radius="xs" variant="light" color="teal">
+                <IconBrowser size={14} />
+              </ThemeIcon>
+              <Text fw={700} size="xs">
+                Modo de Inicialização
+              </Text>
+            </Group>
+            <Text size="11px" c="dimmed" mb="xs">
+              Janela própria ou Navegador padrão (recomendado p/ Windows 7 32-bit ou PCs leves).
+            </Text>
+            <SegmentedControl
+              fullWidth
+              size="xs"
+              value={form.values.app_modo_execucao}
+              onChange={handleMudarModoExecucao}
+              data={[
+                { label: 'Janela Nativa', value: 'janela' },
+                { label: 'Navegador Padrão', value: 'navegador' },
+              ]}
+            />
+          </Paper>
+        </SimpleGrid>
+
+        {/* Demonstração / Preview em Tempo Real */}
+        <Paper withBorder p={8} radius="xs" mt="xs" bg={computedColorScheme === 'dark' ? 'dark.7' : 'gray.0'}>
+          <Text size="10px" fw={700} c="dimmed" tt="uppercase" mb={4}>
+            Demonstração ao Vivo da Densidade e Fonte:
+          </Text>
+          <Table withTableBorder withColumnBorders striped style={{ backgroundColor: computedColorScheme === 'dark' ? '#1a1b1e' : '#ffffff' }}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th style={{ width: '40%' }}>Produto Demonstrativo</Table.Th>
+                <Table.Th style={{ width: '30%' }}>Fornecedor</Table.Th>
+                <Table.Th style={{ width: '18%', textAlign: 'right' }}>Preço Unitário</Table.Th>
+                <Table.Th style={{ width: '12%', textAlign: 'center' }}>Status</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              <Table.Tr>
+                <Table.Td fw={600}>Café Torrado Superior 500g</Table.Td>
+                <Table.Td>Distribuidora Aliança</Table.Td>
+                <Table.Td style={{ textAlign: 'right' }} c="teal.7" fw={700}>R$ 18,90 / UN</Table.Td>
+                <Table.Td style={{ textAlign: 'center' }}><Badge size="xs" color="teal" variant="light">Menor Preço</Badge></Table.Td>
+              </Table.Tr>
+              <Table.Tr>
+                <Table.Td fw={600}>Detergente Neutro 5L</Table.Td>
+                <Table.Td>Comercial Limpeza Total</Table.Td>
+                <Table.Td style={{ textAlign: 'right' }} fw={700}>R$ 4,50 / L</Table.Td>
+                <Table.Td style={{ textAlign: 'center' }}><Badge size="xs" color="blue" variant="light">Alocado</Badge></Table.Td>
+              </Table.Tr>
+            </Table.Tbody>
+          </Table>
+        </Paper>
+      </Card>
 
       {/* SEÇÃO 2: Identidade Visual e Tema Claro/Escuro */}
-      <IdentidadeVisualSection
-        form={form}
-        computedColorScheme={computedColorScheme}
-        salvandoConfig={salvandoConfig}
-        handleMudarTema={handleMudarTema}
-        handleSubmitConfigs={handleSubmitConfigs}
-      />
+      <Card withBorder radius="sm" p="sm">
+        <Title order={4} mb={2} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <IconPalette size={18} />
+          Identidade Visual & Tema
+        </Title>
+        <Text size="xs" c="dimmed" mb="sm">
+          O modo de exibição (claro/escuro), nome, subtítulo, ícone e paleta de cores ficam salvos no banco SQLite
+        </Text>
+
+        <form onSubmit={form.onSubmit(handleSubmitConfigs)}>
+          <Stack gap="xs">
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+              <TextInput
+                label="Nome do Aplicativo"
+                size="xs"
+                placeholder="Ex: Mapa de Cotações"
+                required
+                {...form.getInputProps('app_nome')}
+              />
+
+              <TextInput
+                label="Subtítulo do Cabeçalho"
+                size="xs"
+                placeholder="Ex: Comparativo e Alocação Inteligente"
+                required
+                {...form.getInputProps('app_subtitulo')}
+              />
+
+              <AppSelect
+                label="Modo de Exibição"
+                size="xs"
+                data={OPCOES_ESQUEMA_COR.map((op) => ({
+                  value: op.value,
+                  label: op.label,
+                }))}
+                value={form.values.app_color_scheme}
+                onChange={handleMudarTema}
+                allowDeselect={false}
+              />
+            </SimpleGrid>
+
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              <AppSelect
+                label="Ícone do Cabeçalho"
+                size="xs"
+                data={OPCOES_ICONES.map((op) => ({
+                  value: op.value,
+                  label: op.label,
+                }))}
+                {...form.getInputProps('app_icone')}
+                allowDeselect={false}
+              />
+
+              <AppSelect
+                label="Cor de Destaque do Tema"
+                size="xs"
+                data={OPCOES_CORES.map((op) => ({
+                  value: op.value,
+                  label: op.label,
+                }))}
+                {...form.getInputProps('app_theme_color')}
+                allowDeselect={false}
+              />
+            </SimpleGrid>
+
+            {/* Preview da Barra */}
+            <Paper withBorder p={8} radius="xs" mt={4}>
+              <Text size="10px" fw={700} c="dimmed" tt="uppercase" mb={2}>
+                Pré-visualização do Cabeçalho:
+              </Text>
+              <Group justify="space-between" align="center">
+                <Group gap="xs">
+                  <ThemeIcon
+                    size={28}
+                    radius="sm"
+                    variant="filled"
+                    color={form.values.app_theme_color || 'blue'}
+                  >
+                    {OPCOES_ICONES.find((i) => i.value === form.values.app_icone)?.icon || (
+                      <IconScale size={18} />
+                    )}
+                  </ThemeIcon>
+                  <div>
+                    <Title order={5} style={{ lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {form.values.app_nome || 'Mapa de Cotações'}
+                    </Title>
+                    <Text size="10px" c="dimmed">
+                      {form.values.app_subtitulo || 'Comparativo e Alocação Inteligente'}
+                    </Text>
+                  </div>
+                </Group>
+                <Group gap={6}>
+                  <Badge variant="light" size="xs" color={form.values.app_theme_color || 'blue'}>
+                    {computedColorScheme === 'dark' ? 'Modo Escuro' : 'Modo Claro'}
+                  </Badge>
+                  <Badge variant="outline" size="xs" color={form.values.app_theme_color || 'blue'}>
+                    Desktop
+                  </Badge>
+                </Group>
+              </Group>
+            </Paper>
+
+            <Group justify="flex-end" mt="xs">
+              <Button
+                type="submit"
+                size="xs"
+                leftSection={<IconDeviceFloppy size={14} />}
+                loading={salvandoConfig}
+                color={form.values.app_theme_color || 'blue'}
+              >
+                Salvar Preferências
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Card>
 
       {/* SEÇÃO 3: Gerenciamento Seguro do Banco de Dados SQLite */}
-      <DatabaseSection
-        form={form}
-        themeColor={themeColor}
-        selecionandoPasta={selecionandoPasta}
-        ultimoBackupSucesso={ultimoBackupSucesso}
-        ultimoBackupStatus={ultimoBackupStatus}
-        executandoBackupAuto={executandoBackupAuto}
-        salvandoConfig={salvandoConfig}
-        handleSelecionarPastaBackup={handleSelecionarPastaBackup}
-        handleOpenImportar={handleOpenImportar}
-        handleTestarBackupAgora={handleTestarBackupAgora}
-        handleSubmitConfigs={handleSubmitConfigs}
-        handleOpenFormatar={handleOpenFormatar}
-      />
+      <Card withBorder shadow="none" radius="sm" p="sm">
+        <Title order={3} mb="xs" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <IconDatabase size={22} />
+          Gerenciamento do Banco de Dados (SQLite Local)
+        </Title>
+        <Text size="xs" c="dimmed" mb="lg">
+          Arquivo local independente (<b>cotacao.db</b>). Todas as ações críticas contam com confirmação segura e timer de proteção.
+        </Text>
+
+        {/* Card: Backup Automático Programado */}
+        <Paper withBorder p="md" radius="md" mb="md">
+          <Stack gap="sm">
+            <Group justify="space-between" align="center" wrap="wrap">
+              <Group gap="xs">
+                <ThemeIcon color="blue" variant="light" size="lg" radius="md">
+                  <IconClock size={20} />
+                </ThemeIcon>
+                <div>
+                  <Group gap="xs" align="center">
+                    <Title order={4}>Backup Automático Programado</Title>
+                    <Badge color={form.values.backup_auto_ativo ? 'teal' : 'gray'} variant="light" size="sm">
+                      {form.values.backup_auto_ativo ? 'Ativo' : 'Desativado'}
+                    </Badge>
+                  </Group>
+                  <Text size="xs" c="dimmed">
+                    Gera cópias atômicas do banco em outro diretório (outro disco, pendrive ou pasta sincronizada) com retenção automática.
+                  </Text>
+                </div>
+              </Group>
+
+              <Switch
+                label="Ativar Backup Automático"
+                checked={form.values.backup_auto_ativo}
+                onChange={(e) => form.setFieldValue('backup_auto_ativo', e.currentTarget.checked)}
+                size="md"
+                color="teal"
+              />
+            </Group>
+
+            <Divider my={4} />
+
+            {/* Configurações do Backup Automático */}
+            <Stack gap="xs">
+              {/* Campo de Seleção Segura de Diretório (readOnly) */}
+              <TextInput
+                label="Diretório de Destino dos Backups"
+                description="Selecione a pasta de destino exclusivamente através do diálogo nativo do sistema."
+                placeholder="Nenhuma pasta selecionada. Clique no botão ao lado para escolher..."
+                value={form.values.backup_auto_diretorio}
+                readOnly
+                styles={{ input: { cursor: 'default' } }}
+                leftSection={<IconFolder size={16} />}
+                rightSectionWidth={170}
+                rightSection={
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    leftSection={<IconFolderOpen size={14} />}
+                    onClick={handleSelecionarPastaBackup}
+                    loading={selecionandoPasta}
+                    style={{ marginRight: 4 }}
+                  >
+                    Selecionar Pasta...
+                  </Button>
+                }
+              />
+
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs" mt={4}>
+                <AppSelect
+                  label="Momento / Gatilho"
+                  description="Quando executar a cópia"
+                  data={[
+                    { value: 'abertura', label: 'Ao Iniciar o Aplicativo' },
+                    { value: 'fechamento', label: 'Ao Fechar o Aplicativo' },
+                    { value: 'periodico', label: 'Periodicamente por Intervalo' },
+                    { value: 'sempre', label: 'Completo (Abertura, Fechamento e Periódico)' },
+                  ]}
+                  value={form.values.backup_auto_gatilho}
+                  onChange={(val) => form.setFieldValue('backup_auto_gatilho', val || 'abertura')}
+                  allowDeselect={false}
+                />
+
+                <AppSelect
+                  label="Intervalo Periódico"
+                  description="Frequência em horas"
+                  data={[
+                    { value: '1', label: 'A cada 1 hora' },
+                    { value: '2', label: 'A cada 2 horas' },
+                    { value: '4', label: 'A cada 4 horas (Padrão)' },
+                    { value: '8', label: 'A cada 8 horas' },
+                    { value: '12', label: 'A cada 12 horas' },
+                    { value: '24', label: 'Diário (a cada 24 horas)' },
+                  ]}
+                  value={String(form.values.backup_auto_intervalo_horas || '4')}
+                  onChange={(val) => form.setFieldValue('backup_auto_intervalo_horas', val || '4')}
+                  allowDeselect={false}
+                  disabled={form.values.backup_auto_gatilho === 'abertura' || form.values.backup_auto_gatilho === 'fechamento'}
+                />
+
+                <NumberInput
+                  label="Retenção Máxima"
+                  description="Backups mais antigos são removidos"
+                  min={1}
+                  max={50}
+                  value={form.values.backup_auto_max_arquivos}
+                  onChange={(val) => form.setFieldValue('backup_auto_max_arquivos', typeof val === 'number' ? val : 10)}
+                />
+              </SimpleGrid>
+
+              {/* Barra de Status do Último Backup e Ações */}
+              <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-default-hover)" mt="xs">
+                <Group justify="space-between" align="center" wrap="wrap">
+                  <Group gap="xs" align="center">
+                    <Text size="xs" fw={600}>Último Backup Realizado:</Text>
+                    <Text size="xs" c={ultimoBackupSucesso ? 'dimmed' : 'gray'}>
+                      {ultimoBackupSucesso || 'Nenhum backup automático registrado ainda.'}
+                    </Text>
+                    {ultimoBackupStatus && (
+                      <Badge
+                        size="xs"
+                        color={ultimoBackupStatus === 'Sucesso' ? 'teal' : 'red'}
+                        variant="filled"
+                      >
+                        {ultimoBackupStatus === 'Sucesso' ? '✓ Sucesso' : ultimoBackupStatus}
+                      </Badge>
+                    )}
+                  </Group>
+
+                  <Group gap="xs">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="teal"
+                      leftSection={<IconDatabaseImport size={14} />}
+                      onClick={handleOpenImportar}
+                    >
+                      Restaurar .db
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="teal"
+                      leftSection={<IconDatabaseExport size={14} />}
+                      onClick={handleTestarBackupAgora}
+                      loading={executandoBackupAuto}
+                    >
+                      Fazer Backup Agora
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="filled"
+                      color={themeColor}
+                      leftSection={<IconDeviceFloppy size={14} />}
+                      onClick={() => handleSubmitConfigs(form.values)}
+                      loading={salvandoConfig}
+                    >
+                      Salvar Opções de Backup
+                    </Button>
+                  </Group>
+                </Group>
+              </Paper>
+            </Stack>
+          </Stack>
+        </Paper>
+
+        {/* Zona de Perigo: Formatar / Limpar Tudo */}
+        <Paper
+          withBorder
+          p="sm"
+          radius="sm"
+          mt="xs"
+          style={{ borderColor: 'var(--mantine-color-red-light-color)' }}
+        >
+          <Group justify="space-between" align="center" wrap="wrap">
+            <Group gap="xs">
+              <ThemeIcon color="red" variant="light" size="md" radius="sm">
+                <IconTrash size={18} />
+              </ThemeIcon>
+              <div>
+                <Title order={5} c="red">
+                  Zona de Perigo: Formatar Banco de Dados
+                </Title>
+                <Text size="xs" c="dimmed">
+                  Exclui permanentemente todos os produtos, fornecedores, cotações e alocações. Requer dupla confirmação de segurança.
+                </Text>
+              </div>
+            </Group>
+
+            <Button
+              variant="filled"
+              color="red"
+              size="xs"
+              leftSection={<IconTrash size={14} />}
+              onClick={handleOpenFormatar}
+            >
+              Formatar Banco...
+            </Button>
+          </Group>
+        </Paper>
+      </Card>
 
       {/* MODAL 3: Importar Banco de Dados (Timer 5s) */}
       <Modal

@@ -1,16 +1,22 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
+  ActionIcon,
+  Badge,
   Button,
   Card,
   Center,
   Group,
   Loader,
   Modal,
+  Radio,
   SimpleGrid,
   Stack,
+  Table,
   Text,
   TextInput,
+  Tooltip,
 } from '@mantine/core'
+import { useForm } from '@mantine/form'
 import { useDisclosure } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
@@ -18,6 +24,7 @@ import {
   IconAlertCircle,
   IconBan,
   IconCheck,
+  IconChecklist,
   IconEdit,
   IconLock,
   IconLockOpen,
@@ -28,16 +35,12 @@ import {
   IconTrendingUp,
   IconX,
 } from '@tabler/icons-react'
-import { MantineReactTable, useMantineReactTable } from 'mantine-react-table'
-
-import { PageHeader } from '../../components/ui/PageHeader'
-import { StatCard } from '../../components/ui/StatCard'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { getApi } from '../../services/api'
-import type { RodadaComMetricas } from '../../types'
-
-import { useRodadasColumns } from './useRodadasColumns'
-import { RodadasForm } from './RodadasForm'
+import { PageHeader } from './common/PageHeader'
+import { StatCard } from './common/StatCard'
+import { EmptyState } from './common/EmptyState'
+import { AppSelect } from './common/AppSelect'
+import { getApi } from '../services/api'
+import type { RodadaComMetricas } from '../types'
 
 interface RodadasViewProps {
   rodadaAtivaId?: number
@@ -56,14 +59,42 @@ export function RodadasView({
   const [filtroStatus, setFiltroStatus] = useState<'todas' | 'abertas' | 'fechadas' | 'canceladas'>('todas')
 
   // Modais
-  const [modalCriarOpened, { open: openModalCriar, close: closeModalCriar }] = useDisclosure(false)
-  const [modalEditarOpened, { open: openModalEditar, close: closeModalEditar }] = useDisclosure(false)
-  const [modalExcluirOpened, { open: openModalExcluir, close: closeModalExcluir }] = useDisclosure(false)
+  const [modalCriarOpened, { open: openModalCriar, close: closeModalCriar }] =
+    useDisclosure(false)
+  const [modalEditarOpened, { open: openModalEditar, close: closeModalEditar }] =
+    useDisclosure(false)
+  const [modalExcluirOpened, { open: openModalExcluir, close: closeModalExcluir }] =
+    useDisclosure(false)
 
   // Estados de seleção para ações
   const [rodadaEmEdicao, setRodadaEmEdicao] = useState<RodadaComMetricas | null>(null)
   const [rodadaEmExclusao, setRodadaEmExclusao] = useState<RodadaComMetricas | null>(null)
   const [salvando, setSalvando] = useState(false)
+
+  // Formulário de Nova Rodada
+  const formNova = useForm({
+    initialValues: {
+      descricao: '',
+      status: 'aberta',
+      duplicar_de_id: null as string | null,
+    },
+    validate: {
+      descricao: (val) =>
+        val.trim().length === 0 ? 'Informe um nome ou descrição para a rodada' : null,
+    },
+  })
+
+  // Formulário de Edição de Rodada
+  const formEdicao = useForm({
+    initialValues: {
+      descricao: '',
+      status: 'aberta',
+    },
+    validate: {
+      descricao: (val) =>
+        val.trim().length === 0 ? 'Informe um nome ou descrição para a rodada' : null,
+    },
+  })
 
   const carregarRodadas = async () => {
     try {
@@ -92,6 +123,18 @@ export function RodadasView({
   const formatMoney = (val?: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 
+  // Formatação de Data
+  const formatDate = (isoStr?: string) => {
+    if (!isoStr) return '-'
+    try {
+      const parts = isoStr.split(' ')
+      const [ano, mes, dia] = parts[0].split('-')
+      return `${dia}/${mes}/${ano}`
+    } catch {
+      return isoStr
+    }
+  }
+
   // Filtragem e Busca
   const rodadasFiltradas = useMemo(() => {
     return rodadas.filter((r) => {
@@ -117,7 +160,7 @@ export function RodadasView({
   )
 
   // Ação 1: Criar Nova Rodada
-  const handleCriarRodada = async (values: any) => {
+  const handleCriarRodada = async (values: typeof formNova.values) => {
     try {
       setSalvando(true)
       const api = await getApi()
@@ -132,6 +175,7 @@ export function RodadasView({
       })
 
       closeModalCriar()
+      formNova.reset()
       await carregarRodadas()
       onSelecionarRodada?.(nova.id, 'necessidades')
     } catch (error: any) {
@@ -149,11 +193,15 @@ export function RodadasView({
   // Ação 2: Abrir Modal de Edição
   const handleAbrirEdicao = (r: RodadaComMetricas) => {
     setRodadaEmEdicao(r)
+    formEdicao.setValues({
+      descricao: r.descricao,
+      status: r.status,
+    })
     openModalEditar()
   }
 
   // Ação 3: Salvar Edição
-  const handleSalvarEdicao = async (values: any) => {
+  const handleSalvarEdicao = async (values: typeof formEdicao.values) => {
     if (!rodadaEmEdicao) return
     try {
       setSalvando(true)
@@ -182,7 +230,7 @@ export function RodadasView({
     }
   }
 
-  // Ação 4: Alternar Status Rápido
+  // Ação 4: Alternar Status Rápido (Abrir / Fechar / Reativar)
   const handleToggleStatus = async (r: RodadaComMetricas) => {
     const novoStatus = r.status === 'aberta' ? 'fechada' : 'aberta'
     try {
@@ -213,7 +261,7 @@ export function RodadasView({
     openModalExcluir()
   }
 
-  // Ação 6: Confirmar Exclusão
+  // Ação 6: Confirmar Exclusão com bloqueio seguro e sugestão de cancelamento
   const handleConfirmarExclusao = async () => {
     if (!rodadaEmExclusao) return
     const rodada = rodadaEmExclusao
@@ -288,37 +336,6 @@ export function RodadasView({
       setSalvando(false)
     }
   }
-
-  const columns = useRodadasColumns({
-    rodadaAtivaId,
-    themeColor,
-    onSelecionarRodada: onSelecionarRodada || (() => {}),
-    onToggleStatus: handleToggleStatus,
-    onEdit: handleAbrirEdicao,
-    onDelete: handleAbrirExclusao,
-  })
-
-  const table = useMantineReactTable({
-    columns,
-    data: rodadasFiltradas,
-    enablePagination: true,
-    enableGlobalFilter: false,
-    enableDensityToggle: false,
-    enableFullScreenToggle: false,
-    enableHiding: false,
-    enableColumnActions: false,
-    initialState: {
-      density: 'xs',
-    },
-    mantinePaperProps: {
-      shadow: 'none',
-      radius: 'sm',
-      withBorder: false,
-    },
-    mantineTableBodyRowProps: ({ row }) => ({
-      style: row.original.id === rodadaAtivaId ? { fontWeight: 600 } : undefined,
-    }),
-  })
 
   return (
     <Stack gap="xs" style={{ width: '100%' }}>
@@ -459,7 +476,148 @@ export function RodadasView({
         />
       ) : (
         <Card withBorder p={0} radius="sm" style={{ overflow: 'hidden' }}>
-          <MantineReactTable table={table} />
+          <Table striped highlightOnHover verticalSpacing={3} horizontalSpacing={6}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Descrição / Nome da Rodada</Table.Th>
+                <Table.Th style={{ width: 110 }}>Status</Table.Th>
+                <Table.Th style={{ width: 100 }}>Criada em</Table.Th>
+                <Table.Th style={{ width: 100, textAlign: 'center' }}>Produtos</Table.Th>
+                <Table.Th style={{ width: 100, textAlign: 'center' }}>Cotações</Table.Th>
+                <Table.Th style={{ width: 130, textAlign: 'right' }}>Total Alocado</Table.Th>
+                <Table.Th style={{ width: 190, textAlign: 'center' }}>Ações</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {rodadasFiltradas.map((r) => {
+                const isAtiva = r.id === rodadaAtivaId
+                const isAberta = r.status === 'aberta'
+                const isCancelada = r.status === 'cancelada'
+
+                return (
+                  <Table.Tr key={r.id} style={isAtiva ? { fontWeight: 600 } : undefined}>
+                    <Table.Td>
+                      <Group gap="xs">
+                        <Text size="xs" fw={isAtiva ? 700 : 500} c={isCancelada ? 'dimmed' : undefined}>
+                          {r.descricao}
+                        </Text>
+                        {isAtiva && (
+                          <Badge variant="filled" color="blue" size="xs">
+                            Ativa
+                          </Badge>
+                        )}
+                      </Group>
+                    </Table.Td>
+
+                    <Table.Td>
+                      {isAberta && (
+                        <Badge color="green" variant="light" size="xs" leftSection={<IconLockOpen size={11} />}>
+                          Aberta
+                        </Badge>
+                      )}
+                      {r.status === 'fechada' && (
+                        <Badge color="gray" variant="outline" size="xs" leftSection={<IconLock size={11} />}>
+                          Fechada
+                        </Badge>
+                      )}
+                      {isCancelada && (
+                        <Badge color="red" variant="light" size="sm" leftSection={<IconBan size={12} />}>
+                          Cancelada
+                        </Badge>
+                      )}
+                    </Table.Td>
+
+                    <Table.Td>
+                      <Text size="xs" c="dimmed">
+                        {formatDate(r.data_criacao)}
+                      </Text>
+                    </Table.Td>
+
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Badge variant="light" color="cyan" size="sm">
+                        {r.total_necessidades} itens
+                      </Badge>
+                    </Table.Td>
+
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Badge variant="light" color="indigo" size="sm">
+                        {r.total_cotacoes} cotações
+                      </Badge>
+                    </Table.Td>
+
+                    <Table.Td style={{ textAlign: 'right' }}>
+                      <Text size="sm" fw={700} c={r.valor_total_alocado > 0 && !isCancelada ? 'teal.7' : 'dimmed'}>
+                        {formatMoney(r.valor_total_alocado)}
+                      </Text>
+                    </Table.Td>
+
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Group gap={4} justify="center" wrap="nowrap">
+                        <Tooltip label="Definir como rodada ativa e ir para Necessidades">
+                          <Button
+                            size="compact-xs"
+                            variant={isAtiva ? 'filled' : 'light'}
+                            color={themeColor}
+                            leftSection={<IconChecklist size={13} />}
+                            onClick={() => onSelecionarRodada?.(r.id, 'necessidades')}
+                          >
+                            Abrir
+                          </Button>
+                        </Tooltip>
+
+                        <Tooltip
+                          label={
+                            isAberta
+                              ? 'Fechar / Concluir rodada'
+                              : isCancelada
+                              ? 'Reativar rodada'
+                              : 'Reabrir rodada'
+                          }
+                        >
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color={isAberta ? 'gray' : 'teal'}
+                            onClick={() => handleToggleStatus(r)}
+                          >
+                            {isAberta ? (
+                              <IconLock size={15} />
+                            ) : isCancelada ? (
+                              <IconRotate size={15} />
+                            ) : (
+                              <IconLockOpen size={15} />
+                            )}
+                          </ActionIcon>
+                        </Tooltip>
+
+                        <Tooltip label="Editar rodada">
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color={themeColor}
+                            onClick={() => handleAbrirEdicao(r)}
+                          >
+                            <IconEdit size={15} />
+                          </ActionIcon>
+                        </Tooltip>
+
+                        <Tooltip label="Excluir rodada permanentemente">
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color="red"
+                            onClick={() => handleAbrirExclusao(r)}
+                          >
+                            <IconTrash size={15} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                )
+              })}
+            </Table.Tbody>
+          </Table>
         </Card>
       )}
 
@@ -477,22 +635,59 @@ export function RodadasView({
         radius="sm"
         centered
       >
-        <RodadasForm
-          rodadas={rodadas}
-          onSave={handleCriarRodada}
-          onCancel={closeModalCriar}
-          loading={salvando}
-          themeColor={themeColor}
-        />
+        <form onSubmit={formNova.onSubmit(handleCriarRodada)}>
+          <Stack gap="sm">
+            <TextInput
+              label="Descrição / Nome da Rodada"
+              size="xs"
+              placeholder="Ex: Cotação Mensal - Maio 2026"
+              required
+              autoFocus
+              {...formNova.getInputProps('descricao')}
+            />
+
+            <Radio.Group
+              label="Status Inicial"
+              size="xs"
+              value={formNova.values.status}
+              onChange={(val) => formNova.setFieldValue('status', val)}
+            >
+              <Group mt="xs">
+                <Radio value="aberta" label="Aberta (Em cotação)" color="teal" size="xs" />
+                <Radio value="fechada" label="Fechada (Concluída)" color="gray" size="xs" />
+              </Group>
+            </Radio.Group>
+
+            {rodadas.length > 0 && (
+              <AppSelect
+                label="Duplicar Necessidades de Outra Rodada (Opcional)"
+                size="xs"
+                placeholder="Selecione para copiar itens em falta..."
+                data={rodadas.map((r) => ({
+                  value: String(r.id),
+                  label: `${r.descricao} (${r.total_necessidades} itens)`,
+                }))}
+                clearable
+                {...formNova.getInputProps('duplicar_de_id')}
+              />
+            )}
+
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalCriar}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvando}>
+                Criar Rodada
+              </Button>
+            </Group>
+          </Stack>
+        </form>
       </Modal>
 
       {/* MODAL: Editar Rodada */}
       <Modal
         opened={modalEditarOpened}
-        onClose={() => {
-          closeModalEditar()
-          setRodadaEmEdicao(null)
-        }}
+        onClose={closeModalEditar}
         title={
           <Group gap="xs">
             <IconEdit size={18} />
@@ -502,18 +697,39 @@ export function RodadasView({
         radius="sm"
         centered
       >
-        {rodadaEmEdicao && (
-          <RodadasForm
-            rodada={rodadaEmEdicao}
-            onSave={handleSalvarEdicao}
-            onCancel={() => {
-              closeModalEditar()
-              setRodadaEmEdicao(null)
-            }}
-            loading={salvando}
-            themeColor={themeColor}
-          />
-        )}
+        <form onSubmit={formEdicao.onSubmit(handleSalvarEdicao)}>
+          <Stack gap="sm">
+            <TextInput
+              label="Descrição / Nome da Rodada"
+              size="xs"
+              required
+              autoFocus
+              {...formEdicao.getInputProps('descricao')}
+            />
+
+            <Radio.Group
+              label="Status da Rodada"
+              size="xs"
+              value={formEdicao.values.status}
+              onChange={(val) => formEdicao.setFieldValue('status', val)}
+            >
+              <Group mt="xs">
+                <Radio value="aberta" label="Aberta" color="teal" size="xs" />
+                <Radio value="fechada" label="Fechada (Concluída)" color="gray" size="xs" />
+                <Radio value="cancelada" label="Cancelada (Arquivada)" color="red" size="xs" />
+              </Group>
+            </Radio.Group>
+
+            <Group justify="flex-end" gap="xs" mt="md">
+              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditar}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvando}>
+                Salvar Alterações
+              </Button>
+            </Group>
+          </Stack>
+        </form>
       </Modal>
 
       {/* MODAL: Excluir Rodada */}
