@@ -15,6 +15,10 @@ frontend/node_modules/
 frontend/dist/
 *.log
 
+# Local configs & runtime
+app_config.json
+
 # OS
 .DS_Store
 Thumbs.db
+
