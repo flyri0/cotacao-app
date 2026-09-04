@@ -246,82 +246,122 @@ export function AlocacaoView({
   }, [selectedRodadaId, executarSalvarSilencioso])
 
   // Atualiza quantidade alocada de uma linha específica
-  const handleUpdateQtd = (key: string, valor: number | string) => {
+  const handleUpdateQtd = useCallback((key: string, valor: number | string) => {
     const num = typeof valor === 'number' ? valor : parseFloat(valor) || 0
     setLinhas((prev) =>
       prev.map((l) =>
         l.key === key ? { ...l, quantidade_alocada: Math.max(0, num) } : l,
       ),
     )
-  }
+  }, [])
 
   // Atualiza fornecedor de uma linha específica e sincroniza com a decisão da Comparação
-  const handleUpdateFornecedor = (key: string, idFornStr: string | null) => {
-    const idForn = idFornStr ? parseInt(idFornStr, 10) : 0
-    let idProdAfetado: number | null = null
+  const handleUpdateFornecedor = useCallback(
+    (key: string, idFornStr: string | null) => {
+      const idForn = idFornStr ? parseInt(idFornStr, 10) : 0
+      const linha = linhasRef.current.find((l) => l.key === key)
+      const idProd = linha ? linha.id_produto : null
+      const totalLinhasProd = linha
+        ? linhasRef.current.filter((l) => l.id_produto === linha.id_produto).length
+        : 0
 
-    setLinhas((prev) =>
-      prev.map((l) => {
-        if (l.key === key) {
-          idProdAfetado = l.id_produto
-          return { ...l, id_fornecedor: idForn }
-        }
-        return l
-      }),
-    )
+      setLinhas((prev) =>
+        prev.map((l) => {
+          if (l.key === key) {
+            return { ...l, id_fornecedor: idForn }
+          }
+          return l
+        }),
+      )
 
-    if (idProdAfetado && selectedRodadaId && idForn > 0 && !isFechada) {
-      getApi()
-        .then((api) => {
-          api.set_selected_supplier(selectedRodadaId, idProdAfetado!, idForn).catch(() => {})
-        })
-        .catch(() => {})
-    }
-  }
+      if (idProd && totalLinhasProd <= 1 && selectedRodadaId && idForn > 0 && !isFechada) {
+        getApi()
+          .then((api) => {
+            api.set_selected_supplier(selectedRodadaId, idProd, idForn).catch(() => {})
+          })
+          .catch(() => {})
+      }
+    },
+    [selectedRodadaId, isFechada],
+  )
 
   // Ação "Dividir": Duplica a linha do mesmo produto com fornecedor e quantidade zerados
-  const handleDividirLinha = (index: number) => {
-    const linhaBase = linhas[index]
-    const novaLinha: LinhaAlocacao = {
-      key: `split-${linhaBase.id_produto}-${Math.random()
-        .toString(36)
-        .substring(2, 7)}`,
-      id: undefined,
-      id_produto: Number(linhaBase.id_produto),
-      produto_nome: linhaBase.produto_nome,
-      id_fornecedor: 0, // zerado
-      quantidade_alocada: 0, // zerada para digitação
-    }
+  const handleDividirLinha = useCallback((targetKey: string) => {
+    let nomeProd = ''
+    setLinhas((prev) => {
+      const index = prev.findIndex((l) => l.key === targetKey)
+      if (index === -1) return prev
+      const linhaBase = prev[index]
+      nomeProd = linhaBase.produto_nome
+      const novaLinha: LinhaAlocacao = {
+        key: `split-${linhaBase.id_produto}-${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2, 7)}`,
+        id: undefined,
+        id_produto: Number(linhaBase.id_produto),
+        produto_nome: linhaBase.produto_nome,
+        id_fornecedor: 0, // zerado
+        quantidade_alocada: 0, // zerada para digitação
+      }
 
-    const novas = [...linhas]
-    novas.splice(index + 1, 0, novaLinha)
-    setLinhas(novas)
+      const novas = [...prev]
+      novas.splice(index + 1, 0, novaLinha)
+      return novas
+    })
 
     notifications.show({
       title: 'Linha Dividida',
-      message: `Nova linha criada para "${linhaBase.produto_nome}". Selecione o segundo fornecedor e informe a quantidade.`,
+      message: nomeProd
+        ? `Nova divisão criada para "${nomeProd}". Selecione o fornecedor e informe a quantidade.`
+        : 'Nova divisão criada para o produto. Selecione o fornecedor e informe a quantidade.',
       color: 'blue',
       icon: <IconArrowsSplit size={16} />,
     })
-  }
+  }, [])
 
-  // Remove uma linha de alocação com confirmação Mantine
-  const handleRemoverLinha = (key: string, produtoNome: string) => {
+  // Remove ou zera uma linha de alocação com confirmação Mantine
+  const handleRemoverLinha = useCallback((targetKey: string, produtoNome: string) => {
+    const linha = linhasRef.current.find((l) => l.key === targetKey)
+    const totalLinhasProd = linha
+      ? linhasRef.current.filter((l) => l.id_produto === linha.id_produto).length
+      : 1
+    const isDivisao = totalLinhasProd > 1
+
     modals.openConfirmModal({
-      title: 'Remover Linha de Alocação',
+      title: isDivisao ? 'Remover Divisão de Alocação' : 'Zerar Alocação',
       centered: true,
       children: (
         <Text size="sm">
-          Deseja remover esta linha de compra para o produto <b>{produtoNome}</b>?
+          {isDivisao ? (
+            <>
+              Deseja remover esta divisão de compra para o produto <b>{produtoNome}</b>?
+            </>
+          ) : (
+            <>
+              Deseja zerar a quantidade alocada para o produto <b>{produtoNome}</b>?
+            </>
+          )}
         </Text>
       ),
-      labels: { confirm: 'Remover Linha', cancel: 'Cancelar' },
+      labels: {
+        confirm: isDivisao ? 'Remover Divisão' : 'Zerar Quantidade',
+        cancel: 'Cancelar',
+      },
       confirmProps: { color: 'red' },
       onConfirm: () => {
-        setLinhas((prev) => prev.filter((l) => l.key !== key))
+        setLinhas((prev) => {
+          if (isDivisao) {
+            return prev.filter((l) => l.key !== targetKey)
+          }
+          return prev.map((l) =>
+            l.key === targetKey
+              ? { ...l, quantidade_alocada: 0, id_fornecedor: 0 }
+              : l,
+          )
+        })
       },
     })
-  }
+  }, [])
 
   // Sugestão automática do Menor Preço (mantém as quantidades do usuário e não força quantidade fixa nem observação)
   const handleSugerirMenorPreco = () => {
@@ -437,19 +477,38 @@ export function AlocacaoView({
         accessorKey: 'produto_nome',
         header: 'Produto',
         size: 220,
-        Cell: ({ row }) => {
+        Cell: ({ row, table }) => {
           const item = row.original
+          const allRows = (table.options.data as LinhaAlocacao[]) || []
+          const linhasDoProd = allRows.filter((l) => l.id_produto === item.id_produto)
+          const isDividido = linhasDoProd.length > 1
+          const subIndex = isDividido
+            ? linhasDoProd.findIndex((l) => l.key === item.key) + 1
+            : 0
+
           return (
-            <Text fw={600} size="xs" truncate="end">
-              {item.produto_nome}
-            </Text>
+            <Group gap={6} wrap="nowrap">
+              <Text fw={600} size="xs" truncate="end" style={{ flex: 1 }}>
+                {item.produto_nome}
+              </Text>
+              {isDividido && (
+                <Badge
+                  size="xs"
+                  variant="light"
+                  color={subIndex === 1 ? 'gray' : 'blue'}
+                  style={{ flexShrink: 0 }}
+                >
+                  Parte {subIndex}/{linhasDoProd.length}
+                </Badge>
+              )}
+            </Group>
           )
         },
       },
       {
         accessorKey: 'quantidade_alocada',
         header: 'Qtd a Comprar',
-        size: 140,
+        size: 95,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
@@ -459,6 +518,7 @@ export function AlocacaoView({
               initialValue={item.quantidade_alocada}
               onChangeLive={(val) => handleUpdateQtd(item.key, val)}
               disabled={isFechada}
+              width={75}
             />
           )
         },
@@ -666,7 +726,6 @@ export function AlocacaoView({
         mantineTableHeadCellProps: { align: 'center' },
         mantineTableBodyCellProps: { align: 'center' },
         Cell: ({ row }) => {
-          const index = row.index
           const item = row.original
 
           return (
@@ -677,7 +736,7 @@ export function AlocacaoView({
                   color={themeColor}
                   size="sm"
                   disabled={isFechada}
-                  onClick={() => handleDividirLinha(index)}
+                  onClick={() => handleDividirLinha(item.key)}
                 >
                   <IconArrowsSplit size={16} />
                 </ActionIcon>
@@ -699,7 +758,17 @@ export function AlocacaoView({
         },
       },
     ],
-    [cotacoes, fornecedores, menoresPrecosPorProduto, isFechada, themeColor],
+    [
+      cotacoes,
+      fornecedores,
+      menoresPrecosPorProduto,
+      isFechada,
+      themeColor,
+      handleDividirLinha,
+      handleRemoverLinha,
+      handleUpdateQtd,
+      handleUpdateFornecedor,
+    ],
   )
 
   const table = useMantineReactTable({
