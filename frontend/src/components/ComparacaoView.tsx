@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Center,
   Checkbox,
@@ -273,9 +274,16 @@ export function ComparacaoView({
 
   // Atualiza medição de largura para o top-scrollbar sincronizado
   useEffect(() => {
-    if (tableContainerRef.current) {
-      setTableScrollWidth(tableContainerRef.current.scrollWidth)
+    if (!tableContainerRef.current) return
+    const updateWidth = () => {
+      if (tableContainerRef.current) {
+        setTableScrollWidth(tableContainerRef.current.scrollWidth)
+      }
     }
+    updateWidth()
+    const observer = new ResizeObserver(updateWidth)
+    observer.observe(tableContainerRef.current)
+    return () => observer.disconnect()
   }, [fornecedoresExibidos, dadosFiltrados, ocultarCategoria])
 
   // Sincronizadores de rolagem horizontal bidirecional
@@ -423,59 +431,71 @@ export function ComparacaoView({
   }
 
   return (
-    <Stack gap="xs" style={{ width: '100%' }}>
-      <PageHeader
-        icon={IconScale}
-        iconColor={themeColor}
-        title="Mapa Comparativo de Cotações"
-        subtitle="Normalização por unidade de medida com alta densidade e painéis sincronizados"
-        rightSection={
-          <RoundHeaderSelector
-            rodadas={rodadas}
-            selectedRodadaId={selectedRodadaId}
-            themeColor={themeColor}
-            onSelectRodada={(id) => {
-              setSelectedRodadaId(id)
-              onRodadaChange?.(id)
-              carregarDados(id)
+    <Stack
+      gap="xs"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 72px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        paddingBottom: 6,
+      }}
+    >
+      <Box style={{ flexShrink: 0 }}>
+        <PageHeader
+          icon={IconScale}
+          iconColor={themeColor}
+          title="Mapa Comparativo de Cotações"
+          subtitle="Normalização por unidade de medida com alta densidade e painéis sincronizados"
+          rightSection={
+            <RoundHeaderSelector
+              rodadas={rodadas}
+              selectedRodadaId={selectedRodadaId}
+              themeColor={themeColor}
+              onSelectRodada={(id) => {
+                setSelectedRodadaId(id)
+                onRodadaChange?.(id)
+                carregarDados(id)
+              }}
+            />
+          }
+        />
+
+        {/* Cartões KPIs Padronizados */}
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" mt="xs">
+          <StatCard
+            label="Cobertura de Cotações"
+            value={`${stats.totalComCotacao} de ${stats.totalItens}`}
+            subtitle="Itens com preço cotado na rodada"
+            icon={IconScale}
+            color={themeColor}
+            badge={{
+              label: `${stats.percentual}% Coberto`,
+              color: stats.percentual === 100 ? 'teal' : themeColor,
             }}
           />
-        }
-      />
 
-      {/* Cartões KPIs Padronizados */}
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-        <StatCard
-          label="Cobertura de Cotações"
-          value={`${stats.totalComCotacao} de ${stats.totalItens}`}
-          subtitle="Itens com preço cotado na rodada"
-          icon={IconScale}
-          color={themeColor}
-          badge={{
-            label: `${stats.percentual}% Coberto`,
-            color: stats.percentual === 100 ? 'teal' : themeColor,
-          }}
-        />
-
-        <StatCard
-          label="Fornecedores na Matriz"
-          value={`${fornecedoresExibidos.length} de ${fornecedoresNaTabela.length}`}
-          subtitle="Concorrentes cotados e visíveis na comparação"
-          icon={IconTruck}
-          color="teal"
-          badge={{
-            label:
-              fornecedoresExibidos.length === fornecedoresNaTabela.length
-                ? 'Todos Visíveis'
-                : 'Filtrados',
-            color: 'teal',
-          }}
-        />
-      </SimpleGrid>
+          <StatCard
+            label="Fornecedores na Matriz"
+            value={`${fornecedoresExibidos.length} de ${fornecedoresNaTabela.length}`}
+            subtitle="Concorrentes cotados e visíveis na comparação"
+            icon={IconTruck}
+            color="teal"
+            badge={{
+              label:
+                fornecedoresExibidos.length === fornecedoresNaTabela.length
+                  ? 'Todos Visíveis'
+                  : 'Filtrados',
+              color: 'teal',
+            }}
+          />
+        </SimpleGrid>
+      </Box>
 
       {/* Conteúdo Principal */}
       {loading ? (
-        <Center p="xl">
+        <Center p="xl" style={{ flex: 1 }}>
           <Loader size="lg" />
         </Center>
       ) : necessidades.length === 0 ? (
@@ -484,9 +504,18 @@ export function ComparacaoView({
           description="Adicione produtos na aba Necessidades para visualizar o comparativo de preços."
         />
       ) : (
-        <Stack gap="xs" style={{ width: '100%' }}>
+        <Stack
+          gap="xs"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
           {/* Barra de Ferramentas, Filtros e Ações da Planilha */}
-          <Paper withBorder radius="sm" p="xs">
+          <Paper withBorder radius="sm" p="xs" style={{ flexShrink: 0 }}>
             <Stack gap={6}>
               <Group justify="space-between" align="center" wrap="wrap" gap="xs">
                 <Group gap="xs" wrap="wrap" align="center">
@@ -706,6 +735,10 @@ export function ComparacaoView({
             withBorder
             radius="sm"
             style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
               overflow: 'hidden',
               backgroundColor: 'var(--mantine-color-body)',
             }}
@@ -715,6 +748,7 @@ export function ComparacaoView({
               ref={topScrollRef}
               onScroll={handleTopScroll}
               className="comparacao-top-scroll-container"
+              style={{ flexShrink: 0 }}
               title="Arraste para rolar horizontalmente entre os fornecedores"
             >
               <div style={{ width: tableScrollWidth || 1200, height: 1 }} />
@@ -726,8 +760,11 @@ export function ComparacaoView({
               onScroll={handleTableScroll}
               className="tabela-comparacao-container"
               style={{
-                maxHeight: 'calc(100vh - 250px)',
+                flex: 1,
+                minHeight: 0,
                 width: '100%',
+                overflowX: 'auto',
+                overflowY: 'auto',
               }}
             >
               <Table
