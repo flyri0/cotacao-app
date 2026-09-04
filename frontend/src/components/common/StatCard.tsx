@@ -24,7 +24,7 @@ export function StatCard({
   badge,
 }: StatCardProps) {
   return (
-    <Paper withBorder p="xs" radius="sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+    <Paper withBorder p="xs" radius="sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 64 }}>
       <Group justify="space-between" align="center" gap="xs">
         <div style={{ flex: 1, minWidth: 0 }}>
           <Group gap={6} align="center">

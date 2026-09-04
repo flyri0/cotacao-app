@@ -446,11 +446,10 @@ export function ComparacaoView({
       gap="xs"
       style={{
         width: '100%',
-        height: 'calc(100vh - 72px)',
+        height: 'calc(100vh - 68px)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        paddingBottom: 6,
       }}
     >
       <Box style={{ flexShrink: 0 }}>
@@ -472,9 +471,11 @@ export function ComparacaoView({
             />
           }
         />
+      </Box>
 
-        {/* Cartões KPIs Padronizados */}
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" mt="xs">
+      {/* Cartões KPIs Padronizados */}
+      <Box style={{ flexShrink: 0 }}>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
           <StatCard
             label="Cobertura de Cotações"
             value={`${stats.totalComCotacao} de ${stats.totalItens}`}

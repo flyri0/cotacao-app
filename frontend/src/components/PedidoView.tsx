@@ -1,14 +1,15 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import {
   Accordion,
+  Box,
   Button,
   Center,
   Group,
   Loader,
   Paper,
+  SimpleGrid,
   Stack,
   Text,
-  Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
@@ -17,10 +18,13 @@ import {
   IconCheck,
   IconClipboardCopy,
   IconFileText,
+  IconPackage,
   IconPrinter,
+  IconScale,
+  IconTruck,
   IconX,
 } from '@tabler/icons-react'
-import { PageHeader, RoundHeaderSelector, EmptyState } from './common'
+import { PageHeader, RoundHeaderSelector, EmptyState, StatCard } from './common'
 import { PedidoAccordionItem } from './pedido/PedidoAccordionItem'
 import type { ItemPedidoLinha, PedidoPorFornecedor } from './pedido/DanfeDocument'
 import { useActiveRound, useDataCacheSubscription } from '../hooks'
@@ -337,6 +341,15 @@ export function PedidoView({
     }
   }
 
+  const totalEmbalagensGeral = useMemo(() => {
+    return pedidosAgrupados.reduce((acc, p) => {
+      return (
+        acc +
+        p.itens.reduce((sub, it) => sub + (it.embalagens_comprar || 0), 0)
+      )
+    }, 0)
+  }, [pedidosAgrupados])
+
   return (
     <Stack
       gap="xs"
@@ -345,8 +358,8 @@ export function PedidoView({
         paddingBottom: 48,
       }}
     >
-      {/* Cabeçalho Superior (Oculto na Impressão) */}
-      <div className="no-print">
+      {/* 1. Cabeçalho Superior (Oculto na Impressão) */}
+      <Box style={{ flexShrink: 0 }} className="no-print">
         <PageHeader
           icon={IconFileText}
           iconColor={themeColor}
@@ -364,25 +377,44 @@ export function PedidoView({
             />
           }
         />
-      </div>
+      </Box>
 
-      {/* Barra de Ações Globais (Oculta na Impressão) */}
+      {/* 2. Painel de KPIs de Pedido (Oculto na Impressão) */}
       {pedidosAgrupados.length > 0 && (
-        <Paper withBorder p="xs" radius="sm" className="no-print">
+        <Box style={{ flexShrink: 0 }} className="no-print">
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+            <StatCard
+              label="Total do Pedido"
+              value={formatMoney(valorTotalGeral)}
+              subtitle="Consolidado geral em compras"
+              icon={IconScale}
+              color="teal"
+            />
+            <StatCard
+              label="Fornecedores"
+              value={`${pedidosAgrupados.length} ${pedidosAgrupados.length === 1 ? 'fornecedor' : 'fornecedores'}`}
+              subtitle="Com pedidos gerados"
+              icon={IconTruck}
+              color={themeColor}
+            />
+            <StatCard
+              label="Embalagens Fechadas"
+              value={`${totalEmbalagensGeral} un/cx`}
+              subtitle="Volume total a encomendar"
+              icon={IconPackage}
+              color="teal"
+            />
+          </SimpleGrid>
+        </Box>
+      )}
+
+      {/* 3. Barra de Ações Globais (Oculta na Impressão) */}
+      {pedidosAgrupados.length > 0 && (
+        <Paper withBorder p="xs" radius="sm" className="no-print" style={{ flexShrink: 0 }}>
           <Group justify="space-between" align="center">
-            <div>
-              <Text size="11px" fw={700} c="dimmed" tt="uppercase">
-                Resumo da Rodada
-              </Text>
-              <Group gap="xs" align="baseline">
-                <Title order={4} c="teal" style={{ fontSize: '1.2rem' }}>
-                  {formatMoney(valorTotalGeral)}
-                </Title>
-                <Text size="xs" c="dimmed">
-                  em <b>{pedidosAgrupados.length}</b> fornecedor(es)
-                </Text>
-              </Group>
-            </div>
+            <Text size="xs" fw={600} c="dimmed">
+              Ordens de Compra por Fornecedor ({pedidosAgrupados.length})
+            </Text>
 
             <Group gap="xs">
               <Button

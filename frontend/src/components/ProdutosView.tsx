@@ -751,13 +751,15 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
           </Group>
         }
       />
+      </Box>
 
       {/* Formulário de Cadastro com Fluxo Rápido por Teclado */}
-      <SectionCard
-        title="Novo Produto"
-        subtitle="Preencha e tecle Enter para salvar"
-        kbdHint="Enter"
-      >
+      <Box style={{ flexShrink: 0 }}>
+        <SectionCard
+          title="Novo Produto"
+          subtitle="Preencha e tecle Enter para salvar"
+          kbdHint="Enter"
+        >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Group align="flex-end" gap="xs">
             <TextInput

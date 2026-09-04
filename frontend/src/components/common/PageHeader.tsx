@@ -23,7 +23,7 @@ export function PageHeader({
   rightSection,
 }: PageHeaderProps) {
   return (
-    <Group justify="space-between" align="center" mb={4} style={{ width: '100%' }}>
+    <Group justify="space-between" align="center" style={{ width: '100%' }}>
       <Group gap="xs" align="center">
         <ThemeIcon size={28} radius="sm" variant="light" color={iconColor}>
           <Icon size={16} />

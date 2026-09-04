@@ -534,12 +534,14 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
           </Group>
         }
       />
+      </Box>
 
       {/* Formulário de Cadastro */}
-      <SectionCard
-        title="Novo Fornecedor"
-        subtitle="Informe dados de contato e pedido mínimo"
-      >
+      <Box style={{ flexShrink: 0 }}>
+        <SectionCard
+          title="Novo Fornecedor"
+          subtitle="Informe dados de contato e pedido mínimo"
+        >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="xs">
             <SimpleGrid cols={{ base: 1, sm: 2, md: 5 }} spacing="xs">

@@ -444,8 +444,10 @@ export function ResumoView({
             />
           }
         />
+      </Box>
 
-        {/* Cartões KPIs */}
+      {/* Cartões KPIs */}
+      <Box style={{ flexShrink: 0 }}>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
           <StatCard
             label="Total do Pedido"

@@ -822,7 +822,7 @@ return Array.from(map.values())
                         <IconPackage size={16} />
                       </ThemeIcon>
                       <div>
-                        <Title order={4} style={{ fontSize: '0.95rem' }}>{estatisticasProduto.produto.nome}</Title>
+                        <Title order={5} fw={600} style={{ fontSize: '0.95rem' }}>{estatisticasProduto.produto.nome}</Title>
                         <Group gap={4} mt={2}>
                           {estatisticasProduto.produto.categoria ? (
                             <Badge color="teal" variant="dot" size="xs">
@@ -945,7 +945,7 @@ return Array.from(map.values())
 
                 {/* Gráficos Analíticos do Produto */}
                 <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between" mb="xs">
                       <div>
                         <Text fw={600} size="sm">
@@ -980,7 +980,7 @@ return Array.from(map.values())
                     )}
                   </Paper>
 
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between" mb="xs">
                       <div>
                         <Text fw={600} size="sm">
@@ -990,7 +990,7 @@ return Array.from(map.values())
                           Preço médio vs menor oferta por parceiro
                         </Text>
                       </div>
-                      <Badge variant="light" color="indigo" size="xs">
+                      <Badge variant="light" color="teal" size="xs">
                         Competitividade
                       </Badge>
                     </Group>
@@ -1001,7 +1001,7 @@ return Array.from(map.values())
                         dataKey="fornecedor"
                         series={[
                           { name: 'menor_preco', color: 'teal.6', label: 'Menor Preço' },
-                          { name: 'preco_medio', color: 'indigo.6', label: 'Preço Médio' },
+                          { name: 'preco_medio', color: 'teal.6', label: 'Preço Médio' },
                         ]}
                         valueFormatter={(value) => formatMoney(value)}
                         withLegend
@@ -1018,7 +1018,7 @@ return Array.from(map.values())
                 </SimpleGrid>
 
                 <Stack gap="xs">
-                  <Title order={4} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Title order={5} fw={600} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <IconTruck size={20} />
                     Ranking de Fornecedores para este Produto
                   </Title>
@@ -1026,7 +1026,7 @@ return Array.from(map.values())
                 </Stack>
 
                 <Stack gap="xs">
-                  <Title order={4} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Title order={5} fw={600} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <IconHistory size={20} />
                     Histórico Cronológico de Cotações
                   </Title>
@@ -1072,7 +1072,7 @@ return Array.from(map.values())
                         <IconTruck size={16} />
                       </ThemeIcon>
                       <div>
-                        <Title order={4} style={{ fontSize: '0.95rem' }}>{estatisticasFornecedor.fornecedor.nome}</Title>
+                        <Title order={5} fw={600} style={{ fontSize: '0.95rem' }}>{estatisticasFornecedor.fornecedor.nome}</Title>
                         <Text size="11px" c="dimmed">
                           Pedido Mínimo:{' '}
                           <b>{formatMoney(estatisticasFornecedor.fornecedor.pedido_minimo)}</b>
@@ -1103,7 +1103,7 @@ return Array.from(map.values())
                     </Text>
                   </Paper>
 
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between">
                       <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                         Itens Ganhos / Alocados
@@ -1120,7 +1120,7 @@ return Array.from(map.values())
                     </Text>
                   </Paper>
 
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between">
                       <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                         1º Lugares em Menor Preço
@@ -1137,7 +1137,7 @@ return Array.from(map.values())
                     </Text>
                   </Paper>
 
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="xs" radius="sm">
                     <Group justify="space-between">
                       <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                         Taxa de Competitividade
@@ -1156,7 +1156,7 @@ return Array.from(map.values())
                 </SimpleGrid>
 
                 {/* Gráfico Analítico do Fornecedor */}
-                <Paper withBorder p="md" radius="md">
+                <Paper withBorder p="xs" radius="sm">
                   <Group justify="space-between" mb="xs">
                     <div>
                       <Text fw={600} size="sm">
@@ -1192,7 +1192,7 @@ return Array.from(map.values())
                 </Paper>
 
                 <Stack gap="xs">
-                  <Title order={4} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Title order={5} fw={600} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <IconReceipt size={20} />
                     Catálogo de Produtos Cotados pelo Fornecedor
                   </Title>
@@ -1209,7 +1209,7 @@ return Array.from(map.values())
         <Tabs.Panel value="global" pt="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Stack gap="xs">
             {/* Barra de Filtros Multidimensionais */}
-            <Paper withBorder p="md" radius="md">
+            <Paper withBorder p="xs" radius="sm">
               <Stack gap="xs">
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <IconFilter size={15} />
@@ -1266,7 +1266,7 @@ return Array.from(map.values())
 
             {/* Gráfico de Distribuição por Categoria */}
             {dadosGraficoCategoriasGlobal.length > 0 && (
-              <Paper withBorder p="md" radius="md">
+              <Paper withBorder p="xs" radius="sm">
                 <Group justify="space-between" mb="xs">
                   <div>
                     <Text fw={600} size="sm">
@@ -1276,7 +1276,7 @@ return Array.from(map.values())
                       Comparativo de volume cotado vs comprado por segmento
                     </Text>
                   </div>
-                  <Badge variant="light" color="indigo" size="xs">
+                  <Badge variant="light" color="teal" size="xs">
                     Panorama Geral
                   </Badge>
                 </Group>
@@ -1285,7 +1285,7 @@ return Array.from(map.values())
                   data={dadosGraficoCategoriasGlobal}
                   dataKey="categoria"
                   series={[
-                    { name: 'total_cotacoes', color: 'indigo.6', label: 'Total de Cotações' },
+                    { name: 'total_cotacoes', color: 'teal.6', label: 'Total de Cotações' },
                     { name: 'total_comprados', color: 'teal.6', label: 'Itens Comprados' },
                   ]}
                   withLegend

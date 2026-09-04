@@ -1,5 +1,5 @@
-import { Badge, Button, Group, Tooltip } from '@mantine/core'
-import { IconLock, IconLockOpen, IconPlus, IconRotate } from '@tabler/icons-react'
+import { Button, Group, Tooltip } from '@mantine/core'
+import { IconPlus, IconRotate } from '@tabler/icons-react'
 import { AppSelect } from './AppSelect'
 import type { Rodada } from '../../types'
 
@@ -20,9 +20,6 @@ export function RoundHeaderSelector({
   disabled = false,
   themeColor = 'blue',
 }: RoundHeaderSelectorProps) {
-  const rodadaSelecionada = rodadas.find((r) => r.id === selectedRodadaId)
-  const isAberta = rodadaSelecionada?.status === 'aberta'
-
   return (
     <Group gap="xs" align="center">
       <AppSelect
@@ -41,19 +38,6 @@ export function RoundHeaderSelector({
         allowDeselect={false}
         disabled={disabled}
       />
-
-      {rodadaSelecionada && (
-        <Tooltip label={isAberta ? 'Rodada aberta para compras' : 'Rodada finalizada/fechada'}>
-          <Badge
-            color={isAberta ? 'teal' : 'gray'}
-            variant={isAberta ? 'light' : 'outline'}
-            size="xs"
-            leftSection={isAberta ? <IconLockOpen size={11} /> : <IconLock size={11} />}
-          >
-            {isAberta ? 'Aberta' : 'Fechada'}
-          </Badge>
-        </Tooltip>
-      )}
 
       {onNovaRodadaClick && (
         <Tooltip label="Criar nova rodada de cotação">

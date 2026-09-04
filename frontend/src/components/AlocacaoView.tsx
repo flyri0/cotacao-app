@@ -898,8 +898,10 @@ export function AlocacaoView({
             </Group>
           }
         />
+      </Box>
 
-        {/* Cartões de Resumo Analítico */}
+      {/* Cartões de Resumo Analítico */}
+      <Box style={{ flexShrink: 0 }}>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
           <StatCard
             label="Total do Pedido"

@@ -616,7 +616,7 @@ export function ConfiguracoesView({
   }
 
   return (
-    <Stack gap="sm" style={{ width: '100%', paddingBottom: 48 }}>
+    <Stack gap="xs" style={{ width: '100%', paddingBottom: 48 }}>
       {/* Cabeçalho */}
       <PageHeader
         icon={IconSettings}
@@ -722,7 +722,7 @@ export function ConfiguracoesView({
           <Text size="10px" fw={700} c="dimmed" tt="uppercase" mb={4}>
             Demonstração ao Vivo da Densidade e Fonte:
           </Text>
-          <Table withTableBorder withColumnBorders striped style={{ backgroundColor: computedColorScheme === 'dark' ? '#1a1b1e' : '#ffffff' }}>
+          <Table withTableBorder withColumnBorders striped style={{ backgroundColor: 'var(--mantine-color-body)' }}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th style={{ width: '40%' }}>Produto Demonstrativo</Table.Th>
@@ -868,12 +868,12 @@ export function ConfiguracoesView({
       </Card>
 
       {/* SEÇÃO 3: Gerenciamento Seguro do Banco de Dados SQLite */}
-      <Card withBorder shadow="none" radius="sm" p="sm">
-        <Title order={3} mb="xs" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <IconDatabase size={22} />
+      <Card withBorder radius="sm" p="sm">
+        <Title order={4} fw={600} mb={2} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <IconDatabase size={18} />
           Gerenciamento do Banco de Dados (SQLite Local)
         </Title>
-        <Text size="xs" c="dimmed" mb="lg">
+        <Text size="xs" c="dimmed" mb="sm">
           Arquivo local independente (<b>cotacao.db</b>). Todas as ações críticas contam com confirmação segura e timer de proteção.
         </Text>
 
@@ -1027,7 +1027,7 @@ export function ConfiguracoesView({
 
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
           {/* Card 1: Backup / Restaurar */}
-          <Paper withBorder p="md" radius="md">
+          <Paper withBorder p="xs" radius="sm">
             <Stack justify="space-between" h="100%">
               <div>
                 <Group gap="xs" mb="xs">
@@ -1065,7 +1065,7 @@ export function ConfiguracoesView({
           </Paper>
 
           {/* Card 2: Formatar / Limpar Tudo */}
-          <Paper withBorder p="md" radius="md" style={{ borderColor: '#ffa8a8' }}>
+          <Paper withBorder p="xs" radius="sm" style={{ borderColor: 'var(--mantine-color-red-light-color)' }}>
             <Stack justify="space-between" h="100%">
               <div>
                 <Group gap="xs" mb="xs">
@@ -1101,7 +1101,7 @@ export function ConfiguracoesView({
         onClose={closeModalExportar}
         title={
           <Group gap="xs">
-            <IconDatabaseExport size={22} color="#12b886" />
+            <IconDatabaseExport size={22} color="teal" />
             <Text fw={700}>Exportar Cópia de Segurança (Backup do Banco)</Text>
           </Group>
         }
@@ -1127,7 +1127,7 @@ export function ConfiguracoesView({
           <Divider label="Onde você deseja salvar o backup?" labelPosition="center" my="xs" />
 
           {/* Opção Principal: Diálogo do Sistema Operacional */}
-          <Paper withBorder p="md" radius="md">
+          <Paper withBorder p="xs" radius="sm">
             <Group justify="space-between" align="center">
               <div>
                 <Group gap="xs">
@@ -1181,7 +1181,7 @@ export function ConfiguracoesView({
         onClose={closeModalImportar}
         title={
           <Group gap="xs">
-            <IconDatabaseImport size={20} color="#12b886" />
+            <IconDatabaseImport size={20} color="teal" />
             <Text fw={700}>Importar Banco de Dados (.db)</Text>
           </Group>
         }
@@ -1228,7 +1228,7 @@ export function ConfiguracoesView({
         onClose={closeModalFormatar1}
         title={
           <Group gap="xs">
-            <IconAlertTriangle size={22} color="#fa5252" />
+            <IconAlertTriangle size={22} color="red" />
             <Text fw={700} c="red.8">
               Etapa 1/2: Alerta de Formatação Total
             </Text>
@@ -1275,7 +1275,7 @@ export function ConfiguracoesView({
         onClose={closeModalFormatar2}
         title={
           <Group gap="xs">
-            <IconTrash size={22} color="#fa5252" />
+            <IconTrash size={22} color="red" />
             <Text fw={700} c="red.8">
               Etapa 2/2: Confirmação Definitiva
             </Text>

@@ -9,7 +9,6 @@ import {
   Text,
   ThemeIcon,
   Title,
-  useComputedColorScheme,
 } from '@mantine/core'
 import { IconPower } from '@tabler/icons-react'
 
@@ -64,13 +63,11 @@ export function ShutdownModal({
 }
 
 export function ShutdownCompleteScreen() {
-  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
-
   return (
     <Center
       style={{
         minHeight: '100vh',
-        backgroundColor: computedColorScheme === 'dark' ? '#141517' : '#f8fafc',
+        backgroundColor: 'var(--mantine-color-body)',
         padding: 20,
       }}
     >

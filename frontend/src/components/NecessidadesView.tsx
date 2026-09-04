@@ -519,8 +519,10 @@ export function NecessidadesView({
             />
           }
         />
+      </Box>
 
-        {/* Formulário Ultrarrápido de Inclusão por Teclado */}
+      {/* Formulário Ultrarrápido de Inclusão por Teclado */}
+      <Box style={{ flexShrink: 0 }}>
         <SectionCard
           title="Adicionar Produto à Rodada"
           subtitle="Pressione Enter para incluir"
