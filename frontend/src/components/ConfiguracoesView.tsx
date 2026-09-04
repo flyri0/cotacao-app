@@ -518,7 +518,18 @@ export function ConfiguracoesView({
   }
 
   return (
-    <Stack gap="sm" style={{ width: '100%' }}>
+    <Stack
+      gap="sm"
+      className="scrollable-view"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        paddingRight: 8,
+        paddingBottom: 40,
+      }}
+    >
       {/* Cabeçalho */}
       <PageHeader
         icon={IconSettings}

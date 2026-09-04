@@ -322,7 +322,18 @@ export function PedidoView({
   }
 
   return (
-    <Stack gap="xs" style={{ width: '100%' }}>
+    <Stack
+      gap="xs"
+      className="scrollable-view"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        paddingRight: 6,
+        paddingBottom: 32,
+      }}
+    >
       {/* Cabeçalho Superior (Oculto na Impressão) */}
       <div className="no-print">
         <PageHeader
