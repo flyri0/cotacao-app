@@ -11,7 +11,6 @@ from backend.services.excel_service import (
     process_quote_excel,
     export_products_excel_db,
     import_products_excel_db,
-    export_suppliers_excel_db,
     import_suppliers_excel_db,
 )
 
@@ -31,8 +30,8 @@ class TestExcelService(unittest.TestCase):
         self.conn.close()
 
     def test_gerar_e_processar_planilha_cotacao(self) -> None:
-        # Gera modelo de cotação para rodada 1
-        res = self.api.export_quote_spreadsheet(id_rodada=1, id_fornecedor=1)
+        # Gera modelo de cotação para rodada 4 (aberta)
+        res = self.api.export_quote_spreadsheet(id_rodada=4, id_fornecedor=1)
         self.assertTrue(res["sucesso"])
         self.assertIn("conteudo_base64", res)
         self.assertGreater(res["total_itens"], 0)
@@ -71,7 +70,7 @@ class TestExcelService(unittest.TestCase):
 
         # Importa de volta via API
         import_res = self.api.import_quote_spreadsheet(
-            id_rodada=1, id_fornecedor=1, conteudo_base64=filled_b64
+            id_rodada=4, id_fornecedor=1, conteudo_base64=filled_b64
         )
         self.assertTrue(import_res["sucesso"])
         self.assertGreaterEqual(import_res["importados"], 3)
@@ -100,11 +99,7 @@ class TestExcelService(unittest.TestCase):
         produtos = self.api.list_products()
         self.assertEqual(len(produtos), 51)
 
-    def test_exportar_e_importar_fornecedores_excel(self) -> None:
-        exp = self.api.export_suppliers_excel()
-        self.assertTrue(exp["sucesso"])
-        self.assertEqual(exp["total"], 8)
-
+    def test_importar_fornecedores_excel(self) -> None:
         # Cria uma planilha com novo fornecedor
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -132,7 +127,8 @@ class TestExcelService(unittest.TestCase):
         # Geração sem id_fornecedor
         res_sem_forn = generate_quote_template_excel(self.conn, id_rodada=1, id_fornecedor=None)
         self.assertTrue(res_sem_forn["sucesso"])
-        self.assertIn("cotacao_rodada_1.xlsx", res_sem_forn["nome_arquivo"])
+        self.assertTrue(res_sem_forn["nome_arquivo"].endswith(".xlsx"))
+        self.assertIn("Janeiro_2026", res_sem_forn["nome_arquivo"])
 
     def test_process_quote_excel_validations_and_legacy_columns(self) -> None:
         """Testa importação de cotações com planilha legado de 8 colunas e validações."""
@@ -181,15 +177,19 @@ class TestExcelService(unittest.TestCase):
         buf.seek(0)
         b64_legado = base64.b64encode(buf.read()).decode("utf-8")
 
+        # Rodada fechada com planilha válida -> ValueError
+        with self.assertRaises(ValueError):
+            process_quote_excel(self.conn, id_rodada=1, id_fornecedor=1, conteudo_base64=b64_legado)
+
         # Rodada inexistente com planilha válida
         with self.assertRaises(ValueError):
             process_quote_excel(self.conn, id_rodada=99999, id_fornecedor=1, conteudo_base64=b64_legado)
 
         # Fornecedor inexistente com planilha válida
         with self.assertRaises(ValueError):
-            process_quote_excel(self.conn, id_rodada=1, id_fornecedor=99999, conteudo_base64=b64_legado)
+            process_quote_excel(self.conn, id_rodada=4, id_fornecedor=99999, conteudo_base64=b64_legado)
 
-        res_legado = process_quote_excel(self.conn, id_rodada=1, id_fornecedor=1, conteudo_base64=b64_legado)
+        res_legado = process_quote_excel(self.conn, id_rodada=4, id_fornecedor=1, conteudo_base64=b64_legado)
         self.assertTrue(res_legado["sucesso"])
         self.assertGreaterEqual(res_legado["importados"], 1)
         self.assertGreater(res_legado["ignorados"], 0)

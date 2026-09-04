@@ -5,7 +5,6 @@ import {
   Badge,
   Button,
   Center,
-  FileInput,
   Group,
   Kbd,
   Loader,
@@ -26,9 +25,7 @@ import {
   IconAlertCircle,
   IconCalculator,
   IconCheck,
-  IconDownload,
   IconEdit,
-  IconFileSpreadsheet,
   IconPackage,
   IconPlus,
   IconReceipt,
@@ -47,7 +44,7 @@ import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import { PageHeader } from './common/PageHeader'
 import { RoundHeaderSelector } from './common/RoundHeaderSelector'
 import { SectionCard } from './common/SectionCard'
-import { AppAutocomplete, AppSelect } from './common/AppSelect'
+import { AppAutocomplete } from './common/AppSelect'
 import { getApi } from '../services/api'
 import type {
   Cotacao,
@@ -149,12 +146,6 @@ export function CotacoesView({
   // Estatísticas de inteligência de preço do produto atualmente em foco
   const [statsProduto, setStatsProduto] = useState<EstatisticasProduto | null>(null)
 
-  // Estado para Modal de Importação Excel
-  const [modalImportarOpened, { open: openModalImportar, close: closeModalImportar }] =
-    useDisclosure(false)
-  const [arquivoExcel, setArquivoExcel] = useState<File | null>(null)
-  const [fornecedorImportarId, setFornecedorImportarId] = useState<string | null>(null)
-  const [importandoExcel, setImportandoExcel] = useState(false)
   const [exportandoExcel, setExportandoExcel] = useState(false)
 
   const rodadaAtual = rodadas.find((r) => r.id === selectedRodadaId)
@@ -619,11 +610,11 @@ export function CotacoesView({
     })
   }
 
-  const handleExportarPlanilhaModelo = async () => {
+  const handleExportarExcel = async () => {
     if (!selectedRodadaId) {
       notifications.show({
         title: 'Selecione uma rodada',
-        message: 'Selecione uma rodada ativa para exportar o modelo de cotação.',
+        message: 'Selecione uma rodada ativa para exportar as cotações.',
         color: 'orange',
         icon: <IconAlertCircle size={16} />,
       })
@@ -633,15 +624,7 @@ export function CotacoesView({
     try {
       setExportandoExcel(true)
       const api = await getApi()
-      const forn = fornecedores.find(
-        (f) =>
-          f.nome.trim().toLowerCase() ===
-          form.values.fornecedorNome.trim().toLowerCase(),
-      )
-      const res = await api.export_quote_spreadsheet(
-        selectedRodadaId,
-        forn ? forn.id : null,
-      )
+      const res = await api.export_quote_spreadsheet(selectedRodadaId)
 
       if (res.cancelado) {
         return
@@ -655,10 +638,10 @@ export function CotacoesView({
           icon: <IconCheck size={16} />,
         })
       } else if (res.conteudo_base64) {
-        downloadBase64File(res.conteudo_base64, res.nome_arquivo || 'cotacao.xlsx')
+        downloadBase64File(res.conteudo_base64, res.nome_arquivo || 'cotacoes.xlsx')
         notifications.show({
           title: 'Planilha Exportada com Sucesso',
-          message: `Arquivo "${res.nome_arquivo}" gerado com ${res.total_itens || res.total || 0} produtos.`,
+          message: `Arquivo "${res.nome_arquivo}" gerado com ${res.total_itens || res.total || 0} itens.`,
           color: 'teal',
           icon: <IconCheck size={16} />,
         })
@@ -673,77 +656,6 @@ export function CotacoesView({
       })
     } finally {
       setExportandoExcel(false)
-    }
-  }
-
-  const handleProcessarImportacaoExcel = async () => {
-    if (!selectedRodadaId) {
-      notifications.show({
-        title: 'Selecione uma rodada',
-        message: 'Selecione uma rodada ativa para importar cotações.',
-        color: 'orange',
-        icon: <IconAlertCircle size={16} />,
-      })
-      return
-    }
-
-    if (!fornecedorImportarId || !arquivoExcel) {
-      notifications.show({
-        title: 'Dados incompletos',
-        message: 'Selecione o fornecedor e anexe o arquivo Excel (.xlsx).',
-        color: 'orange',
-        icon: <IconAlertCircle size={16} />,
-      })
-      return
-    }
-
-    try {
-      setImportandoExcel(true)
-      const reader = new FileReader()
-      reader.onload = async () => {
-        try {
-          const result = reader.result as string
-          const base64Content = result.split(',')[1] || result
-          const api = await getApi()
-          const res = await api.import_quote_spreadsheet(
-            selectedRodadaId,
-            parseInt(fornecedorImportarId, 10),
-            base64Content,
-          )
-
-          notifications.show({
-            title: 'Importação Concluída com Sucesso',
-            message: `${res.importados} cotações importadas/atualizadas para ${res.fornecedor_nome}!`,
-            color: 'teal',
-            icon: <IconCheck size={16} />,
-          })
-
-          if (res.erros && res.erros.length > 0) {
-            notifications.show({
-              title: 'Avisos durante a importação',
-              message: `${res.erros.length} linha(s) ignoradas por inconsistência ou produtos não localizados.`,
-              color: 'orange',
-              icon: <IconAlertCircle size={16} />,
-            })
-          }
-
-          closeModalImportar()
-          setArquivoExcel(null)
-          await carregarCotacoesENecessidades(selectedRodadaId)
-        } catch (err: any) {
-          notifications.show({
-            title: 'Falha ao processar arquivo',
-            message: err?.message || 'Verifique o formato da planilha.',
-            color: 'red',
-            icon: <IconX size={16} />,
-          })
-        } finally {
-          setImportandoExcel(false)
-        }
-      }
-      reader.readAsDataURL(arquivoExcel)
-    } catch (error: any) {
-      setImportandoExcel(false)
     }
   }
 
@@ -939,19 +851,9 @@ export function CotacoesView({
               size="xs"
               leftSection={<IconUpload size={14} />}
               loading={exportandoExcel}
-              onClick={handleExportarPlanilhaModelo}
+              onClick={handleExportarExcel}
             >
               Exportar para Excel
-            </Button>
-            <Button
-              variant="outline"
-              color={themeColor}
-              size="xs"
-              leftSection={<IconDownload size={14} />}
-              onClick={openModalImportar}
-              disabled={isFechada}
-            >
-              Importar do Excel
             </Button>
             <RoundHeaderSelector
               rodadas={rodadas}
@@ -1196,64 +1098,6 @@ export function CotacoesView({
         <MantineReactTable table={table} />
       )}
 
-      {/* Modal de Importação de Planilha Excel */}
-      <Modal
-        opened={modalImportarOpened}
-        onClose={closeModalImportar}
-        title={
-          <Group gap="xs">
-            <IconFileSpreadsheet size={18} />
-            <Text fw={700}>Importar Cotações via Planilha Excel (.xlsx)</Text>
-          </Group>
-        }
-        centered
-        radius="sm"
-        size="lg"
-      >
-        <Stack gap="sm">
-          <Text size="xs" c="dimmed">
-            Selecione o fornecedor que enviou os preços e faça o upload da planilha modelo preenchida. Novos produtos serão cadastrados automaticamente.
-          </Text>
-
-          <AppSelect
-            label="Fornecedor da Planilha"
-            size="xs"
-            placeholder="Selecione qual fornecedor enviou esta cotação..."
-            data={fornecedores.map((f) => ({ value: String(f.id), label: f.nome }))}
-            value={fornecedorImportarId}
-            onChange={setFornecedorImportarId}
-            required
-          />
-
-          <FileInput
-            label="Arquivo Excel (.xlsx)"
-            size="xs"
-            placeholder="Clique para selecionar a planilha..."
-            accept=".xlsx,.xls"
-            value={arquivoExcel}
-            onChange={setArquivoExcel}
-            leftSection={<IconFileSpreadsheet size={14} />}
-            clearable
-            required
-          />
-
-          <Group justify="flex-end" gap="xs" mt="md">
-            <Button variant="subtle" color="gray" size="xs" onClick={closeModalImportar}>
-              Cancelar
-            </Button>
-            <Button
-              variant="filled"
-              color={themeColor}
-              size="xs"
-              leftSection={<IconDownload size={14} />}
-              loading={importandoExcel}
-              onClick={handleProcessarImportacaoExcel}
-            >
-              Processar e Importar Cotações
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
 
       {/* Modal de Edição Completa de Cotação */}
       <Modal

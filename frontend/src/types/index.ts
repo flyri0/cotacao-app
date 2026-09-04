@@ -345,16 +345,6 @@ export interface PywebviewApi {
     ignorados: number
     erros: string[]
   }>
-  export_suppliers_excel: () => Promise<{
-    sucesso: boolean
-    cancelado?: boolean
-    salvo_em_disco?: boolean
-    caminho?: string
-    nome_arquivo?: string
-    conteudo_base64?: string
-    total?: number
-    mensagem?: string
-  }>
   import_suppliers_excel: (conteudo_base64: string) => Promise<{
     sucesso: boolean
     importados: number

@@ -77,7 +77,6 @@ from backend.services.excel_service import (
     process_quote_excel,
     export_products_excel_db,
     import_products_excel_db,
-    export_suppliers_excel_db,
     import_suppliers_excel_db,
 )
 
@@ -756,11 +755,6 @@ class Api:
     def import_products_excel(self, conteudo_base64: str) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return import_products_excel_db(conn, conteudo_base64)
-
-    def export_suppliers_excel(self) -> Dict[str, Any]:
-        with self._get_connection() as conn:
-            gerado = export_suppliers_excel_db(conn)
-            return self._salvar_excel_com_dialogo_ou_base64(gerado)
 
     def import_suppliers_excel(self, conteudo_base64: str) -> Dict[str, Any]:
         with self._get_connection() as conn:

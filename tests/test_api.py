@@ -1363,7 +1363,7 @@ class TestApi(unittest.TestCase):
             # Exceção no diálogo
             mock_win.create_file_dialog.side_effect = RuntimeError("Save error")
             with patch.dict(sys.modules, {"webview": mock_webview}):
-                res_err = self.api.export_suppliers_excel()
+                res_err = self.api.export_products_excel()
                 self.assertFalse(res_err["salvo_em_disco"])
                 self.assertIn("aviso", res_err)
 

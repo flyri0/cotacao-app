@@ -29,7 +29,6 @@ import {
   IconPower,
   IconTrash,
   IconTruck,
-  IconUpload,
   IconX,
 } from '@tabler/icons-react'
 import {
@@ -43,27 +42,6 @@ import { SectionCard } from './common/SectionCard'
 import { getApi } from '../services/api'
 import type { Fornecedor } from '../types'
 
-function downloadBase64File(
-  base64Data: string,
-  fileName: string,
-  mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-) {
-  const byteCharacters = atob(base64Data)
-  const byteNumbers = new Array(byteCharacters.length)
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i)
-  }
-  const byteArray = new Uint8Array(byteNumbers)
-  const blob = new Blob([byteArray], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
 
 function formatMoney(valor: number): string {
   return new Intl.NumberFormat('pt-BR', {
@@ -257,46 +235,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
     useDisclosure(false)
   const [arquivoExcel, setArquivoExcel] = useState<File | null>(null)
   const [importandoExcel, setImportandoExcel] = useState(false)
-  const [exportandoExcel, setExportandoExcel] = useState(false)
-
-  // Exportar Catálogo de Fornecedores para Excel
-  const handleExportarExcel = async () => {
-    try {
-      setExportandoExcel(true)
-      const api = await getApi()
-      const res = await api.export_suppliers_excel()
-
-      if (res.cancelado) {
-        return
-      }
-
-      if (res.salvo_em_disco) {
-        notifications.show({
-          title: 'Planilha Exportada com Sucesso',
-          message: `Salva em: ${res.caminho}`,
-          color: 'cyan',
-          icon: <IconCheck size={16} />,
-        })
-      } else if (res.conteudo_base64) {
-        downloadBase64File(res.conteudo_base64, res.nome_arquivo || 'fornecedores.xlsx')
-        notifications.show({
-          title: 'Planilha Exportada com Sucesso',
-          message: `${res.total || 0} fornecedores exportados para Excel com sucesso.`,
-          color: 'cyan',
-          icon: <IconCheck size={16} />,
-        })
-      }
-    } catch (err: any) {
-      notifications.show({
-        title: 'Erro ao exportar',
-        message: err?.message || 'Falha ao gerar planilha de fornecedores.',
-        color: 'red',
-        icon: <IconX size={16} />,
-      })
-    } finally {
-      setExportandoExcel(false)
-    }
-  }
 
   // Processar Importação de Fornecedores via Excel
   const handleProcessarImportacaoExcel = async () => {
@@ -601,16 +539,6 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
         }}
         rightSection={
           <Group gap="xs">
-            <Button
-              variant="light"
-              color={themeColor}
-              size="xs"
-              leftSection={<IconUpload size={14} />}
-              loading={exportandoExcel}
-              onClick={handleExportarExcel}
-            >
-              Exportar para Excel
-            </Button>
             <Button
               variant="outline"
               color={themeColor}
