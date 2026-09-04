@@ -9,10 +9,12 @@ import {
   Kbd,
   Loader,
   Modal,
+  Paper,
   Stack,
   Text,
   TextInput,
   Tooltip,
+  useComputedColorScheme,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { useDisclosure } from '@mantine/hooks'
@@ -27,6 +29,7 @@ import {
   IconPackage,
   IconPlus,
   IconPower,
+  IconTag,
   IconTrash,
   IconUpload,
   IconX,
@@ -74,6 +77,139 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [produtoEmEdicao, setProdutoEmEdicao] = useState<Produto | null>(null)
   const [modalEditarOpened, { open: openModalEditar, close: closeModalEditar }] =
     useDisclosure(false)
+
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const isDark = computedColorScheme === 'dark'
+
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [modalMassaCategoriaOpened, { open: openModalMassaCategoria, close: closeModalMassaCategoria }] =
+    useDisclosure(false)
+  const [novaCategoriaEmMassa, setNovaCategoriaEmMassa] = useState('')
+  const [salvandoMassa, setSalvandoMassa] = useState(false)
+
+  const selectedProductIds = useMemo(() => {
+    return Object.keys(rowSelection).filter((k) => rowSelection[k]).map(Number)
+  }, [rowSelection])
+
+  const handleAlterarCategoriaEmMassa = async () => {
+    if (selectedProductIds.length === 0) return
+    try {
+      setSalvandoMassa(true)
+      const api = await getApi()
+      const res = await api.batch_update_products_category(
+        selectedProductIds,
+        novaCategoriaEmMassa.trim() || null,
+      )
+      notifications.show({
+        title: 'Categorias Atualizadas',
+        message: `${res.atualizados} produto(s) atualizados com sucesso.`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      })
+      closeModalMassaCategoria()
+      setNovaCategoriaEmMassa('')
+      setRowSelection({})
+      await carregarProdutos()
+    } catch (err: any) {
+      notifications.show({
+        title: 'Erro ao atualizar',
+        message: err?.message || 'Falha ao atualizar categorias em massa.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setSalvandoMassa(false)
+    }
+  }
+
+  const handleAtivarEmMassa = async () => {
+    if (selectedProductIds.length === 0) return
+    try {
+      const api = await getApi()
+      const res = await api.batch_toggle_products_active(selectedProductIds, true)
+      notifications.show({
+        title: 'Produtos Ativados',
+        message: `${res.atualizados} produto(s) ativados com sucesso.`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      })
+      setRowSelection({})
+      await carregarProdutos()
+    } catch (err: any) {
+      notifications.show({
+        title: 'Erro',
+        message: err?.message || 'Falha ao ativar produtos.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    }
+  }
+
+  const handleInativarEmMassa = async () => {
+    if (selectedProductIds.length === 0) return
+    try {
+      const api = await getApi()
+      const res = await api.batch_toggle_products_active(selectedProductIds, false)
+      notifications.show({
+        title: 'Produtos Inativados',
+        message: `${res.atualizados} produto(s) inativados.`,
+        color: 'gray',
+        icon: <IconPower size={16} />,
+      })
+      setRowSelection({})
+      await carregarProdutos()
+    } catch (err: any) {
+      notifications.show({
+        title: 'Erro',
+        message: err?.message || 'Falha ao inativar produtos.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    }
+  }
+
+  const handleExcluirEmMassa = () => {
+    if (selectedProductIds.length === 0) return
+
+    modals.openConfirmModal({
+      title: (
+        <Group gap="xs">
+          <IconTrash size={18} color="var(--mantine-color-red-6)" />
+          <Text fw={700}>Excluir {selectedProductIds.length} Produto(s)</Text>
+        </Group>
+      ),
+      children: (
+        <Text size="xs">
+          Tem certeza que deseja excluir os <b>{selectedProductIds.length}</b> produto(s) selecionados?
+          Produtos vinculados a cotações, necessidades ou alocações não serão excluídos para preservar o histórico.
+        </Text>
+      ),
+      labels: { confirm: 'Excluir Selecionados', cancel: 'Cancelar' },
+      confirmProps: { color: 'red', size: 'xs' },
+      cancelProps: { size: 'xs' },
+      onConfirm: async () => {
+        try {
+          const api = await getApi()
+          const res = await api.batch_delete_products(selectedProductIds)
+          notifications.show({
+            title: 'Exclusão Concluída',
+            message: res.mensagem,
+            color: res.bloqueados > 0 ? 'yellow' : 'teal',
+            icon: <IconCheck size={16} />,
+          })
+          setRowSelection({})
+          await carregarProdutos()
+        } catch (err: any) {
+          notifications.show({
+            title: 'Erro ao excluir',
+            message: err?.message || 'Falha ao excluir produtos em massa.',
+            color: 'red',
+            icon: <IconX size={16} />,
+          })
+        }
+      },
+    })
+  }
 
   const nomeRef = useRef<HTMLInputElement>(null)
   const categoriaRef = useRef<HTMLInputElement>(null)
@@ -511,10 +647,82 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
     data: produtos,
     localization: MRT_Localization_PT_BR,
     enableRowActions: false,
+    enableRowSelection: true,
+    getRowId: (row) => String(row.id),
+    onRowSelectionChange: setRowSelection,
+    state: { rowSelection },
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
     initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
+    renderTopToolbarCustomActions: () => {
+      if (selectedProductIds.length === 0) return null
+      return (
+        <Paper
+          withBorder
+          radius="sm"
+          p="xs"
+          style={{
+            width: '100%',
+            backgroundColor: isDark
+              ? 'var(--mantine-color-dark-6)'
+              : 'var(--mantine-color-blue-0)',
+          }}
+        >
+          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+            <Group gap="xs" align="center" wrap="wrap">
+              <Badge size="sm" variant="filled" color={themeColor}>
+                {selectedProductIds.length} produto{selectedProductIds.length > 1 ? 's' : ''} selecionado{selectedProductIds.length > 1 ? 's' : ''}
+              </Badge>
+              <Button
+                variant="light"
+                color={themeColor}
+                size="xs"
+                leftSection={<IconTag size={14} />}
+                onClick={openModalMassaCategoria}
+              >
+                Alterar Categoria
+              </Button>
+              <Button
+                variant="light"
+                color="teal"
+                size="xs"
+                leftSection={<IconPower size={14} />}
+                onClick={handleAtivarEmMassa}
+              >
+                Ativar
+              </Button>
+              <Button
+                variant="light"
+                color="gray"
+                size="xs"
+                leftSection={<IconPower size={14} />}
+                onClick={handleInativarEmMassa}
+              >
+                Inativar
+              </Button>
+              <Button
+                variant="filled"
+                color="red"
+                size="xs"
+                leftSection={<IconTrash size={14} />}
+                onClick={handleExcluirEmMassa}
+              >
+                Excluir Selecionados
+              </Button>
+            </Group>
+            <Button
+              variant="subtle"
+              color="gray"
+              size="xs"
+              onClick={() => setRowSelection({})}
+            >
+              Desmarcar Todos
+            </Button>
+          </Group>
+        </Paper>
+      )
+    },
     mantineTableHeadCellProps: {
       style: {
         padding: '6px 8px',
@@ -728,6 +936,53 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
               onClick={handleProcessarImportacaoExcel}
             >
               Importar Produtos
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Modal de Alteração de Categoria em Massa */}
+      <Modal
+        opened={modalMassaCategoriaOpened}
+        onClose={closeModalMassaCategoria}
+        title={
+          <Group gap="xs">
+            <IconTag size={18} />
+            <Text fw={700}>
+              Alterar Categoria em Massa ({selectedProductIds.length} produto{selectedProductIds.length > 1 ? 's' : ''})
+            </Text>
+          </Group>
+        }
+        centered
+        radius="sm"
+        size="md"
+      >
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
+            Informe a nova categoria para todos os {selectedProductIds.length} produtos selecionados.
+          </Text>
+
+          <AppAutocomplete
+            label="Nova Categoria"
+            size="xs"
+            placeholder="Selecione ou digite a nova categoria..."
+            data={categoriasSugeridas}
+            value={novaCategoriaEmMassa}
+            onChange={setNovaCategoriaEmMassa}
+          />
+
+          <Group justify="flex-end" gap="xs" mt="md">
+            <Button variant="subtle" color="gray" size="xs" onClick={closeModalMassaCategoria}>
+              Cancelar
+            </Button>
+            <Button
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              loading={salvandoMassa}
+              onClick={handleAlterarCategoriaEmMassa}
+            >
+              Aplicar a Todos
             </Button>
           </Group>
         </Stack>

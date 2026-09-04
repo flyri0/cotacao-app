@@ -16,6 +16,7 @@ import {
   Text,
   TextInput,
   Tooltip,
+  useComputedColorScheme,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { useDisclosure } from '@mantine/hooks'
@@ -44,7 +45,7 @@ import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import { PageHeader } from './common/PageHeader'
 import { RoundHeaderSelector } from './common/RoundHeaderSelector'
 import { SectionCard } from './common/SectionCard'
-import { AppAutocomplete } from './common/AppSelect'
+import { AppAutocomplete, AppSelect } from './common/AppSelect'
 import { getApi } from '../services/api'
 import type {
   Cotacao,
@@ -150,6 +151,141 @@ export function CotacoesView({
 
   const rodadaAtual = rodadas.find((r) => r.id === selectedRodadaId)
   const isFechada = rodadaAtual?.status === 'fechada'
+
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const isDark = computedColorScheme === 'dark'
+
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [modalMassaOpened, { open: openModalMassa, close: closeModalMassa }] = useDisclosure(false)
+  const [salvandoMassa, setSalvandoMassa] = useState(false)
+
+  // Campos para edição em massa
+  const [massaFornecedorId, setMassaFornecedorId] = useState<string | null>(null)
+  const [massaMarca, setMassaMarca] = useState('')
+  const [massaEmbalagem, setMassaEmbalagem] = useState('')
+  const [massaQtdEmbalagem, setMassaQtdEmbalagem] = useState<number | string>('')
+  const [massaUnidade, setMassaUnidade] = useState('')
+  const [massaReajustePct, setMassaReajustePct] = useState<number | string>('')
+
+  const selectedQuoteIds = useMemo(() => {
+    return Object.keys(rowSelection).filter((k) => rowSelection[k]).map(Number)
+  }, [rowSelection])
+
+  const handleEditarEmMassa = async () => {
+    if (selectedQuoteIds.length === 0 || isFechada) return
+
+    const updates: any = {}
+    if (massaFornecedorId) {
+      updates.id_fornecedor = Number(massaFornecedorId)
+    }
+    if (massaMarca.trim()) {
+      updates.marca = massaMarca.trim()
+    }
+    if (massaEmbalagem.trim()) {
+      updates.embalagem = massaEmbalagem.trim()
+    }
+    if (massaQtdEmbalagem !== '' && Number(massaQtdEmbalagem) > 0) {
+      updates.qtd_por_embalagem = Number(massaQtdEmbalagem)
+    }
+    if (massaUnidade.trim()) {
+      updates.unidade = massaUnidade.trim().toUpperCase()
+    }
+    if (massaReajustePct !== '' && !isNaN(Number(massaReajustePct))) {
+      updates.percentual_reajuste = Number(massaReajustePct)
+    }
+
+    if (Object.keys(updates).length === 0) {
+      notifications.show({
+        title: 'Nenhum campo informado',
+        message: 'Preencha ao menos um campo para aplicar as alterações em massa.',
+        color: 'yellow',
+      })
+      return
+    }
+
+    try {
+      setSalvandoMassa(true)
+      const api = await getApi()
+      const res = await api.batch_update_quotes(selectedQuoteIds, updates)
+
+      if (res.sucesso) {
+        notifications.show({
+          title: 'Cotações Atualizadas',
+          message:
+            `${res.atualizados} cotação(ões) atualizada(s) com sucesso.` +
+            (res.ignorados > 0
+              ? ` (${res.ignorados} ignorada(s) por conflito de produto duplicado)`
+              : ''),
+          color: res.ignorados > 0 ? 'yellow' : 'teal',
+          icon: <IconCheck size={16} />,
+        })
+        closeModalMassa()
+        setMassaFornecedorId(null)
+        setMassaMarca('')
+        setMassaEmbalagem('')
+        setMassaQtdEmbalagem('')
+        setMassaUnidade('')
+        setMassaReajustePct('')
+        setRowSelection({})
+        if (selectedRodadaId) {
+          await carregarCotacoesENecessidades(selectedRodadaId)
+        }
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: 'Erro ao atualizar cotações',
+        message: err?.message || 'Falha na edição em massa de cotações.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setSalvandoMassa(false)
+    }
+  }
+
+  const handleExcluirEmMassa = () => {
+    if (selectedQuoteIds.length === 0 || isFechada) return
+
+    modals.openConfirmModal({
+      title: (
+        <Group gap="xs">
+          <IconTrash size={18} color="var(--mantine-color-red-6)" />
+          <Text fw={700}>Excluir {selectedQuoteIds.length} Cotação(ões)</Text>
+        </Group>
+      ),
+      children: (
+        <Text size="xs">
+          Tem certeza que deseja excluir permanentemente as <b>{selectedQuoteIds.length}</b> cotações selecionadas desta rodada?
+        </Text>
+      ),
+      labels: { confirm: 'Excluir Cotações', cancel: 'Cancelar' },
+      confirmProps: { color: 'red', size: 'xs' },
+      cancelProps: { size: 'xs' },
+      onConfirm: async () => {
+        try {
+          const api = await getApi()
+          const res = await api.batch_remove_quotes(selectedQuoteIds)
+          notifications.show({
+            title: 'Cotações Excluídas',
+            message: `${res.removidos} cotação(ões) removida(s) com sucesso.`,
+            color: 'teal',
+            icon: <IconCheck size={16} />,
+          })
+          setRowSelection({})
+          if (selectedRodadaId) {
+            await carregarCotacoesENecessidades(selectedRodadaId)
+          }
+        } catch (err: any) {
+          notifications.show({
+            title: 'Erro ao excluir cotações',
+            message: err?.message || 'Falha ao remover cotações em massa.',
+            color: 'red',
+            icon: <IconX size={16} />,
+          })
+        }
+      },
+    })
+  }
 
   // Estado para Modal de Edição de Produto
   const [modalEditarProdutoOpened, { open: openModalEditarProduto, close: closeModalEditarProduto }] =
@@ -806,10 +942,66 @@ export function CotacoesView({
     data: cotacoes,
     localization: MRT_Localization_PT_BR,
     enableRowActions: false,
+    enableRowSelection: true,
+    getRowId: (row) => String(row.id),
+    onRowSelectionChange: setRowSelection,
+    state: { rowSelection },
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
     initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
+    renderTopToolbarCustomActions: () => {
+      if (selectedQuoteIds.length === 0) return null
+      return (
+        <Paper
+          withBorder
+          radius="sm"
+          p="xs"
+          style={{
+            width: '100%',
+            backgroundColor: isDark
+              ? 'var(--mantine-color-dark-6)'
+              : 'var(--mantine-color-blue-0)',
+          }}
+        >
+          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+            <Group gap="xs" align="center" wrap="wrap">
+              <Badge size="sm" variant="filled" color={themeColor}>
+                {selectedQuoteIds.length} cotação{selectedQuoteIds.length > 1 ? 'ões' : ''} selecionada{selectedQuoteIds.length > 1 ? 's' : ''}
+              </Badge>
+              <Button
+                variant="light"
+                color={themeColor}
+                size="xs"
+                leftSection={<IconEdit size={14} />}
+                disabled={isFechada}
+                onClick={openModalMassa}
+              >
+                Editar em Massa
+              </Button>
+              <Button
+                variant="filled"
+                color="red"
+                size="xs"
+                leftSection={<IconTrash size={14} />}
+                disabled={isFechada}
+                onClick={handleExcluirEmMassa}
+              >
+                Excluir Selecionadas
+              </Button>
+            </Group>
+            <Button
+              variant="subtle"
+              color="gray"
+              size="xs"
+              onClick={() => setRowSelection({})}
+            >
+              Desmarcar Todas
+            </Button>
+          </Group>
+        </Paper>
+      )
+    },
     mantineTableHeadCellProps: {
       style: {
         padding: '6px 8px',
@@ -1280,6 +1472,107 @@ export function CotacoesView({
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      {/* Modal de Edição em Massa de Cotações */}
+      <Modal
+        opened={modalMassaOpened}
+        onClose={closeModalMassa}
+        title={
+          <Group gap="xs">
+            <IconEdit size={18} />
+            <Text fw={700}>
+              Editar Informações em Massa ({selectedQuoteIds.length} cotação{selectedQuoteIds.length > 1 ? 'ões' : ''})
+            </Text>
+          </Group>
+        }
+        centered
+        radius="sm"
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
+            Preencha apenas os campos que deseja alterar em todas as cotações selecionadas. Os campos em branco manterão seus valores originais.
+          </Text>
+
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+            <AppSelect
+              label="Mudar Fornecedor"
+              size="xs"
+              placeholder="Manter fornecedor atual"
+              data={fornecedores.map((f) => ({ value: String(f.id), label: f.nome }))}
+              value={massaFornecedorId}
+              onChange={setMassaFornecedorId}
+              clearable
+            />
+
+            <TextInput
+              label="Definir Marca"
+              size="xs"
+              placeholder="Ex: Ypê, Bombril (opcional)"
+              value={massaMarca}
+              onChange={(e) => setMassaMarca(e.currentTarget.value)}
+            />
+
+            <TextInput
+              label="Descrição da Embalagem"
+              size="xs"
+              placeholder="Ex: Caixa c/ 12, Galão 5L"
+              value={massaEmbalagem}
+              onChange={(e) => setMassaEmbalagem(e.currentTarget.value)}
+            />
+
+            <Group grow gap="xs">
+              <NumberInput
+                label="Qtd na Emb."
+                size="xs"
+                placeholder="Ex: 12"
+                min={0.01}
+                value={massaQtdEmbalagem}
+                onChange={setMassaQtdEmbalagem}
+              />
+              <TextInput
+                label="Unidade"
+                size="xs"
+                placeholder="UN, CX, KG"
+                value={massaUnidade}
+                onChange={(e) => setMassaUnidade(e.currentTarget.value)}
+              />
+            </Group>
+          </SimpleGrid>
+
+          <Paper withBorder p="xs" radius="sm" mt="xs">
+            <Text size="xs" fw={700} mb={4}>
+              Reajuste Percentual de Preço (%)
+            </Text>
+            <Text size="11px" c="dimmed" mb="xs">
+              Aplica um acréscimo ou desconto percentual sobre o preço da embalagem de cada item selecionado (ex: +5% para reajuste de tabela ou -10% para desconto especial).
+            </Text>
+            <NumberInput
+              size="xs"
+              placeholder="Ex: 5 para +5%, -10 para -10%"
+              value={massaReajustePct}
+              onChange={setMassaReajustePct}
+              suffix="%"
+              decimalScale={2}
+            />
+          </Paper>
+
+          <Group justify="flex-end" gap="xs" mt="md">
+            <Button variant="subtle" color="gray" size="xs" onClick={closeModalMassa}>
+              Cancelar
+            </Button>
+            <Button
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              loading={salvandoMassa}
+              onClick={handleEditarEmMassa}
+            >
+              Aplicar a Todas
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Stack>
   )

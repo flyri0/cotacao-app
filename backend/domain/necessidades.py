@@ -198,3 +198,34 @@ def duplicate_round_needs_db(
     )
     conn.commit()
     return cursor.rowcount
+
+
+def batch_remove_needs_db(
+    conn: sqlite3.Connection, ids_necessidades: List[int]
+) -> Dict[str, Any]:
+    """Remove múltiplos itens da lista de necessidades em lote, verificando rodada aberta."""
+    from backend.domain.rodadas import verificar_rodada_aberta
+
+    if not ids_necessidades:
+        return {"sucesso": True, "removidos": 0}
+
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in ids_necessidades)
+
+    # Identifica rodadas envolvidas e valida se estão abertas
+    cursor.execute(
+        f"SELECT DISTINCT id_rodada FROM necessidades WHERE id IN ({placeholders})",
+        list(ids_necessidades),
+    )
+    rodadas = cursor.fetchall()
+    for r in rodadas:
+        verificar_rodada_aberta(conn, r["id_rodada"])
+
+    cursor.execute(
+        f"DELETE FROM necessidades WHERE id IN ({placeholders})",
+        list(ids_necessidades),
+    )
+    removidos = cursor.rowcount
+    conn.commit()
+    return {"sucesso": True, "removidos": removidos}
+

@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import {
   ActionIcon,
   Badge,
   Button,
   Center,
+  Checkbox,
   Group,
   Loader,
   Menu,
@@ -14,14 +15,19 @@ import {
   Table,
   Text,
   TextInput,
+  Tooltip,
   useComputedColorScheme,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
   IconArrowDown,
+  IconArrowLeft,
+  IconArrowRight,
   IconArrowUp,
   IconCheck,
   IconChevronDown,
+  IconEye,
+  IconEyeOff,
   IconFilterOff,
   IconRotate,
   IconScale,
@@ -99,10 +105,18 @@ export function ComparacaoView({
   // Filtros locais da planilha
   const [filtroTexto, setFiltroTexto] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState<string | null>(null)
+  const [fornecedoresOcultosIds, setFornecedoresOcultosIds] = useState<number[]>([])
+  const [ocultarCategoria, setOcultarCategoria] = useState(false)
 
-  // Ordenação alfabética estilo Excel (apenas em Produto e Categoria)
+  // Ordenação alfabética estilo Excel
   const [sortField, setSortField] = useState<SortField>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+  // Refs para a barra de rolagem horizontal dupla sincronizada
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const topScrollRef = useRef<HTMLDivElement>(null)
+  const [tableScrollWidth, setTableScrollWidth] = useState(0)
+  const isSyncingScroll = useRef(false)
 
   const carregarDados = async (rodadaId?: number) => {
     try {
@@ -118,33 +132,38 @@ export function ComparacaoView({
 
       let idAlvo = rodadaId || selectedRodadaId
       if (!idAlvo && listaRodadas.length > 0) {
-        idAlvo = listaRodadas[0].id
+        const aberta = listaRodadas.find((r) => r.status === 'aberta')
+        idAlvo = aberta ? aberta.id : listaRodadas[0].id
         setSelectedRodadaId(idAlvo)
         onRodadaChange?.(idAlvo)
       }
 
       if (idAlvo) {
-        const [listaNec, listaCot] = await Promise.all([
+        const [listaNecessidades, listaCotacoes] = await Promise.all([
           api.list_needs(idAlvo),
           api.list_quotes(idAlvo),
         ])
-        setNecessidades(listaNec)
-        setCotacoes(listaCot)
+        setNecessidades(listaNecessidades)
+        setCotacoes(listaCotacoes)
 
         const selecoes: Record<number, number | null> = {}
-        listaNec.forEach((n) => {
+        listaNecessidades.forEach((n) => {
           if (n.id_fornecedor_selecionado) {
             selecoes[n.id_produto] = n.id_fornecedor_selecionado
           } else {
-            const cotsDoProd = listaCot
-              .filter((c) => Number(c.id_produto) === Number(n.id_produto))
-              .sort((a, b) => Number(a.preco_unitario) - Number(b.preco_unitario))
+            const cotsDoProd = listaCotacoes
+              .filter((c) => c.id_produto === n.id_produto)
+              .sort((a, b) => a.preco_unitario - b.preco_unitario)
             if (cotsDoProd.length > 0) {
-              selecoes[n.id_produto] = Number(cotsDoProd[0].id_fornecedor)
+              selecoes[n.id_produto] = cotsDoProd[0].id_fornecedor
             }
           }
         })
         setFornecedoresSelecionados(selecoes)
+      } else {
+        setNecessidades([])
+        setCotacoes([])
+        setFornecedoresSelecionados({})
       }
     } catch (error) {
       console.error('Erro ao carregar mapa comparativo:', error)
@@ -163,12 +182,19 @@ export function ComparacaoView({
     carregarDados(selectedRodadaId || undefined)
   }, [])
 
-  // Apenas fornecedores participantes com cotação na rodada (ou todos cadastrados se nenhum cotou)
+  // Fornecedores participantes com cotação na rodada (ou todos cadastrados se nenhum cotou)
   const fornecedoresNaTabela = useMemo(() => {
     const idsComCotacao = new Set(cotacoes.map((c) => c.id_fornecedor))
     const participantes = fornecedores.filter((f) => idsComCotacao.has(f.id))
     return participantes.length > 0 ? participantes : fornecedores
   }, [fornecedores, cotacoes])
+
+  // Fornecedores efetivamente exibidos com base no filtro de visibilidade
+  const fornecedoresExibidos = useMemo(() => {
+    return fornecedoresNaTabela.filter(
+      (f) => !fornecedoresOcultosIds.includes(f.id),
+    )
+  }, [fornecedoresNaTabela, fornecedoresOcultosIds])
 
   // Lista de categorias únicas para o seletor de filtros
   const categoriasUnicas = useMemo(() => {
@@ -241,8 +267,14 @@ export function ComparacaoView({
 
     if (sortField) {
       list = [...list].sort((a, b) => {
-        const valA = (sortField === 'produto' ? a.produto_nome : a.produto_categoria) || ''
-        const valB = (sortField === 'produto' ? b.produto_nome : b.produto_categoria) || ''
+        const valA =
+          (sortField === 'produto'
+            ? a.produto_nome
+            : a.produto_categoria) || ''
+        const valB =
+          (sortField === 'produto'
+            ? b.produto_nome
+            : b.produto_categoria) || ''
         const cmp = valA.localeCompare(valB, 'pt-BR', { sensitivity: 'base' })
         return sortDirection === 'asc' ? cmp : -cmp
       })
@@ -250,6 +282,42 @@ export function ComparacaoView({
 
     return list
   }, [dadosLinhas, filtroCategoria, filtroTexto, sortField, sortDirection])
+
+  // Atualiza medição de largura para o top-scrollbar sincronizado
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      setTableScrollWidth(tableContainerRef.current.scrollWidth)
+    }
+  }, [fornecedoresExibidos, dadosFiltrados, ocultarCategoria])
+
+  // Sincronizadores de rolagem horizontal bidirecional
+  const handleTableScroll = () => {
+    if (isSyncingScroll.current) return
+    isSyncingScroll.current = true
+    if (topScrollRef.current && tableContainerRef.current) {
+      topScrollRef.current.scrollLeft = tableContainerRef.current.scrollLeft
+    }
+    requestAnimationFrame(() => {
+      isSyncingScroll.current = false
+    })
+  }
+
+  const handleTopScroll = () => {
+    if (isSyncingScroll.current) return
+    isSyncingScroll.current = true
+    if (tableContainerRef.current && topScrollRef.current) {
+      tableContainerRef.current.scrollLeft = topScrollRef.current.scrollLeft
+    }
+    requestAnimationFrame(() => {
+      isSyncingScroll.current = false
+    })
+  }
+
+  const scrollHorizontal = (offset: number) => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollBy({ left: offset, behavior: 'smooth' })
+    }
+  }
 
   // Indicadores rápidos
   const stats = useMemo(() => {
@@ -263,7 +331,13 @@ export function ComparacaoView({
     return { totalItens, totalComCotacao, percentual }
   }, [dadosLinhas])
 
-  const temFiltroAtivo = Boolean(filtroTexto.trim() || filtroCategoria || sortField)
+  const temFiltroAtivo = Boolean(
+    filtroTexto.trim() ||
+      filtroCategoria ||
+      sortField ||
+      fornecedoresOcultosIds.length > 0 ||
+      ocultarCategoria,
+  )
 
   // Verifica se há itens transferidos do menor preço na rodada
   const temItemTransferido = useMemo(() => {
@@ -274,11 +348,7 @@ export function ComparacaoView({
         fornecedoresSelecionados[linha.id_produto] ||
         linha.id_fornecedor_selecionado ||
         menorFornId
-      return Boolean(
-        menorFornId &&
-        fornEscolhido &&
-        fornEscolhido !== menorFornId
-      )
+      return Boolean(menorFornId && fornEscolhido && fornEscolhido !== menorFornId)
     })
   }, [dadosLinhas, fornecedoresSelecionados])
 
@@ -299,7 +369,6 @@ export function ComparacaoView({
       return
     }
 
-    // Atualização otimista imediata
     setFornecedoresSelecionados((prev) => ({
       ...prev,
       [idProduto]: idFornecedor,
@@ -310,7 +379,7 @@ export function ComparacaoView({
       await api.set_selected_supplier(selectedRodadaId, idProduto, idFornecedor)
       notifications.show({
         title: 'Fornecedor Selecionado',
-        message: `"${produtoNome}" alocado para "${fornecedorNome}".`,
+        message: `"${produtoNome}" direcionado para "${fornecedorNome}".`,
         color: 'teal',
         icon: <IconCheck size={16} />,
         autoClose: 1600,
@@ -349,7 +418,8 @@ export function ComparacaoView({
       )
       notifications.show({
         title: 'Menores Preços Restaurados',
-        message: 'Todas as escolhas da rodada foram redefinidas para o menor preço de cada item.',
+        message:
+          'Todas as escolhas da rodada foram redefinidas para o menor preço de cada item.',
         color: 'teal',
         icon: <IconCheck size={16} />,
       })
@@ -370,7 +440,7 @@ export function ComparacaoView({
         icon={IconScale}
         iconColor={themeColor}
         title="Mapa Comparativo de Cotações"
-        subtitle="Normalização por unidade de medida com painéis congelados"
+        subtitle="Normalização por unidade de medida com alta densidade e painéis sincronizados"
         rightSection={
           <RoundHeaderSelector
             rodadas={rodadas}
@@ -385,7 +455,7 @@ export function ComparacaoView({
         }
       />
 
-      {/* Cartões KPIs Padronizados (Apenas Cobertura e Fornecedores) */}
+      {/* Cartões KPIs Padronizados */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
         <StatCard
           label="Cobertura de Cotações"
@@ -401,11 +471,17 @@ export function ComparacaoView({
 
         <StatCard
           label="Fornecedores na Matriz"
-          value={fornecedoresNaTabela.length}
-          subtitle="Participantes concorrendo na rodada"
+          value={`${fornecedoresExibidos.length} de ${fornecedoresNaTabela.length}`}
+          subtitle="Concorrentes cotados e visíveis na comparação"
           icon={IconTruck}
           color="teal"
-          badge={{ label: 'Ativos', color: 'teal' }}
+          badge={{
+            label:
+              fornecedoresExibidos.length === fornecedoresNaTabela.length
+                ? 'Todos Visíveis'
+                : 'Filtrados',
+            color: 'teal',
+          }}
         />
       </SimpleGrid>
 
@@ -421,9 +497,9 @@ export function ComparacaoView({
         />
       ) : (
         <Stack gap="xs" style={{ width: '100%' }}>
-          {/* Barra de Filtros, Legenda e Busca Rápida */}
+          {/* Barra de Ferramentas, Filtros e Ações da Planilha */}
           <Paper withBorder radius="sm" p="xs">
-            <Stack gap={8}>
+            <Stack gap={6}>
               <Group justify="space-between" align="center" wrap="wrap" gap="xs">
                 <Group gap="xs" wrap="wrap" align="center">
                   <TextInput
@@ -432,7 +508,7 @@ export function ComparacaoView({
                     leftSection={<IconSearch size={14} />}
                     value={filtroTexto}
                     onChange={(e) => setFiltroTexto(e.currentTarget.value)}
-                    style={{ width: 240 }}
+                    style={{ width: 220 }}
                   />
 
                   <Select
@@ -442,8 +518,93 @@ export function ComparacaoView({
                     value={filtroCategoria}
                     onChange={setFiltroCategoria}
                     clearable
-                    style={{ width: 190 }}
+                    style={{ width: 175 }}
                   />
+
+                  {/* Filtro Dropdown de Fornecedores Visíveis */}
+                  <Menu
+                    shadow="md"
+                    width={220}
+                    position="bottom-start"
+                    radius="xs"
+                    withinPortal
+                    closeOnItemClick={false}
+                  >
+                    <Menu.Target>
+                      <Button
+                        variant="light"
+                        color={themeColor}
+                        size="xs"
+                        leftSection={<IconEye size={14} />}
+                        rightSection={<IconChevronDown size={12} />}
+                      >
+                        Fornecedores ({fornecedoresExibidos.length}/{fornecedoresNaTabela.length})
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Group justify="space-between" p="xs" pb={4}>
+                        <Text size="xs" fw={700}>
+                          Fornecedores Visíveis
+                        </Text>
+                        <Group gap={4}>
+                          <Button
+                            variant="subtle"
+                            size="compact-xs"
+                            onClick={() => setFornecedoresOcultosIds([])}
+                          >
+                            Todos
+                          </Button>
+                        </Group>
+                      </Group>
+                      <Menu.Divider />
+                      {fornecedoresNaTabela.map((forn) => {
+                        const isVisible = !fornecedoresOcultosIds.includes(forn.id)
+                        return (
+                          <Menu.Item
+                            key={forn.id}
+                            closeMenuOnClick={false}
+                            onClick={() => {
+                              setFornecedoresOcultosIds((prev) =>
+                                isVisible
+                                  ? [...prev, forn.id]
+                                  : prev.filter((id) => id !== forn.id),
+                              )
+                            }}
+                          >
+                            <Checkbox
+                              size="xs"
+                              label={forn.nome}
+                              checked={isVisible}
+                              readOnly
+                              style={{ pointerEvents: 'none' }}
+                            />
+                          </Menu.Item>
+                        )
+                      })}
+                    </Menu.Dropdown>
+                  </Menu>
+
+                  {/* Toggle para Ocultar/Exibir Categoria */}
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    size="xs"
+                    leftSection={
+                      ocultarCategoria ? (
+                        <IconEye size={14} />
+                      ) : (
+                        <IconEyeOff size={14} />
+                      )
+                    }
+                    onClick={() => setOcultarCategoria((prev) => !prev)}
+                    title={
+                      ocultarCategoria
+                        ? 'Exibir coluna de categoria'
+                        : 'Ocultar coluna de categoria para ganhar espaço'
+                    }
+                  >
+                    {ocultarCategoria ? 'Mostrar Categoria' : 'Ocultar Categoria'}
+                  </Button>
 
                   {temFiltroAtivo && (
                     <Button
@@ -455,6 +616,8 @@ export function ComparacaoView({
                         setFiltroTexto('')
                         setFiltroCategoria(null)
                         setSortField(null)
+                        setFornecedoresOcultosIds([])
+                        setOcultarCategoria(false)
                       }}
                     >
                       Limpar filtros
@@ -462,15 +625,35 @@ export function ComparacaoView({
                   )}
                 </Group>
 
-                <Badge size="xs" variant="light" color="gray">
-                  Exibindo {dadosFiltrados.length} de {dadosLinhas.length} produtos
-                  {sortField
-                    ? ` • ${sortField === 'produto' ? 'Produto' : 'Categoria'} (${sortDirection === 'asc' ? 'A→Z' : 'Z→A'})`
-                    : ''}
-                </Badge>
+                {/* Controles de Navegação Horizontal */}
+                <Group gap={6} align="center">
+                  <Text size="11px" c="dimmed">
+                    Rolar matriz:
+                  </Text>
+                  <ActionIcon
+                    variant="default"
+                    size="xs"
+                    onClick={() => scrollHorizontal(-250)}
+                    title="Rolar para os fornecedores à esquerda"
+                  >
+                    <IconArrowLeft size={13} />
+                  </ActionIcon>
+                  <ActionIcon
+                    variant="default"
+                    size="xs"
+                    onClick={() => scrollHorizontal(250)}
+                    title="Rolar para os fornecedores à direita"
+                  >
+                    <IconArrowRight size={13} />
+                  </ActionIcon>
+
+                  <Badge size="xs" variant="light" color="gray" ml={4}>
+                    {dadosFiltrados.length} de {dadosLinhas.length} itens
+                  </Badge>
+                </Group>
               </Group>
 
-              {/* Barra de Legenda Semântica e Ação de Restauração */}
+              {/* Legenda Semântica Discreta */}
               <Group
                 justify="space-between"
                 align="center"
@@ -482,17 +665,14 @@ export function ComparacaoView({
                 }}
               >
                 <Group gap={6} align="center" wrap="wrap">
-                  <Text size="11px" fw={700} c="dimmed" tt="uppercase">
-                    Legenda de Decisão:
-                  </Text>
                   <Badge
                     size="xs"
-                    variant="filled"
+                    variant="light"
                     color="teal"
                     radius="xs"
                     style={{ textTransform: 'none', fontWeight: 600 }}
                   >
-                    Verde: Selecionado (Decisão de Compra)
+                    Verde: Selecionado para Compra (🏆 Menor Preço)
                   </Badge>
                   <Badge
                     size="xs"
@@ -509,10 +689,10 @@ export function ComparacaoView({
                     radius="xs"
                     style={{ textTransform: 'none', fontWeight: 600 }}
                   >
-                    Neutro: Outras Cotações
+                    Neutro: Demais Cotações
                   </Badge>
                   <Text size="11px" c="dimmed" fs="italic">
-                    • Clique na célula para direcionar o produto para aquele fornecedor
+                    • Clique na célula para direcionar a compra
                   </Text>
                 </Group>
 
@@ -524,7 +704,7 @@ export function ComparacaoView({
                     leftSection={<IconRotate size={14} />}
                     onClick={handleRestaurarMenoresPrecos}
                     disabled={isFechada}
-                    title="Restaurar todas as escolhas da rodada para o fornecedor de menor preço"
+                    title="Restaurar todas as escolhas da rodada para o menor preço"
                   >
                     Restaurar Menores Preços
                   </Button>
@@ -533,13 +713,33 @@ export function ComparacaoView({
             </Stack>
           </Paper>
 
-          {/* Super-Planilha de Alta Densidade com Congelamento de Painéis */}
-          <Paper withBorder radius="sm" style={{ overflow: 'hidden' }}>
-            <Table.ScrollContainer
-              minWidth={500}
+          {/* Super-Planilha de Alta Densidade com Barra de Rolagem Superior Sincronizada */}
+          <Paper
+            withBorder
+            radius="sm"
+            style={{
+              overflow: 'hidden',
+              backgroundColor: 'var(--mantine-color-body)',
+            }}
+          >
+            {/* 1. Trilho de Rolagem Superior Sincronizado (Top Scrollbar) */}
+            <div
+              ref={topScrollRef}
+              onScroll={handleTopScroll}
+              className="comparacao-top-scroll-container"
+              title="Arraste para rolar horizontalmente entre os fornecedores"
+            >
+              <div style={{ width: tableScrollWidth || 1200, height: 1 }} />
+            </div>
+
+            {/* 2. Container da Tabela com Rolagem Principal */}
+            <div
+              ref={tableContainerRef}
+              onScroll={handleTableScroll}
+              className="tabela-comparacao-container"
               style={{
-                maxHeight: 'calc(100vh - 285px)',
-                overflowY: 'auto',
+                maxHeight: 'calc(100vh - 250px)',
+                width: '100%',
               }}
             >
               <Table
@@ -552,6 +752,8 @@ export function ComparacaoView({
                   borderCollapse: 'separate',
                   borderSpacing: 0,
                   fontSize: 'var(--app-font-base, 13px)',
+                  width: 'max-content',
+                  minWidth: '100%',
                 }}
               >
                 <Table.Thead
@@ -561,24 +763,24 @@ export function ComparacaoView({
                     zIndex: 10,
                     backgroundColor: isDark
                       ? 'var(--mantine-color-dark-7)'
-                      : '#f8f9fa',
+                      : 'var(--mantine-color-gray-1)',
                   }}
                 >
                   <Table.Tr>
-                    {/* Cabeçalho Fixo 1: Produto (Com Filtro/Ordenação Estilo Excel) */}
+                    {/* Coluna Fixa 1: Produto */}
                     <Table.Th
                       style={{
                         position: 'sticky',
                         left: 0,
                         top: 0,
                         zIndex: 12,
-                        width: 220,
-                        minWidth: 220,
-                        maxWidth: 220,
+                        width: 190,
+                        minWidth: 190,
+                        maxWidth: 190,
                         backgroundColor: isDark
                           ? 'var(--mantine-color-dark-7)'
-                          : '#f8f9fa',
-                        padding: '5px 8px',
+                          : 'var(--mantine-color-gray-1)',
+                        padding: '4px 6px',
                         borderBottom:
                           '2px solid var(--mantine-color-default-border)',
                         borderRight:
@@ -603,22 +805,14 @@ export function ComparacaoView({
                         >
                           <Menu.Target>
                             <ActionIcon
-                              variant={sortField === 'produto' ? 'filled' : 'subtle'}
-                              color={sortField === 'produto' ? themeColor : 'gray'}
+                              variant={
+                                sortField === 'produto' ? 'filled' : 'subtle'
+                              }
+                              color={
+                                sortField === 'produto' ? themeColor : 'gray'
+                              }
                               size="xs"
-                              title="Filtrar e ordenar produto de A a Z ou Z a A"
-                              style={{
-                                border:
-                                  sortField === 'produto'
-                                    ? 'none'
-                                    : '1px solid var(--mantine-color-default-border)',
-                                backgroundColor:
-                                  sortField === 'produto'
-                                    ? undefined
-                                    : isDark
-                                    ? 'var(--mantine-color-dark-6)'
-                                    : '#ffffff',
-                              }}
+                              title="Ordenar produto"
                             >
                               {sortField === 'produto' ? (
                                 sortDirection === 'asc' ? (
@@ -639,18 +833,6 @@ export function ComparacaoView({
                                 setSortField('produto')
                                 setSortDirection('asc')
                               }}
-                              style={{
-                                fontWeight:
-                                  sortField === 'produto' &&
-                                  sortDirection === 'asc'
-                                    ? 700
-                                    : 400,
-                                color:
-                                  sortField === 'produto' &&
-                                  sortDirection === 'asc'
-                                    ? `var(--mantine-color-${themeColor}-6)`
-                                    : undefined,
-                              }}
                             >
                               Classificar de A a Z
                             </Menu.Item>
@@ -659,18 +841,6 @@ export function ComparacaoView({
                               onClick={() => {
                                 setSortField('produto')
                                 setSortDirection('desc')
-                              }}
-                              style={{
-                                fontWeight:
-                                  sortField === 'produto' &&
-                                  sortDirection === 'desc'
-                                    ? 700
-                                    : 400,
-                                color:
-                                  sortField === 'produto' &&
-                                  sortDirection === 'desc'
-                                    ? `var(--mantine-color-${themeColor}-6)`
-                                    : undefined,
                               }}
                             >
                               Classificar de Z a A
@@ -692,135 +862,109 @@ export function ComparacaoView({
                       </Group>
                     </Table.Th>
 
-                    {/* Cabeçalho Fixo 2: Categoria (Com Filtro/Ordenação Estilo Excel) */}
-                    <Table.Th
-                      style={{
-                        position: 'sticky',
-                        left: 220,
-                        top: 0,
-                        zIndex: 12,
-                        width: 130,
-                        minWidth: 130,
-                        maxWidth: 130,
-                        backgroundColor: isDark
-                          ? 'var(--mantine-color-dark-7)'
-                          : '#f8f9fa',
-                        padding: '5px 8px',
-                        borderBottom:
-                          '2px solid var(--mantine-color-default-border)',
-                        borderRight:
-                          '2px solid var(--mantine-color-default-border)',
-                      }}
-                    >
-                      <Group
-                        justify="space-between"
-                        align="center"
-                        wrap="nowrap"
-                        gap={4}
+                    {/* Coluna Fixa 2: Categoria (Ocultável) */}
+                    {!ocultarCategoria && (
+                      <Table.Th
+                        style={{
+                          position: 'sticky',
+                          left: 190,
+                          top: 0,
+                          zIndex: 12,
+                          width: 105,
+                          minWidth: 105,
+                          maxWidth: 105,
+                          backgroundColor: isDark
+                            ? 'var(--mantine-color-dark-7)'
+                            : 'var(--mantine-color-gray-1)',
+                          padding: '4px 6px',
+                          borderBottom:
+                            '2px solid var(--mantine-color-default-border)',
+                          borderRight:
+                            '2px solid var(--mantine-color-default-border)',
+                        }}
                       >
-                        <Text fw={700} size="xs" tt="uppercase" c="dimmed">
-                          Categoria
-                        </Text>
-                        <Menu
-                          shadow="md"
-                          width={175}
-                          position="bottom-start"
-                          radius="xs"
-                          withinPortal
+                        <Group
+                          justify="space-between"
+                          align="center"
+                          wrap="nowrap"
+                          gap={4}
                         >
-                          <Menu.Target>
-                            <ActionIcon
-                              variant={sortField === 'categoria' ? 'filled' : 'subtle'}
-                              color={sortField === 'categoria' ? themeColor : 'gray'}
-                              size="xs"
-                              title="Filtrar e ordenar categoria de A a Z ou Z a A"
-                              style={{
-                                border:
+                          <Text fw={700} size="xs" tt="uppercase" c="dimmed">
+                            Categoria
+                          </Text>
+                          <Menu
+                            shadow="md"
+                            width={175}
+                            position="bottom-start"
+                            radius="xs"
+                            withinPortal
+                          >
+                            <Menu.Target>
+                              <ActionIcon
+                                variant={
                                   sortField === 'categoria'
-                                    ? 'none'
-                                    : '1px solid var(--mantine-color-default-border)',
-                                backgroundColor:
+                                    ? 'filled'
+                                    : 'subtle'
+                                }
+                                color={
                                   sortField === 'categoria'
-                                    ? undefined
-                                    : isDark
-                                    ? 'var(--mantine-color-dark-6)'
-                                    : '#ffffff',
-                              }}
-                            >
-                              {sortField === 'categoria' ? (
-                                sortDirection === 'asc' ? (
-                                  <IconArrowUp size={11} />
+                                    ? themeColor
+                                    : 'gray'
+                                }
+                                size="xs"
+                                title="Ordenar categoria"
+                              >
+                                {sortField === 'categoria' ? (
+                                  sortDirection === 'asc' ? (
+                                    <IconArrowUp size={11} />
+                                  ) : (
+                                    <IconArrowDown size={11} />
+                                  )
                                 ) : (
-                                  <IconArrowDown size={11} />
-                                )
-                              ) : (
-                                <IconChevronDown size={11} />
+                                  <IconChevronDown size={11} />
+                                )}
+                              </ActionIcon>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                              <Menu.Label>Classificar Categorias</Menu.Label>
+                              <Menu.Item
+                                leftSection={<IconSortAscending size={14} />}
+                                onClick={() => {
+                                  setSortField('categoria')
+                                  setSortDirection('asc')
+                                }}
+                              >
+                                Classificar de A a Z
+                              </Menu.Item>
+                              <Menu.Item
+                                leftSection={<IconSortDescending size={14} />}
+                                onClick={() => {
+                                  setSortField('categoria')
+                                  setSortDirection('desc')
+                                }}
+                              >
+                                Classificar de Z a A
+                              </Menu.Item>
+                              {sortField === 'categoria' && (
+                                <>
+                                  <Menu.Divider />
+                                  <Menu.Item
+                                    color="red"
+                                    leftSection={<IconFilterOff size={14} />}
+                                    onClick={() => setSortField(null)}
+                                  >
+                                    Remover classificação
+                                  </Menu.Item>
+                                </>
                               )}
-                            </ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Label>Classificar Categorias</Menu.Label>
-                            <Menu.Item
-                              leftSection={<IconSortAscending size={14} />}
-                              onClick={() => {
-                                setSortField('categoria')
-                                setSortDirection('asc')
-                              }}
-                              style={{
-                                fontWeight:
-                                  sortField === 'categoria' &&
-                                  sortDirection === 'asc'
-                                    ? 700
-                                    : 400,
-                                color:
-                                  sortField === 'categoria' &&
-                                  sortDirection === 'asc'
-                                    ? `var(--mantine-color-${themeColor}-6)`
-                                    : undefined,
-                              }}
-                            >
-                              Classificar de A a Z
-                            </Menu.Item>
-                            <Menu.Item
-                              leftSection={<IconSortDescending size={14} />}
-                              onClick={() => {
-                                setSortField('categoria')
-                                setSortDirection('desc')
-                              }}
-                              style={{
-                                fontWeight:
-                                  sortField === 'categoria' &&
-                                  sortDirection === 'desc'
-                                    ? 700
-                                    : 400,
-                                color:
-                                  sortField === 'categoria' &&
-                                  sortDirection === 'desc'
-                                    ? `var(--mantine-color-${themeColor}-6)`
-                                    : undefined,
-                              }}
-                            >
-                              Classificar de Z a A
-                            </Menu.Item>
-                            {sortField === 'categoria' && (
-                              <>
-                                <Menu.Divider />
-                                <Menu.Item
-                                  color="red"
-                                  leftSection={<IconFilterOff size={14} />}
-                                  onClick={() => setSortField(null)}
-                                >
-                                  Remover classificação
-                                </Menu.Item>
-                              </>
-                            )}
-                          </Menu.Dropdown>
-                        </Menu>
-                      </Group>
-                    </Table.Th>
+                            </Menu.Dropdown>
+                          </Menu>
+                        </Group>
+                      </Table.Th>
+                    )}
 
-                    {/* Cabeçalhos Dinâmicos: Nome do Fornecedor (Sem Pedido Mínimo) */}
-                    {fornecedoresNaTabela.map((forn) => (
+                    {/* Cabeçalhos Dinâmicos dos Fornecedores Visíveis */}
+                    {fornecedoresExibidos.map((forn) => (
                       <Table.Th
                         key={forn.id}
                         style={{
@@ -828,12 +972,12 @@ export function ComparacaoView({
                           top: 0,
                           zIndex: 9,
                           textAlign: 'center',
-                          width: 160,
-                          minWidth: 150,
+                          width: 'var(--app-comparacao-col-w)',
+                          minWidth: 'var(--app-comparacao-col-min-w)',
                           backgroundColor: isDark
                             ? 'var(--mantine-color-dark-7)'
-                            : '#f8f9fa',
-                          padding: '6px 8px',
+                            : 'var(--mantine-color-gray-1)',
+                          padding: '5px 6px',
                           borderBottom:
                             '2px solid var(--mantine-color-default-border)',
                           borderRight:
@@ -858,7 +1002,10 @@ export function ComparacaoView({
                   {dadosFiltrados.length === 0 ? (
                     <Table.Tr>
                       <Table.Td
-                        colSpan={2 + fornecedoresNaTabela.length}
+                        colSpan={
+                          (ocultarCategoria ? 1 : 2) +
+                          fornecedoresExibidos.length
+                        }
                         style={{ textAlign: 'center', padding: '32px' }}
                       >
                         <Text size="xs" c="dimmed">
@@ -878,24 +1025,28 @@ export function ComparacaoView({
                               position: 'sticky',
                               left: 0,
                               zIndex: 5,
-                              width: 220,
-                              minWidth: 220,
-                              maxWidth: 220,
+                              width: 190,
+                              minWidth: 190,
+                              maxWidth: 190,
                               backgroundColor: isDark
                                 ? 'var(--mantine-color-dark-7)'
-                                : '#ffffff',
-                              padding: '4px 8px',
+                                : 'var(--mantine-color-body)',
+                              padding: '3px 6px',
                               borderRight:
                                 '1px solid var(--mantine-color-default-border)',
                               borderBottom:
                                 '1px solid var(--mantine-color-default-border)',
+                              boxShadow: ocultarCategoria
+                                ? '2px 0 4px -2px rgba(0,0,0,0.12)'
+                                : undefined,
                               verticalAlign: 'middle',
                             }}
                           >
                             <Text
                               fw={600}
                               size="xs"
-                              lineClamp={2}
+                              lineClamp={1}
+                              title={linha.produto_nome}
                               style={{ lineHeight: 1.15 }}
                             >
                               {linha.produto_nome}
@@ -903,40 +1054,43 @@ export function ComparacaoView({
                           </Table.Td>
 
                           {/* Coluna 2 Fixa: Categoria */}
-                          <Table.Td
-                            style={{
-                              position: 'sticky',
-                              left: 220,
-                              zIndex: 5,
-                              width: 130,
-                              minWidth: 130,
-                              maxWidth: 130,
-                              backgroundColor: isDark
-                                ? 'var(--mantine-color-dark-7)'
-                                : '#ffffff',
-                              padding: '4px 8px',
-                              borderRight:
-                                '2px solid var(--mantine-color-default-border)',
-                              borderBottom:
-                                '1px solid var(--mantine-color-default-border)',
-                              boxShadow: '2px 0 4px -2px rgba(0,0,0,0.08)',
-                              verticalAlign: 'middle',
-                            }}
-                          >
-                            <Text
-                              size="xs"
-                              truncate="end"
-                              c={
-                                !linha.produto_categoria ? 'dimmed' : undefined
-                              }
-                              style={{ lineHeight: 1.15 }}
+                          {!ocultarCategoria && (
+                            <Table.Td
+                              style={{
+                                position: 'sticky',
+                                left: 190,
+                                zIndex: 5,
+                                width: 105,
+                                minWidth: 105,
+                                maxWidth: 105,
+                                backgroundColor: isDark
+                                  ? 'var(--mantine-color-dark-7)'
+                                  : 'var(--mantine-color-body)',
+                                padding: '3px 6px',
+                                borderRight:
+                                  '2px solid var(--mantine-color-default-border)',
+                                borderBottom:
+                                  '1px solid var(--mantine-color-default-border)',
+                                boxShadow: '2px 0 4px -2px rgba(0,0,0,0.10)',
+                                verticalAlign: 'middle',
+                              }}
                             >
-                              {linha.produto_categoria || '-'}
-                            </Text>
-                          </Table.Td>
+                              <Text
+                                size="xs"
+                                truncate="end"
+                                c={
+                                  !linha.produto_categoria ? 'dimmed' : undefined
+                                }
+                                title={linha.produto_categoria || '-'}
+                                style={{ lineHeight: 1.15 }}
+                              >
+                                {linha.produto_categoria || '-'}
+                              </Text>
+                            </Table.Td>
+                          )}
 
-                          {/* Colunas dos Fornecedores (Células Interativas de Decisão) */}
-                          {fornecedoresNaTabela.map((forn) => {
+                          {/* Colunas dos Fornecedores Visíveis */}
+                          {fornecedoresExibidos.map((forn) => {
                             const cot = linha.cotacoesPorFornecedor[forn.id]
 
                             if (!cot) {
@@ -946,14 +1100,15 @@ export function ComparacaoView({
                                   style={{
                                     textAlign: 'center',
                                     verticalAlign: 'middle',
-                                    padding: '4px 6px',
+                                    padding:
+                                      'var(--app-comparacao-cell-py) var(--app-comparacao-cell-px)',
                                     borderRight:
                                       '1px solid var(--mantine-color-default-border)',
                                     borderBottom:
                                       '1px solid var(--mantine-color-default-border)',
                                     backgroundColor: isDark
                                       ? 'transparent'
-                                      : '#fdfdfd',
+                                      : 'var(--mantine-color-gray-0)',
                                   }}
                                 >
                                   <Text size="xs" c="dimmed">
@@ -963,7 +1118,8 @@ export function ComparacaoView({
                               )
                             }
 
-                            const menorCot = ranking.length > 0 ? ranking[0] : null
+                            const menorCot =
+                              ranking.length > 0 ? ranking[0] : null
                             const menorPreco = menorCot?.preco_unitario
                             const menorFornId = menorCot?.id_fornecedor
                             const fornEscolhidoId =
@@ -972,7 +1128,8 @@ export function ComparacaoView({
                               menorFornId
 
                             const isSelecionado = forn.id === fornEscolhidoId
-                            const isMenorPreco = cot.preco_unitario === menorPreco
+                            const isMenorPreco =
+                              cot.preco_unitario === menorPreco
                             const isTransferido = Boolean(
                               fornEscolhidoId &&
                                 menorFornId &&
@@ -982,35 +1139,29 @@ export function ComparacaoView({
                               isTransferido && isMenorPreco
                             const { economiaPct } = linha
 
-                            // Cores semânticas segundo regra de compras do usuário:
-                            // 1. Verde = Selecionado (mesmo não sendo o menor preço, pré-selecionado por padrão no menor preço)
-                            // 2. Azul = Menor preço original que foi transferido/preterido
-                            // 3. Neutro = Demais posições (VERMELHO REMOVIDO TOTALMENTE)
-                            let bgCell = 'transparent'
+                            let bgCell = isDark
+                              ? 'transparent'
+                              : 'var(--mantine-color-body)'
                             let textPrecoColor: string | undefined = undefined
                             let borderCell =
                               '1px solid var(--mantine-color-default-border)'
 
                             if (isSelecionado) {
                               bgCell = isDark
-                                ? 'rgba(43, 138, 62, 0.40)'
-                                : '#d3f9d8'
-                              textPrecoColor = isDark ? '#8ce99a' : '#14532d'
-                              borderCell = isDark
-                                ? '2px solid #2b8a3e'
-                                : '2px solid #2b8a3e'
+                                ? 'rgba(18, 184, 134, 0.22)'
+                                : 'var(--mantine-color-teal-0)'
+                              textPrecoColor = isDark
+                                ? 'var(--mantine-color-teal-2)'
+                                : 'var(--mantine-color-teal-9)'
+                              borderCell = '2px solid var(--mantine-color-teal-6)'
                             } else if (isMenorPrecoPreterido) {
                               bgCell = isDark
-                                ? 'rgba(25, 113, 194, 0.35)'
-                                : '#d0ebff'
-                              textPrecoColor = isDark ? '#74c0fc' : '#1864ab'
-                              borderCell = isDark
-                                ? '1px solid #1971c2'
-                                : '1px solid #74c0fc'
-                            } else {
-                              // Limpo e neutro sem vermelho
-                              bgCell = isDark ? 'transparent' : '#ffffff'
-                              textPrecoColor = undefined
+                                ? 'rgba(34, 139, 230, 0.20)'
+                                : 'var(--mantine-color-blue-0)'
+                              textPrecoColor = isDark
+                                ? 'var(--mantine-color-blue-3)'
+                                : 'var(--mantine-color-blue-8)'
+                              borderCell = '1px solid var(--mantine-color-blue-4)'
                             }
 
                             const isClickable = !isFechada
@@ -1032,173 +1183,137 @@ export function ComparacaoView({
                                   backgroundColor: bgCell,
                                   textAlign: 'center',
                                   verticalAlign: 'middle',
-                                  padding: '3px 6px',
+                                  padding:
+                                    'var(--app-comparacao-cell-py) var(--app-comparacao-cell-px)',
                                   borderRight: borderCell,
                                   borderBottom: borderCell,
                                   borderLeft: isSelecionado ? borderCell : undefined,
                                   borderTop: isSelecionado ? borderCell : undefined,
                                   cursor: isClickable ? 'pointer' : 'default',
                                   userSelect: 'none',
-                                  transition: 'background-color 150ms ease, box-shadow 150ms ease',
+                                  transition:
+                                    'background-color 150ms ease, border-color 150ms ease',
                                 }}
-                                title={
-                                  isFechada
-                                    ? 'Rodada concluída'
-                                    : isSelecionado
-                                    ? 'Fornecedor selecionado para compra. Clique em outro para transferir.'
-                                    : `Clique para direcionar a compra de "${linha.produto_nome}" para ${forn.nome}`
-                                }
                               >
-                                <div
-                                  style={{
-                                    width: '100%',
-                                    overflow: 'hidden',
-                                    lineHeight: 1.15,
-                                  }}
-                                >
-                                  {/* Linha 1: Preço Unitário + Troféu / Checkmark e Economia */}
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: 4,
-                                    }}
-                                  >
-                                    {isSelecionado && isMenorPreco && (
-                                      <span style={{ fontSize: '11px' }}>
-                                        🏆
-                                      </span>
-                                    )}
-                                    {isSelecionado && !isMenorPreco && (
-                                      <span
-                                        style={{
-                                          fontSize: '11px',
-                                          fontWeight: 700,
-                                          color: textPrecoColor,
-                                        }}
-                                      >
-                                        ✓
-                                      </span>
-                                    )}
-                                    <Text
-                                      fw={700}
-                                      size="xs"
-                                      c={textPrecoColor}
-                                      style={{ whiteSpace: 'nowrap' }}
-                                    >
-                                      {formatMoney(cot.preco_unitario)}
-                                    </Text>
-                                    {isSelecionado &&
-                                      isMenorPreco &&
-                                      economiaPct !== null &&
-                                      economiaPct > 0.1 && (
-                                        <Text
-                                          size="10px"
-                                          fw={700}
-                                          c={textPrecoColor}
-                                          style={{ whiteSpace: 'nowrap' }}
-                                        >
-                                          (-{economiaPct.toFixed(0)}%)
+                                <Tooltip
+                                  withinPortal
+                                  withArrow
+                                  position="top"
+                                  multiline
+                                  w={230}
+                                  label={
+                                    <Stack gap={2} p={2}>
+                                      <Text fw={700} size="xs">
+                                        {forn.nome}
+                                      </Text>
+                                      <Text size="11px">
+                                        Item: {linha.produto_nome}
+                                      </Text>
+                                      <Text size="11px">
+                                        Marca:{' '}
+                                        {cot.marca || '(Não informada)'}
+                                      </Text>
+                                      <Text size="11px">
+                                        Embalagem: {cot.embalagem} (
+                                        {formatMoney(cot.preco_embalagem, 2)})
+                                      </Text>
+                                      <Text size="11px">
+                                        Qtd na Emb: {cot.qtd_por_embalagem}{' '}
+                                        {cot.unidade}
+                                      </Text>
+                                      <Text size="11px" fw={700}>
+                                        Preço Unitário:{' '}
+                                        {formatMoney(cot.preco_unitario)}
+                                      </Text>
+                                      {isMenorPreco && (
+                                        <Text size="10px" c="teal" fw={700}>
+                                          🏆 Menor Preço da Rodada
                                         </Text>
                                       )}
-                                  </div>
-
-                                  {/* Linha 2: Marca com Destaque Nítido e Indicador de Decisão */}
+                                      {isSelecionado && !isMenorPreco && (
+                                        <Text size="10px" c="teal" fw={700}>
+                                          ✓ Fornecedor Escolhido para Compra
+                                        </Text>
+                                      )}
+                                      {isMenorPrecoPreterido && (
+                                        <Text size="10px" c="blue" fw={700}>
+                                          Menor Preço (Preterido)
+                                        </Text>
+                                      )}
+                                    </Stack>
+                                  }
+                                >
                                   <div
                                     style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: 4,
-                                      marginTop: 2,
-                                      marginBottom: 1,
-                                      flexWrap: 'wrap',
+                                      width: '100%',
+                                      overflow: 'hidden',
+                                      lineHeight: 1.15,
                                     }}
                                   >
-                                    {cot.marca ? (
-                                      <Badge
+                                    {/* Linha 1: Preço Unitário e Indicador Discreto */}
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 3,
+                                      }}
+                                    >
+                                      {isMenorPreco && (
+                                        <span
+                                          style={{ fontSize: '10px' }}
+                                          title="Menor Preço"
+                                        >
+                                          🏆
+                                        </span>
+                                      )}
+                                      {isSelecionado && !isMenorPreco && (
+                                        <span
+                                          style={{
+                                            fontSize: '11px',
+                                            fontWeight: 700,
+                                            color: textPrecoColor,
+                                          }}
+                                          title="Selecionado"
+                                        >
+                                          ✓
+                                        </span>
+                                      )}
+                                      <Text
+                                        fw={700}
                                         size="xs"
-                                        variant={
-                                          isSelecionado
-                                            ? 'filled'
-                                            : isMenorPrecoPreterido
-                                            ? 'light'
-                                            : 'light'
-                                        }
-                                        color={
-                                          isSelecionado
-                                            ? 'teal'
-                                            : isMenorPrecoPreterido
-                                            ? 'blue'
-                                            : 'gray'
-                                        }
-                                        radius="xs"
-                                        style={{
-                                          fontSize: '9px',
-                                          height: 15,
-                                          padding: '0 4px',
-                                          fontWeight: 700,
-                                          textTransform: 'uppercase',
-                                          maxWidth: 135,
-                                        }}
+                                        c={textPrecoColor}
+                                        style={{ whiteSpace: 'nowrap' }}
                                       >
-                                        {cot.marca}
-                                      </Badge>
-                                    ) : (
-                                      <Text size="9px" c="dimmed" fs="italic">
-                                        (Sem marca)
+                                        {formatMoney(cot.preco_unitario)}
                                       </Text>
-                                    )}
+                                      {isMenorPreco &&
+                                        economiaPct !== null &&
+                                        economiaPct > 0.1 && (
+                                          <Text
+                                            size="10px"
+                                            fw={700}
+                                            c={textPrecoColor}
+                                            style={{ whiteSpace: 'nowrap' }}
+                                          >
+                                            (-{economiaPct.toFixed(0)}%)
+                                          </Text>
+                                        )}
+                                    </div>
 
-                                    {/* Tag de Menor Preço SEMPRE visível no menor preço */}
-                                    {isMenorPreco && (
-                                      <Badge
-                                        size="xs"
-                                        variant={isSelecionado ? 'filled' : 'outline'}
-                                        color={isSelecionado ? 'teal' : 'blue'}
-                                        radius="xs"
-                                        style={{
-                                          fontSize: '8px',
-                                          height: 13,
-                                          padding: '0 3px',
-                                          fontWeight: 700,
-                                        }}
-                                      >
-                                        MENOR PREÇO
-                                      </Badge>
-                                    )}
-
-                                    {isSelecionado && !isMenorPreco && (
-                                      <Badge
-                                        size="xs"
-                                        variant="filled"
-                                        color="teal"
-                                        radius="xs"
-                                        style={{
-                                          fontSize: '8px',
-                                          height: 13,
-                                          padding: '0 3px',
-                                          fontWeight: 700,
-                                        }}
-                                      >
-                                        ESCOLHIDO
-                                      </Badge>
-                                    )}
+                                    {/* Linha 2: Marca e Embalagem em Linha Única Concisa */}
+                                    <Text
+                                      size="10px"
+                                      c="dimmed"
+                                      truncate="end"
+                                      ta="center"
+                                      style={{ lineHeight: 1.1, marginTop: 2 }}
+                                    >
+                                      {cot.marca ? `${cot.marca} · ` : ''}
+                                      {cot.embalagem}
+                                    </Text>
                                   </div>
-
-                                  {/* Linha 3: Embalagem e Preço da Embalagem */}
-                                  <Text
-                                    size="10px"
-                                    c="dimmed"
-                                    truncate="end"
-                                    ta="center"
-                                    style={{ lineHeight: 1.1 }}
-                                  >
-                                    {cot.embalagem} (
-                                    {formatMoney(cot.preco_embalagem, 2)})
-                                  </Text>
-                                </div>
+                                </Tooltip>
                               </Table.Td>
                             )
                           })}
@@ -1208,7 +1323,7 @@ export function ComparacaoView({
                   )}
                 </Table.Tbody>
               </Table>
-            </Table.ScrollContainer>
+            </div>
           </Paper>
         </Stack>
       )}

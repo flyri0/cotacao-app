@@ -244,3 +244,99 @@ def remove_product_db(conn: sqlite3.Connection, id_produto: int) -> Dict[str, An
     cursor.execute("DELETE FROM produtos WHERE id = ?", (id_produto,))
     conn.commit()
     return {"sucesso": True, "mensagem": f"Produto '{nome_prod}' excluído com sucesso."}
+
+
+def batch_update_products_category_db(
+    conn: sqlite3.Connection, product_ids: List[int], nova_categoria: Optional[str]
+) -> Dict[str, Any]:
+    """Atualiza a categoria de múltiplos produtos em lote."""
+    if not product_ids:
+        return {"sucesso": True, "atualizados": 0}
+
+    cat = nova_categoria.strip() if nova_categoria and nova_categoria.strip() else None
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in product_ids)
+    cursor.execute(
+        f"UPDATE produtos SET categoria = ? WHERE id IN ({placeholders})",
+        [cat] + list(product_ids),
+    )
+    conn.commit()
+    return {"sucesso": True, "atualizados": cursor.rowcount}
+
+
+def batch_toggle_products_active_db(
+    conn: sqlite3.Connection, product_ids: List[int], ativo: Optional[int] = None
+) -> Dict[str, Any]:
+    """Ativa ou inativa múltiplos produtos em lote."""
+    if not product_ids:
+        return {"sucesso": True, "atualizados": 0}
+
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in product_ids)
+    if ativo is not None:
+        val = 1 if ativo else 0
+        cursor.execute(
+            f"UPDATE produtos SET ativo = ? WHERE id IN ({placeholders})",
+            [val] + list(product_ids),
+        )
+    else:
+        cursor.execute(
+            f"UPDATE produtos SET ativo = CASE WHEN ativo = 1 THEN 0 ELSE 1 END WHERE id IN ({placeholders})",
+            list(product_ids),
+        )
+    conn.commit()
+    return {"sucesso": True, "atualizados": cursor.rowcount}
+
+
+def batch_delete_products_db(
+    conn: sqlite3.Connection, product_ids: List[int]
+) -> Dict[str, Any]:
+    """
+    Exclui múltiplos produtos em lote, respeitando a integridade referencial.
+    Produtos com histórico (cotações, necessidades ou alocações) são mantidos
+    e informados no relatório de retorno.
+    """
+    if not product_ids:
+        return {"sucesso": True, "excluidos": 0, "bloqueados": 0, "detalhes_bloqueados": [], "mensagem": "Nenhum produto selecionado."}
+
+    cursor = conn.cursor()
+    excluidos: List[int] = []
+    bloqueados: List[Dict[str, Any]] = []
+
+    for pid in product_ids:
+        cursor.execute("SELECT nome FROM produtos WHERE id = ?", (pid,))
+        row = cursor.fetchone()
+        if not row:
+            continue
+        nome = row["nome"]
+        hist = verificar_historico_produto_db(conn, pid)
+        if hist["total"] > 0:
+            detalhes = []
+            if hist["cotacoes"] > 0:
+                detalhes.append(f"{hist['cotacoes']} cotação(ões)")
+            if hist["alocacoes"] > 0:
+                detalhes.append(f"{hist['alocacoes']} alocação(ões)")
+            if hist["necessidades"] > 0:
+                detalhes.append(f"{hist['necessidades']} lista(s) de necessidades")
+            bloqueados.append({
+                "id": pid,
+                "nome": nome,
+                "motivo": "Possui " + ", ".join(detalhes) + " vinculadas.",
+            })
+        else:
+            cursor.execute("DELETE FROM produtos WHERE id = ?", (pid,))
+            excluidos.append(pid)
+
+    conn.commit()
+    msg = f"{len(excluidos)} produto(s) excluído(s) com sucesso."
+    if bloqueados:
+        msg += f" {len(bloqueados)} produto(s) não foram excluídos por possuírem histórico."
+
+    return {
+        "sucesso": True,
+        "excluidos": len(excluidos),
+        "bloqueados": len(bloqueados),
+        "detalhes_bloqueados": bloqueados,
+        "mensagem": msg,
+    }
+

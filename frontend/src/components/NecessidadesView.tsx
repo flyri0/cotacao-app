@@ -8,11 +8,13 @@ import {
   Kbd,
   Loader,
   Modal,
+  Paper,
   Radio,
   Stack,
   Text,
   TextInput,
   Tooltip,
+  useComputedColorScheme,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { useDisclosure } from '@mantine/hooks'
@@ -63,7 +65,60 @@ export function NecessidadesView({
   
   const rodadaAtual = rodadas.find((r) => r.id === selectedRodadaId)
   const isFechada = rodadaAtual?.status === 'fechada'
-  
+
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const isDark = computedColorScheme === 'dark'
+
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+
+  const selectedNeedIds = useMemo(() => {
+    return Object.keys(rowSelection).filter((k) => rowSelection[k]).map(Number)
+  }, [rowSelection])
+
+  const handleExcluirEmMassa = () => {
+    if (selectedNeedIds.length === 0 || isFechada) return
+
+    modals.openConfirmModal({
+      title: (
+        <Group gap="xs">
+          <IconTrash size={18} color="var(--mantine-color-red-6)" />
+          <Text fw={700}>Remover {selectedNeedIds.length} Itens da Rodada</Text>
+        </Group>
+      ),
+      children: (
+        <Text size="xs">
+          Tem certeza que deseja remover os <b>{selectedNeedIds.length}</b> itens selecionados da lista de necessidades desta rodada?
+        </Text>
+      ),
+      labels: { confirm: 'Remover da Rodada', cancel: 'Cancelar' },
+      confirmProps: { color: 'red', size: 'xs' },
+      cancelProps: { size: 'xs' },
+      onConfirm: async () => {
+        try {
+          const api = await getApi()
+          const res = await api.batch_remove_needs(selectedNeedIds)
+          notifications.show({
+            title: 'Itens Removidos',
+            message: `${res.removidos} item(ns) removidos da rodada com sucesso.`,
+            color: 'teal',
+            icon: <IconCheck size={16} />,
+          })
+          setRowSelection({})
+          if (selectedRodadaId) {
+            await carregarNecessidades(selectedRodadaId)
+          }
+        } catch (err: any) {
+          notifications.show({
+            title: 'Erro ao remover itens',
+            message: err?.message || 'Falha ao remover necessidades em lote.',
+            color: 'red',
+            icon: <IconX size={16} />,
+          })
+        }
+      },
+    })
+  }
+
   const [modalNovaRodadaOpened, { open: openModalNovaRodada, close: closeModalNovaRodada }] =
     useDisclosure(false)
   const [salvandoRodada, setSalvandoRodada] = useState(false)
@@ -371,10 +426,56 @@ export function NecessidadesView({
     data: necessidades,
     localization: MRT_Localization_PT_BR,
     enableRowActions: false,
+    enableRowSelection: true,
+    getRowId: (row) => String(row.id),
+    onRowSelectionChange: setRowSelection,
+    state: { rowSelection },
     enablePagination: true,
     enableBottomToolbar: true,
     enableTopToolbar: true,
     initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
+    renderTopToolbarCustomActions: () => {
+      if (selectedNeedIds.length === 0) return null
+      return (
+        <Paper
+          withBorder
+          radius="sm"
+          p="xs"
+          style={{
+            width: '100%',
+            backgroundColor: isDark
+              ? 'var(--mantine-color-dark-6)'
+              : 'var(--mantine-color-blue-0)',
+          }}
+        >
+          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+            <Group gap="xs" align="center">
+              <Badge size="sm" variant="filled" color={themeColor}>
+                {selectedNeedIds.length} item{selectedNeedIds.length > 1 ? 's' : ''} em falta selecionado{selectedNeedIds.length > 1 ? 's' : ''}
+              </Badge>
+              <Button
+                variant="filled"
+                color="red"
+                size="xs"
+                leftSection={<IconTrash size={14} />}
+                disabled={isFechada}
+                onClick={handleExcluirEmMassa}
+              >
+                Remover da Rodada
+              </Button>
+            </Group>
+            <Button
+              variant="subtle"
+              color="gray"
+              size="xs"
+              onClick={() => setRowSelection({})}
+            >
+              Desmarcar Todos
+            </Button>
+          </Group>
+        </Paper>
+      )
+    },
     mantineTableHeadCellProps: {
       style: {
         padding: '6px 8px',

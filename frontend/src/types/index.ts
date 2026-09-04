@@ -204,6 +204,23 @@ export interface PywebviewApi {
   ) => Promise<Produto>
   remove_product: (id_produto: number) => Promise<{ sucesso: boolean; id: number; mensagem: string }>
   get_product_statistics: (id_produto: number) => Promise<EstatisticasProduto>
+  batch_update_products_category: (
+    product_ids: number[],
+    nova_categoria?: string | null,
+  ) => Promise<{ sucesso: boolean; atualizados: number }>
+  batch_toggle_products_active: (
+    product_ids: number[],
+    ativo?: boolean,
+  ) => Promise<{ sucesso: boolean; atualizados: number }>
+  batch_delete_products: (
+    product_ids: number[],
+  ) => Promise<{
+    sucesso: boolean
+    excluidos: number
+    bloqueados: number
+    detalhes_bloqueados: { id: number; nome: string; motivo: string }[]
+    mensagem: string
+  }>
   get_supplier_statistics: (id_fornecedor: number) => Promise<EstatisticasFornecedor>
   get_global_quotes_history: () => Promise<HistoricoGlobalCotacaoItem[]>
 
@@ -265,6 +282,9 @@ export interface PywebviewApi {
   reset_selected_suppliers: (
     id_rodada: number,
   ) => Promise<{ sucesso: boolean; id_rodada: number }>
+  batch_remove_needs: (
+    ids_necessidades: number[],
+  ) => Promise<{ sucesso: boolean; removidos: number }>
 
   list_quotes: (id_rodada: number) => Promise<Cotacao[]>
   create_quote: (
@@ -291,6 +311,26 @@ export interface PywebviewApi {
     produto_categoria?: string | null,
   ) => Promise<Cotacao>
   remove_quote: (id_cotacao: number) => Promise<{ sucesso: boolean; id: number }>
+  batch_remove_quotes: (
+    ids_cotacoes: number[],
+  ) => Promise<{ sucesso: boolean; removidos: number }>
+  batch_update_quotes: (
+    ids_cotacoes: number[],
+    updates: {
+      id_fornecedor?: number
+      marca?: string
+      embalagem?: string
+      qtd_por_embalagem?: number
+      unidade?: string
+      preco_embalagem?: number
+      percentual_reajuste?: number
+    },
+  ) => Promise<{
+    sucesso: boolean
+    atualizados: number
+    ignorados: number
+    erros: string[]
+  }>
 
   list_allocations: (id_rodada: number) => Promise<Alocacao[]>
   save_allocations: (

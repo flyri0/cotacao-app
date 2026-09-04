@@ -484,3 +484,158 @@ def get_global_quotes_history_db(conn: sqlite3.Connection) -> List[Dict[str, Any
     return [dict(r) for r in cursor.fetchall()]
 
 
+def batch_remove_quotes_db(
+    conn: sqlite3.Connection, ids_cotacoes: List[int]
+) -> Dict[str, Any]:
+    """Remove múltiplas cotações em lote, garantindo que as rodadas estejam abertas."""
+    from backend.domain.rodadas import verificar_rodada_aberta
+
+    if not ids_cotacoes:
+        return {"sucesso": True, "removidos": 0}
+
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in ids_cotacoes)
+
+    cursor.execute(
+        f"SELECT DISTINCT id_rodada FROM cotacoes WHERE id IN ({placeholders})",
+        list(ids_cotacoes),
+    )
+    for row in cursor.fetchall():
+        verificar_rodada_aberta(conn, row["id_rodada"])
+
+    cursor.execute(
+        f"DELETE FROM cotacoes WHERE id IN ({placeholders})",
+        list(ids_cotacoes),
+    )
+    removidos = cursor.rowcount
+    conn.commit()
+    return {"sucesso": True, "removidos": removidos}
+
+
+def batch_update_quotes_db(
+    conn: sqlite3.Connection, ids_cotacoes: List[int], updates: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Atualiza informações em comum de múltiplas cotações em lote.
+    Suporta: id_fornecedor, marca, embalagem, qtd_por_embalagem, unidade, preco_embalagem e percentual_reajuste.
+    """
+    from backend.domain.rodadas import verificar_rodada_aberta
+
+    if not ids_cotacoes or not updates:
+        return {"sucesso": True, "atualizados": 0, "ignorados": 0, "erros": []}
+
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in ids_cotacoes)
+
+    cursor.execute(
+        f"""
+        SELECT id, id_rodada, id_fornecedor, id_produto, preco_embalagem, qtd_por_embalagem
+        FROM cotacoes WHERE id IN ({placeholders})
+        """,
+        list(ids_cotacoes),
+    )
+    cotacoes_alvo = [dict(r) for r in cursor.fetchall()]
+
+    rodadas_vistas = set()
+    for c in cotacoes_alvo:
+        if c["id_rodada"] not in rodadas_vistas:
+            verificar_rodada_aberta(conn, c["id_rodada"])
+            rodadas_vistas.add(c["id_rodada"])
+
+    novo_fornecedor_id = updates.get("id_fornecedor")
+    if novo_fornecedor_id is not None:
+        cursor.execute("SELECT id FROM fornecedores WHERE id = ?", (novo_fornecedor_id,))
+        if not cursor.fetchone():
+            raise ValueError(f"Fornecedor #{novo_fornecedor_id} não encontrado.")
+
+    atualizados = 0
+    ignorados = 0
+    erros: List[str] = []
+
+    for c in cotacoes_alvo:
+        cid = c["id"]
+        rodada_id = c["id_rodada"]
+        prod_id = c["id_produto"]
+        target_forn = novo_fornecedor_id if novo_fornecedor_id is not None else c["id_fornecedor"]
+
+        # Se for mudar de fornecedor, verifica unicidade na rodada
+        if novo_fornecedor_id is not None and novo_fornecedor_id != c["id_fornecedor"]:
+            cursor.execute(
+                "SELECT id FROM cotacoes WHERE id_rodada = ? AND id_fornecedor = ? AND id_produto = ? AND id != ?",
+                (rodada_id, target_forn, prod_id, cid),
+            )
+            if cursor.fetchone():
+                ignorados += 1
+                erros.append(f"Cotação #{cid}: produto já possui cotação no fornecedor destino.")
+                continue
+
+        # Monta campos para update
+        campos_set = []
+        valores = []
+
+        if novo_fornecedor_id is not None:
+            campos_set.append("id_fornecedor = ?")
+            valores.append(target_forn)
+
+        if "marca" in updates:
+            marca_val = updates["marca"].strip() if (updates["marca"] and updates["marca"].strip()) else None
+            campos_set.append("marca = ?")
+            valores.append(marca_val)
+
+        if "embalagem" in updates and updates["embalagem"]:
+            emb_val = str(updates["embalagem"]).strip()
+            if emb_val:
+                campos_set.append("embalagem = ?")
+                valores.append(emb_val)
+
+        if "qtd_por_embalagem" in updates and updates["qtd_por_embalagem"] is not None:
+            try:
+                qtd_val = float(updates["qtd_por_embalagem"])
+                if qtd_val > 0:
+                    campos_set.append("qtd_por_embalagem = ?")
+                    valores.append(qtd_val)
+            except (ValueError, TypeError):
+                pass
+
+        if "unidade" in updates and updates["unidade"]:
+            un_val = str(updates["unidade"]).strip().upper()
+            if un_val:
+                campos_set.append("unidade = ?")
+                valores.append(un_val)
+
+        if "preco_embalagem" in updates and updates["preco_embalagem"] is not None:
+            try:
+                p_val = float(updates["preco_embalagem"])
+                if p_val >= 0:
+                    campos_set.append("preco_embalagem = ?")
+                    valores.append(p_val)
+            except (ValueError, TypeError):
+                pass
+        elif "percentual_reajuste" in updates and updates["percentual_reajuste"] is not None:
+            try:
+                pct = float(updates["percentual_reajuste"])
+                p_atual = float(c["preco_embalagem"])
+                p_novo = max(0.0, round(p_atual * (1.0 + pct / 100.0), 2))
+                campos_set.append("preco_embalagem = ?")
+                valores.append(p_novo)
+            except (ValueError, TypeError):
+                pass
+
+        if not campos_set:
+            continue
+
+        valores.append(cid)
+        sql = f"UPDATE cotacoes SET {', '.join(campos_set)} WHERE id = ?"
+        cursor.execute(sql, tuple(valores))
+        atualizados += 1
+
+    conn.commit()
+    return {
+        "sucesso": True,
+        "atualizados": atualizados,
+        "ignorados": ignorados,
+        "erros": erros,
+    }
+
+
+

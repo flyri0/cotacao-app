@@ -30,6 +30,9 @@ from backend.domain.produtos import (
     alternar_status_produto_db,
     get_product_statistics_db,
     verificar_historico_produto_db,
+    batch_update_products_category_db,
+    batch_delete_products_db,
+    batch_toggle_products_active_db,
 )
 from backend.domain.fornecedores import (
     list_suppliers_db,
@@ -55,6 +58,7 @@ from backend.domain.necessidades import (
     remove_need_db,
     set_selected_supplier_db,
     reset_selected_suppliers_db,
+    batch_remove_needs_db,
 )
 from backend.domain.cotacoes import (
     list_quotes_db,
@@ -63,6 +67,8 @@ from backend.domain.cotacoes import (
     remove_quote_db,
     get_quote_matrix_db,
     get_global_quotes_history_db,
+    batch_remove_quotes_db,
+    batch_update_quotes_db,
 )
 from backend.domain.alocacoes import (
     list_allocations_db,
@@ -381,6 +387,19 @@ class Api:
         with self._get_connection() as conn:
             return get_product_statistics_db(conn, id_produto)
 
+    def batch_update_products_category(self, product_ids: List[int], nova_categoria: Optional[str]) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            return batch_update_products_category_db(conn, product_ids, nova_categoria)
+
+    def batch_toggle_products_active(self, product_ids: List[int], ativo: Optional[bool] = None) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            val = 1 if ativo is True else (0 if ativo is False else None)
+            return batch_toggle_products_active_db(conn, product_ids, val)
+
+    def batch_delete_products(self, product_ids: List[int]) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            return batch_delete_products_db(conn, product_ids)
+
     # -------------------------------------------------------------------------
     # FORNECEDORES
     # -------------------------------------------------------------------------
@@ -584,6 +603,10 @@ class Api:
         with self._get_connection() as conn:
             return reset_selected_suppliers_db(conn, id_rodada)
 
+    def batch_remove_needs(self, ids_necessidades: List[int]) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            return batch_remove_needs_db(conn, ids_necessidades)
+
     # -------------------------------------------------------------------------
     # COTAÇÕES
     # -------------------------------------------------------------------------
@@ -653,6 +676,14 @@ class Api:
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_entidade(conn, "cotacoes", id_cotacao)
             return remove_quote_db(conn, id_cotacao)
+
+    def batch_remove_quotes(self, ids_cotacoes: List[int]) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            return batch_remove_quotes_db(conn, ids_cotacoes)
+
+    def batch_update_quotes(self, ids_cotacoes: List[int], updates: Dict[str, Any]) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            return batch_update_quotes_db(conn, ids_cotacoes, updates)
 
     def get_comparison_matrix(self, id_rodada: int) -> Dict[str, Any]:
         with self._get_connection() as conn:

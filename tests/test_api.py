@@ -1549,16 +1549,146 @@ class TestApi(unittest.TestCase):
                 import shutil
                 shutil.rmtree(temp_b_dir, ignore_errors=True)
 
-            api_real._release_lock()
         finally:
+            api_real._release_lock()
             if os.path.exists(real_db):
                 try:
                     os.remove(real_db)
                 except Exception:
                     pass
 
+    def test_batch_operations(self) -> None:
+        """Testa todas as operações em lote (produtos, necessidades e cotações)."""
+        # 1. PRODUTOS: batch_update_products_category
+        p1 = self.api.create_product("Produto Batch 1", "Original")
+        p2 = self.api.create_product("Produto Batch 2", "Original")
+        p3 = self.api.create_product("Produto Batch 3", "Outra")
+
+        res_cat = self.api.batch_update_products_category([p1["id"], p2["id"]], "Nova Categoria")
+        self.assertTrue(res_cat["sucesso"])
+        self.assertEqual(res_cat["atualizados"], 2)
+
+        prods = {p["id"]: p for p in self.api.list_products()}
+        self.assertEqual(prods[p1["id"]]["categoria"], "Nova Categoria")
+        self.assertEqual(prods[p2["id"]]["categoria"], "Nova Categoria")
+        self.assertEqual(prods[p3["id"]]["categoria"], "Outra")
+
+        # Caso vazio
+        self.assertEqual(self.api.batch_update_products_category([], "Cat")["atualizados"], 0)
+
+        # 2. PRODUTOS: batch_toggle_products_active
+        res_tog = self.api.batch_toggle_products_active([p1["id"], p2["id"]], False)
+        self.assertTrue(res_tog["sucesso"])
+        prods = {p["id"]: p for p in self.api.list_products()}
+        self.assertEqual(prods[p1["id"]]["ativo"], 0)
+        self.assertEqual(prods[p2["id"]]["ativo"], 0)
+
+        # Reativa
+        self.api.batch_toggle_products_active([p1["id"]], True)
+        prods = {p["id"]: p for p in self.api.list_products()}
+        self.assertEqual(prods[p1["id"]]["ativo"], 1)
+
+        # Toggle dinâmico sem passar bool
+        self.api.batch_toggle_products_active([p1["id"]])
+        prods = {p["id"]: p for p in self.api.list_products()}
+        self.assertEqual(prods[p1["id"]]["ativo"], 0)
+
+        # 3. PRODUTOS: batch_delete_products
+        # p1 e p2 não têm histórico -> devem ser excluídos
+        # Produto 1 do seed tem cotações e necessidades -> deve ser bloqueado
+        res_del = self.api.batch_delete_products([p1["id"], p2["id"], 1])
+        self.assertTrue(res_del["sucesso"])
+        self.assertEqual(res_del["excluidos"], 2)
+        self.assertEqual(res_del["bloqueados"], 1)
+        self.assertEqual(res_del["detalhes_bloqueados"][0]["id"], 1)
+        self.assertIn("Possui", res_del["detalhes_bloqueados"][0]["motivo"])
+
+        # Caso vazio
+        self.assertEqual(self.api.batch_delete_products([])["excluidos"], 0)
+
+        # 4. NECESSIDADES: batch_remove_needs
+        # Adiciona 2 necessidades na rodada 4 (aberta)
+        n1 = self.api.create_need(id_rodada=4, id_produto=p3["id"])
+        p4 = self.api.create_product("Produto Batch 4", "Geral")
+        n2 = self.api.create_need(id_rodada=4, id_produto=p4["id"])
+
+        res_rem_nec = self.api.batch_remove_needs([n1["id"], n2["id"]])
+        self.assertTrue(res_rem_nec["sucesso"])
+        self.assertEqual(res_rem_nec["removidos"], 2)
+
+        # Caso vazio
+        self.assertEqual(self.api.batch_remove_needs([])["removidos"], 0)
+
+        # Tentar remover necessidade de rodada fechada (rodada 1) -> ValueError
+        with self.assertRaises(ValueError):
+            self.api.batch_remove_needs([1])
+
+        # 5. COTAÇÕES: batch_update_quotes & batch_remove_quotes
+        # Cria 2 cotações de teste na rodada 4 (aberta)
+        c1 = self.api.create_quote(
+            id_rodada=4,
+            id_fornecedor=1,
+            id_produto=p3["id"],
+            marca="Marca Antiga",
+            embalagem="Pct",
+            qtd_por_embalagem=1.0,
+            unidade="PCT",
+            preco_embalagem=100.0,
+        )
+        c2 = self.api.create_quote(
+            id_rodada=4,
+            id_fornecedor=1,
+            id_produto=p4["id"],
+            marca="Marca Antiga",
+            embalagem="Pct",
+            qtd_por_embalagem=1.0,
+            unidade="PCT",
+            preco_embalagem=200.0,
+        )
+
+        # Reajuste de +10% e unificação de marca
+        res_upd_q = self.api.batch_update_quotes(
+            [c1["id"], c2["id"]],
+            {
+                "marca": "Marca Unificada",
+                "percentual_reajuste": 10.0,
+            },
+        )
+        self.assertTrue(res_upd_q["sucesso"])
+        self.assertEqual(res_upd_q["atualizados"], 2)
+
+        q_list = {q["id"]: q for q in self.api.list_quotes(id_rodada=4)}
+        self.assertEqual(q_list[c1["id"]]["marca"], "Marca Unificada")
+        self.assertEqual(q_list[c1["id"]]["preco_embalagem"], 110.0) # 100 + 10%
+        self.assertEqual(q_list[c2["id"]]["preco_embalagem"], 220.0) # 200 + 10%
+
+        # Teste batch_update_quotes caso vazio
+        self.assertEqual(self.api.batch_update_quotes([], {})["atualizados"], 0)
+
+        # Teste conflito de duplicidade ao transferir fornecedor
+        # Já existe cotação para produto 1 fornecedor 2 na rodada 4
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id FROM cotacoes WHERE id_rodada = 4 AND id_fornecedor = 1 AND id_produto = 1")
+        cot_prod1_f1 = cursor.fetchone()["id"]
+        res_dup = self.api.batch_update_quotes([cot_prod1_f1], {"id_fornecedor": 2})
+        self.assertEqual(res_dup["ignorados"], 1)
+        self.assertGreater(len(res_dup["erros"]), 0)
+
+        # Teste batch_remove_quotes na rodada 4
+        res_rem_q = self.api.batch_remove_quotes([c1["id"], c2["id"]])
+        self.assertTrue(res_rem_q["sucesso"])
+        self.assertEqual(res_rem_q["removidos"], 2)
+
+        # Caso vazio
+        self.assertEqual(self.api.batch_remove_quotes([])["removidos"], 0)
+
+        # Tentar remover cotação de rodada fechada -> ValueError
+        with self.assertRaises(ValueError):
+            self.api.batch_remove_quotes([1])
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

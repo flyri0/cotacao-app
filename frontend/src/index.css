@@ -20,6 +20,11 @@ html {
   --app-statcard-p: 8px 10px;
   --app-header-height: 48px;
   --app-navbar-width: 215px;
+  --app-comparacao-col-w: 122px;
+  --app-comparacao-col-min-w: 110px;
+  --app-comparacao-cell-py: 2px;
+  --app-comparacao-cell-px: 4px;
+  --app-comparacao-row-h: 30px;
 }
 
 /* Densidade: Confortável */
@@ -34,6 +39,11 @@ html {
   --app-statcard-p: 12px 14px;
   --app-header-height: 54px;
   --app-navbar-width: 240px;
+  --app-comparacao-col-w: 152px;
+  --app-comparacao-col-min-w: 140px;
+  --app-comparacao-cell-py: 5px;
+  --app-comparacao-cell-px: 8px;
+  --app-comparacao-row-h: 42px;
 }
 
 /* Tamanho de Fonte: Pequeno (12px base) */
@@ -359,5 +369,41 @@ body,
 
 .table-sticky-header thead th:first-child {
   z-index: 4 !important;
+}
+
+/* ==========================================================================
+   SUPER-PLANILHA: ROLAGEM HORIZONTAL SINCRONIZADA E ALTA DENSIDADE
+   ========================================================================== */
+.comparacao-top-scroll-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 12px;
+  background-color: var(--mantine-color-default-border);
+  scrollbar-width: thin;
+}
+
+.comparacao-top-scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.comparacao-top-scroll-container::-webkit-scrollbar-thumb {
+  background-color: var(--mantine-color-gray-5);
+  border-radius: 4px;
+}
+
+.tabela-comparacao-container {
+  scrollbar-width: thin;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.tabela-comparacao-container::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.tabela-comparacao-container::-webkit-scrollbar-thumb {
+  background-color: var(--mantine-color-gray-5);
+  border-radius: 4px;
 }
 
