@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
   Badge,
+  Box,
   Center,
   Group,
   Loader,
@@ -26,9 +27,8 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
 } from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import { PageHeader, RoundHeaderSelector, StatCard } from './common'
-import { calculatePackaging, formatMoney } from '../utils'
+import { calculatePackaging, formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
 import type { Alocacao, Cotacao, Fornecedor, Rodada } from '../types'
 
@@ -347,28 +347,11 @@ export function ResumoView({
   )
 
   const tableFornecedores = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<ResumoFornecedorRow>({
+      enableTopToolbar: false,
+    }),
     columns: columnsFornecedores,
     data: dadosFornecedores,
-    localization: MRT_Localization_PT_BR,
-    enableRowActions: false,
-    enablePagination: false,
-    enableBottomToolbar: false,
-    enableTopToolbar: false,
-    initialState: { density: 'xs' },
-    mantineTableHeadCellProps: {
-      style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
-      },
-    },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
     renderDetailPanel: ({ row }) => {
       const { itens_detalhes, fornecedor_nome } = row.original
       if (!itens_detalhes || itens_detalhes.length === 0) {
@@ -415,87 +398,88 @@ export function ResumoView({
         </Paper>
       )
     },
-    mantineTableProps: {
-      striped: true,
-      highlightOnHover: true,
-      withTableBorder: true,
-    },
-    mantinePaperProps: {
-      withBorder: true,
-      radius: 'sm',
-      shadow: 'none',
-    },
   })
 
   return (
-    <Stack gap="xs" style={{ width: '100%' }}>
-      {/* Cabeçalho */}
-      <PageHeader
-        icon={IconChartBar}
-        iconColor={themeColor}
-        title="Resumo por Fornecedor"
-        subtitle="Acompanhamento consolidado de valores alocados e pedidos mínimos"
-        rightSection={
-          <RoundHeaderSelector
-            rodadas={rodadas}
-            selectedRodadaId={selectedRodadaId}
-            themeColor={themeColor}
-            onSelectRodada={(id) => {
-              setSelectedRodadaId(id)
-              onRodadaChange?.(id)
-              carregarDados(id)
+    <Stack
+      gap="xs"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box style={{ flexShrink: 0 }}>
+        {/* Cabeçalho */}
+        <PageHeader
+          icon={IconChartBar}
+          iconColor={themeColor}
+          title="Resumo por Fornecedor"
+          subtitle="Acompanhamento consolidado de valores alocados e pedidos mínimos"
+          rightSection={
+            <RoundHeaderSelector
+              rodadas={rodadas}
+              selectedRodadaId={selectedRodadaId}
+              themeColor={themeColor}
+              onSelectRodada={(id) => {
+                setSelectedRodadaId(id)
+                onRodadaChange?.(id)
+                carregarDados(id)
+              }}
+            />
+          }
+        />
+
+        {/* Cartões KPIs */}
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+          <StatCard
+            label="Total do Pedido"
+            value={formatMoney(metricas.totalFinanceiro)}
+            subtitle="Consolidado em embalagens fechadas"
+            icon={IconScale}
+            color="teal"
+            badge={{ label: 'Embalagens Fechadas', color: 'teal' }}
+          />
+
+          <StatCard
+            label="Fornecedores Aptos"
+            value={`${metricas.fornecedoresAptosCount} de ${metricas.fornecedoresAtivosCount}`}
+            subtitle={
+              metricas.fornecedoresAbaixoCount > 0
+                ? `⚠️ ${metricas.fornecedoresAbaixoCount} abaixo do mínimo!`
+                : '✓ Todos atingiram o pedido mínimo'
+            }
+            icon={IconTruck}
+            color={metricas.fornecedoresAbaixoCount > 0 ? 'red' : 'teal'}
+            badge={{
+              label: metricas.fornecedoresAbaixoCount > 0 ? 'Abaixo Mínimo' : 'Aprovados',
+              color: metricas.fornecedoresAbaixoCount > 0 ? 'red' : 'teal',
             }}
           />
-        }
-      />
 
-      {/* Cartões KPIs */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
-        <StatCard
-          label="Total do Pedido"
-          value={formatMoney(metricas.totalFinanceiro)}
-          subtitle="Consolidado em embalagens fechadas"
-          icon={IconScale}
-          color="teal"
-          badge={{ label: 'Embalagens Fechadas', color: 'teal' }}
-        />
-
-        <StatCard
-          label="Fornecedores Aptos"
-          value={`${metricas.fornecedoresAptosCount} de ${metricas.fornecedoresAtivosCount}`}
-          subtitle={
-            metricas.fornecedoresAbaixoCount > 0
-              ? `⚠️ ${metricas.fornecedoresAbaixoCount} abaixo do mínimo!`
-              : '✓ Todos atingiram o pedido mínimo'
-          }
-          icon={IconTruck}
-          color={metricas.fornecedoresAbaixoCount > 0 ? 'red' : 'teal'}
-          badge={{
-            label: metricas.fornecedoresAbaixoCount > 0 ? 'Abaixo Mínimo' : 'Aprovados',
-            color: metricas.fornecedoresAbaixoCount > 0 ? 'red' : 'teal',
-          }}
-        />
-
-        <StatCard
-          label="Itens Alocados"
-          value={`${metricas.totalItensAlocados}`}
-          subtitle={`${metricas.fornecedoresAtivosCount} fornecedor(es) com compras`}
-          icon={IconPackage}
-          color={themeColor}
-          badge={{ label: `${metricas.fornecedoresAtivosCount} Fornecedores`, color: themeColor }}
-        />
-      </SimpleGrid>
+          <StatCard
+            label="Itens Alocados"
+            value={`${metricas.totalItensAlocados}`}
+            subtitle={`${metricas.fornecedoresAtivosCount} fornecedor(es) com compras`}
+            icon={IconPackage}
+            color={themeColor}
+            badge={{ label: `${metricas.fornecedoresAtivosCount} Fornecedores`, color: themeColor }}
+          />
+        </SimpleGrid>
+      </Box>
 
       {/* Tabela de Resumo Financeiro por Fornecedor */}
-      <Stack gap="xs" mt="xs">
+      <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {loading ? (
-          <Center p="xl">
+          <Center p="xl" style={{ flex: 1 }}>
             <Loader size="lg" />
           </Center>
         ) : (
           <MantineReactTable table={tableFornecedores} />
         )}
-      </Stack>
+      </Box>
     </Stack>
   )
 }

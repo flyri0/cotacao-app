@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Card,
   Center,
@@ -11,7 +12,6 @@ import {
   Radio,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   TextInput,
   Tooltip,
@@ -35,8 +35,13 @@ import {
   IconTrendingUp,
   IconX,
 } from '@tabler/icons-react'
+import {
+  MantineReactTable,
+  useMantineReactTable,
+  type MRT_ColumnDef,
+} from 'mantine-react-table'
 import { AppSelect, EmptyState, PageHeader, StatCard } from './common'
-import { formatMoney } from '../utils'
+import { formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
 import type { RodadaComMetricas } from '../types'
 
@@ -332,289 +337,349 @@ export function RodadasView({
     }
   }
 
-  return (
-    <Stack gap="xs" style={{ width: '100%' }}>
-      {/* Cabeçalho */}
-      <PageHeader
-        icon={IconRotate}
-        iconColor={themeColor}
-        title="Gestão de Rodadas de Cotação"
-        subtitle="Ciclos de compras e acompanhamento de cotações"
-        rightSection={
-          <Button
-            leftSection={<IconPlus size={14} />}
-            variant="filled"
-            color={themeColor}
-            size="xs"
-            onClick={openModalCriar}
-          >
-            Nova Rodada
-          </Button>
-        }
-      />
-
-      {/* Painel de Indicadores (KPIs) */}
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs">
-        <StatCard
-          label="Total Rodadas"
-          value={rodadas.length}
-          subtitle="Ciclos registrados"
-          icon={IconRotate}
-          color={themeColor}
-        />
-
-        <StatCard
-          label="Abertas"
-          value={totalAbertas}
-          subtitle="Em cotação ativa"
-          icon={IconLockOpen}
-          color="teal"
-        />
-
-        <StatCard
-          label="Fechadas"
-          value={totalFechadas}
-          subtitle="Histórico consolidado"
-          icon={IconLock}
-          color="gray"
-        />
-
-        <StatCard
-          label="Volume Comprado"
-          value={formatMoney(totalFinanceiro)}
-          subtitle="Total alocado"
-          icon={IconTrendingUp}
-          color="teal"
-        />
-      </SimpleGrid>
-
-      {/* Barra de Filtros e Busca */}
-      <Card withBorder p="xs" radius="sm">
-        <Group justify="space-between">
-          <Group gap="xs" style={{ flex: 1, maxWidth: 400 }}>
-            <TextInput
-              placeholder="Buscar rodada por nome ou ID..."
-              leftSection={<IconSearch size={14} />}
-              value={busca}
-              onChange={(e) => setBusca(e.currentTarget.value)}
-              style={{ flex: 1 }}
-              size="xs"
-            />
-          </Group>
-
-          <Group gap={4}>
-            <Text size="11px" c="dimmed" fw={700}>
-              Status:
-            </Text>
-            <Button
-              size="compact-xs"
-              variant={filtroStatus === 'todas' ? 'filled' : 'light'}
-              color="gray"
-              onClick={() => setFiltroStatus('todas')}
-            >
-              Todas ({rodadas.length})
-            </Button>
-            <Button
-              size="compact-xs"
-              variant={filtroStatus === 'abertas' ? 'filled' : 'light'}
-              color="teal"
-              onClick={() => setFiltroStatus('abertas')}
-            >
-              Abertas ({totalAbertas})
-            </Button>
-            <Button
-              size="compact-xs"
-              variant={filtroStatus === 'fechadas' ? 'filled' : 'light'}
-              color="gray"
-              onClick={() => setFiltroStatus('fechadas')}
-            >
-              Fechadas ({totalFechadas})
-            </Button>
-            <Button
-              size="compact-xs"
-              variant={filtroStatus === 'canceladas' ? 'filled' : 'light'}
-              color="red"
-              onClick={() => setFiltroStatus('canceladas')}
-            >
-              Canceladas ({totalCanceladas})
-            </Button>
-          </Group>
-        </Group>
-      </Card>
-
-      {/* Tabela de Rodadas */}
-      {loading ? (
-        <Center p="xl">
-          <Loader size="lg" />
-        </Center>
-      ) : rodadasFiltradas.length === 0 ? (
-        <EmptyState
-          title="Nenhuma rodada encontrada"
-          description={
-            busca
-              ? 'Tente ajustar os termos da busca para encontrar o ciclo desejado.'
-              : 'Clique no botão acima para criar sua primeira rodada de cotação.'
-          }
-          action={
-            !busca && (
-              <Button
-                size="xs"
-                variant="light"
-                color="blue"
-                leftSection={<IconPlus size={14} />}
-                onClick={openModalCriar}
-              >
-                Criar Primeira Rodada
-              </Button>
+  const columns = useMemo<MRT_ColumnDef<RodadaComMetricas>[]>(
+    () => [
+      {
+        accessorKey: 'descricao',
+        header: 'Descrição / Nome da Rodada',
+        size: 260,
+        Cell: ({ row }) => {
+          const r = row.original
+          const isAtiva = r.id === rodadaAtivaId
+          const isCancelada = r.status === 'cancelada'
+          return (
+            <Group gap="xs" wrap="nowrap">
+              <Text size="xs" fw={isAtiva ? 700 : 500} c={isCancelada ? 'dimmed' : undefined} truncate="end">
+                {r.descricao}
+              </Text>
+              {isAtiva && (
+                <Badge variant="filled" color={themeColor} size="xs">
+                  Ativa
+                </Badge>
+              )}
+            </Group>
+          )
+        },
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        size: 110,
+        Cell: ({ row }) => {
+          const r = row.original
+          if (r.status === 'aberta') {
+            return (
+              <Badge color="teal" variant="light" size="xs" leftSection={<IconLockOpen size={11} />}>
+                Aberta
+              </Badge>
             )
           }
+          if (r.status === 'fechada') {
+            return (
+              <Badge color="gray" variant="outline" size="xs" leftSection={<IconLock size={11} />}>
+                Fechada
+              </Badge>
+            )
+          }
+          return (
+            <Badge color="red" variant="light" size="xs" leftSection={<IconBan size={11} />}>
+              Cancelada
+            </Badge>
+          )
+        },
+      },
+      {
+        accessorKey: 'data_criacao',
+        header: 'Criada em',
+        size: 110,
+        Cell: ({ cell }) => (
+          <Text size="xs" c="dimmed">
+            {formatDate(cell.getValue<string>())}
+          </Text>
+        ),
+      },
+      {
+        accessorKey: 'total_necessidades',
+        header: 'Produtos',
+        size: 100,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
+        Cell: ({ cell }) => (
+          <Badge variant="light" color="cyan" size="xs">
+            {cell.getValue<number>()} itens
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: 'total_cotacoes',
+        header: 'Cotações',
+        size: 100,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
+        Cell: ({ cell }) => (
+          <Badge variant="light" color="indigo" size="xs">
+            {cell.getValue<number>()} cotações
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: 'valor_total_alocado',
+        header: 'Total Alocado',
+        size: 130,
+        mantineTableHeadCellProps: { align: 'right' },
+        mantineTableBodyCellProps: { align: 'right' },
+        Cell: ({ row }) => {
+          const r = row.original
+          const isCancelada = r.status === 'cancelada'
+          return (
+            <Text size="xs" fw={700} c={r.valor_total_alocado > 0 && !isCancelada ? 'teal' : 'dimmed'}>
+              {formatMoney(r.valor_total_alocado)}
+            </Text>
+          )
+        },
+      },
+      {
+        id: 'acoes',
+        header: 'Ações',
+        size: 180,
+        mantineTableHeadCellProps: { align: 'center' },
+        mantineTableBodyCellProps: { align: 'center' },
+        Cell: ({ row }) => {
+          const r = row.original
+          const isAtiva = r.id === rodadaAtivaId
+          const isAberta = r.status === 'aberta'
+          const isCancelada = r.status === 'cancelada'
+          return (
+            <Group gap={4} justify="center" wrap="nowrap">
+              <Tooltip label="Definir como rodada ativa e ir para Necessidades">
+                <Button
+                  size="compact-xs"
+                  variant={isAtiva ? 'filled' : 'light'}
+                  color={themeColor}
+                  leftSection={<IconChecklist size={13} />}
+                  onClick={() => onSelecionarRodada?.(r.id, 'necessidades')}
+                >
+                  Abrir
+                </Button>
+              </Tooltip>
+
+              <Tooltip
+                label={
+                  isAberta
+                    ? 'Fechar / Concluir rodada'
+                    : isCancelada
+                    ? 'Reativar rodada'
+                    : 'Reabrir rodada'
+                }
+              >
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={isAberta ? 'gray' : 'teal'}
+                  onClick={() => handleToggleStatus(r)}
+                >
+                  {isAberta ? (
+                    <IconLock size={15} />
+                  ) : isCancelada ? (
+                    <IconRotate size={15} />
+                  ) : (
+                    <IconLockOpen size={15} />
+                  )}
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip label="Editar rodada">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={themeColor}
+                  onClick={() => handleAbrirEdicao(r)}
+                >
+                  <IconEdit size={15} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip label="Excluir rodada permanentemente">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="red"
+                  onClick={() => handleAbrirExclusao(r)}
+                >
+                  <IconTrash size={15} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          )
+        },
+      },
+    ],
+    [rodadaAtivaId, themeColor, onSelecionarRodada]
+  )
+
+  const table = useMantineReactTable({
+    ...getVirtualizedTableProps<RodadaComMetricas>({ enableTopToolbar: false }),
+    columns,
+    data: rodadasFiltradas,
+  })
+
+  return (
+    <Stack
+      gap="xs"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box style={{ flexShrink: 0 }}>
+        {/* Cabeçalho */}
+        <PageHeader
+          icon={IconRotate}
+          iconColor={themeColor}
+          title="Gestão de Rodadas de Cotação"
+          subtitle="Ciclos de compras e acompanhamento de cotações"
+          rightSection={
+            <Button
+              leftSection={<IconPlus size={14} />}
+              variant="filled"
+              color={themeColor}
+              size="xs"
+              onClick={openModalCriar}
+            >
+              Nova Rodada
+            </Button>
+          }
         />
-      ) : (
-        <Card withBorder p={0} radius="sm" style={{ overflow: 'hidden' }}>
-          <Table striped highlightOnHover verticalSpacing={3} horizontalSpacing={6}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Descrição / Nome da Rodada</Table.Th>
-                <Table.Th style={{ width: 110 }}>Status</Table.Th>
-                <Table.Th style={{ width: 100 }}>Criada em</Table.Th>
-                <Table.Th style={{ width: 100, textAlign: 'center' }}>Produtos</Table.Th>
-                <Table.Th style={{ width: 100, textAlign: 'center' }}>Cotações</Table.Th>
-                <Table.Th style={{ width: 130, textAlign: 'right' }}>Total Alocado</Table.Th>
-                <Table.Th style={{ width: 190, textAlign: 'center' }}>Ações</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {rodadasFiltradas.map((r) => {
-                const isAtiva = r.id === rodadaAtivaId
-                const isAberta = r.status === 'aberta'
-                const isCancelada = r.status === 'cancelada'
+      </Box>
 
-                return (
-                  <Table.Tr key={r.id} style={isAtiva ? { fontWeight: 600 } : undefined}>
-                    <Table.Td>
-                      <Group gap="xs">
-                        <Text size="xs" fw={isAtiva ? 700 : 500} c={isCancelada ? 'dimmed' : undefined}>
-                          {r.descricao}
-                        </Text>
-                        {isAtiva && (
-                          <Badge variant="filled" color="blue" size="xs">
-                            Ativa
-                          </Badge>
-                        )}
-                      </Group>
-                    </Table.Td>
+      <Box style={{ flexShrink: 0 }}>
+        {/* Painel de Indicadores (KPIs) */}
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs">
+          <StatCard
+            label="Total Rodadas"
+            value={rodadas.length}
+            subtitle="Ciclos registrados"
+            icon={IconRotate}
+            color={themeColor}
+          />
 
-                    <Table.Td>
-                      {isAberta && (
-                        <Badge color="green" variant="light" size="xs" leftSection={<IconLockOpen size={11} />}>
-                          Aberta
-                        </Badge>
-                      )}
-                      {r.status === 'fechada' && (
-                        <Badge color="gray" variant="outline" size="xs" leftSection={<IconLock size={11} />}>
-                          Fechada
-                        </Badge>
-                      )}
-                      {isCancelada && (
-                        <Badge color="red" variant="light" size="sm" leftSection={<IconBan size={12} />}>
-                          Cancelada
-                        </Badge>
-                      )}
-                    </Table.Td>
+          <StatCard
+            label="Abertas"
+            value={totalAbertas}
+            subtitle="Em cotação ativa"
+            icon={IconLockOpen}
+            color="teal"
+          />
 
-                    <Table.Td>
-                      <Text size="xs" c="dimmed">
-                        {formatDate(r.data_criacao)}
-                      </Text>
-                    </Table.Td>
+          <StatCard
+            label="Fechadas"
+            value={totalFechadas}
+            subtitle="Histórico consolidado"
+            icon={IconLock}
+            color="gray"
+          />
 
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Badge variant="light" color="cyan" size="sm">
-                        {r.total_necessidades} itens
-                      </Badge>
-                    </Table.Td>
+          <StatCard
+            label="Volume Comprado"
+            value={formatMoney(totalFinanceiro)}
+            subtitle="Total alocado"
+            icon={IconTrendingUp}
+            color="teal"
+          />
+        </SimpleGrid>
+      </Box>
 
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Badge variant="light" color="indigo" size="sm">
-                        {r.total_cotacoes} cotações
-                      </Badge>
-                    </Table.Td>
+      <Box style={{ flexShrink: 0 }}>
+        {/* Barra de Filtros e Busca */}
+        <Card withBorder p="xs" radius="sm">
+          <Group justify="space-between">
+            <Group gap="xs" style={{ flex: 1, maxWidth: 400 }}>
+              <TextInput
+                placeholder="Buscar rodada por nome ou ID..."
+                leftSection={<IconSearch size={14} />}
+                value={busca}
+                onChange={(e) => setBusca(e.currentTarget.value)}
+                style={{ flex: 1 }}
+                size="xs"
+              />
+            </Group>
 
-                    <Table.Td style={{ textAlign: 'right' }}>
-                      <Text size="sm" fw={700} c={r.valor_total_alocado > 0 && !isCancelada ? 'teal.7' : 'dimmed'}>
-                        {formatMoney(r.valor_total_alocado)}
-                      </Text>
-                    </Table.Td>
-
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Group gap={4} justify="center" wrap="nowrap">
-                        <Tooltip label="Definir como rodada ativa e ir para Necessidades">
-                          <Button
-                            size="compact-xs"
-                            variant={isAtiva ? 'filled' : 'light'}
-                            color={themeColor}
-                            leftSection={<IconChecklist size={13} />}
-                            onClick={() => onSelecionarRodada?.(r.id, 'necessidades')}
-                          >
-                            Abrir
-                          </Button>
-                        </Tooltip>
-
-                        <Tooltip
-                          label={
-                            isAberta
-                              ? 'Fechar / Concluir rodada'
-                              : isCancelada
-                              ? 'Reativar rodada'
-                              : 'Reabrir rodada'
-                          }
-                        >
-                          <ActionIcon
-                            size="sm"
-                            variant="subtle"
-                            color={isAberta ? 'gray' : 'teal'}
-                            onClick={() => handleToggleStatus(r)}
-                          >
-                            {isAberta ? (
-                              <IconLock size={15} />
-                            ) : isCancelada ? (
-                              <IconRotate size={15} />
-                            ) : (
-                              <IconLockOpen size={15} />
-                            )}
-                          </ActionIcon>
-                        </Tooltip>
-
-                        <Tooltip label="Editar rodada">
-                          <ActionIcon
-                            size="sm"
-                            variant="subtle"
-                            color={themeColor}
-                            onClick={() => handleAbrirEdicao(r)}
-                          >
-                            <IconEdit size={15} />
-                          </ActionIcon>
-                        </Tooltip>
-
-                        <Tooltip label="Excluir rodada permanentemente">
-                          <ActionIcon
-                            size="sm"
-                            variant="subtle"
-                            color="red"
-                            onClick={() => handleAbrirExclusao(r)}
-                          >
-                            <IconTrash size={15} />
-                          </ActionIcon>
-                        </Tooltip>
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                )
-              })}
-            </Table.Tbody>
-          </Table>
+            <Group gap={4}>
+              <Text size="11px" c="dimmed" fw={700}>
+                Status:
+              </Text>
+              <Button
+                size="compact-xs"
+                variant={filtroStatus === 'todas' ? 'filled' : 'light'}
+                color="gray"
+                onClick={() => setFiltroStatus('todas')}
+              >
+                Todas ({rodadas.length})
+              </Button>
+              <Button
+                size="compact-xs"
+                variant={filtroStatus === 'abertas' ? 'filled' : 'light'}
+                color="teal"
+                onClick={() => setFiltroStatus('abertas')}
+              >
+                Abertas ({totalAbertas})
+              </Button>
+              <Button
+                size="compact-xs"
+                variant={filtroStatus === 'fechadas' ? 'filled' : 'light'}
+                color="gray"
+                onClick={() => setFiltroStatus('fechadas')}
+              >
+                Fechadas ({totalFechadas})
+              </Button>
+              <Button
+                size="compact-xs"
+                variant={filtroStatus === 'canceladas' ? 'filled' : 'light'}
+                color="red"
+                onClick={() => setFiltroStatus('canceladas')}
+              >
+                Canceladas ({totalCanceladas})
+              </Button>
+            </Group>
+          </Group>
         </Card>
-      )}
+      </Box>
+
+      {/* Tabela Virtualizada de Rodadas */}
+      <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {loading ? (
+          <Center p="xl">
+            <Loader size="lg" />
+          </Center>
+        ) : rodadasFiltradas.length === 0 ? (
+          <EmptyState
+            title="Nenhuma rodada encontrada"
+            description={
+              busca
+                ? 'Tente ajustar os termos da busca para encontrar o ciclo desejado.'
+                : 'Clique no botão acima para criar sua primeira rodada de cotação.'
+            }
+            action={
+              !busca && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="blue"
+                  leftSection={<IconPlus size={14} />}
+                  onClick={openModalCriar}
+                >
+                  Criar Primeira Rodada
+                </Button>
+              )
+            }
+          />
+        ) : (
+          <MantineReactTable table={table} />
+        )}
+      </Box>
 
       {/* MODAL: Nova Rodada */}
       <Modal

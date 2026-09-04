@@ -3,6 +3,7 @@ import {
   ActionIcon,
   Alert,
   Badge,
+  Box,
   Button,
   Center,
   Group,
@@ -38,7 +39,6 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
 } from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import {
   AppAutocomplete,
   PageHeader,
@@ -52,7 +52,7 @@ import {
 } from './cotacoes'
 import { EditProductModal } from './produtos'
 import { SUGESTOES_EMBALAGEM, SUGESTOES_UNIDADES } from '../constants'
-import { downloadBase64File, formatMoney } from '../utils'
+import { downloadBase64File, formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
 import type {
   Cotacao,
@@ -879,19 +879,13 @@ export function CotacoesView({
   )
 
   const table = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<Cotacao>({ enableTopToolbar: true }),
     columns,
     data: cotacoes,
-    localization: MRT_Localization_PT_BR,
-    enableRowActions: false,
     enableRowSelection: true,
     getRowId: (row) => String(row.id),
     onRowSelectionChange: setRowSelection,
     state: { rowSelection },
-    enablePagination: true,
-    enableBottomToolbar: true,
-    enableTopToolbar: true,
-    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
     renderTopToolbarCustomActions: () => {
       if (selectedQuoteIds.length === 0) return null
       return (
@@ -908,7 +902,7 @@ export function CotacoesView({
         >
           <Group justify="space-between" align="center" wrap="wrap" gap="xs">
             <Group gap="xs" align="center" wrap="wrap">
-              <Badge size="sm" variant="filled" color={themeColor}>
+              <Badge size="xs" variant="filled" color={themeColor}>
                 {selectedQuoteIds.length} cotação{selectedQuoteIds.length > 1 ? 'ões' : ''} selecionada{selectedQuoteIds.length > 1 ? 's' : ''}
               </Badge>
               <Button
@@ -944,258 +938,250 @@ export function CotacoesView({
         </Paper>
       )
     },
-    mantineTableHeadCellProps: {
-      style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
-      },
-    },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTableProps: {
-      striped: true,
-      highlightOnHover: true,
-      withTableBorder: true,
-    },
-    mantinePaperProps: {
-      withBorder: true,
-      radius: 'sm',
-      shadow: 'none',
-    },
   })
 
   return (
-    <Stack gap="xs" style={{ width: '100%' }}>
-      {/* Cabeçalho */}
-      <PageHeader
-        icon={IconReceipt}
-        iconColor={themeColor}
-        title="Cotações de Preços"
-        subtitle="Normalização automática de preço por unidade"
-        rightSection={
-          <Group gap="xs">
-            <Button
-              variant="light"
-              color={themeColor}
-              size="xs"
-              leftSection={<IconUpload size={14} />}
-              loading={exportandoExcel}
-              onClick={handleExportarExcel}
-            >
-              Exportar para Excel
-            </Button>
-            <RoundHeaderSelector
-              rodadas={rodadas}
-              selectedRodadaId={selectedRodadaId}
-              themeColor={themeColor}
-              onSelectRodada={(id) => {
-                setSelectedRodadaId(id)
-                onRodadaChange?.(id)
-                carregarCotacoesENecessidades(id)
-              }}
-            />
-          </Group>
-        }
-      />
-
-      {/* Formulário Turbo de Cadastro de Cotação */}
-      <SectionCard
-        title="Nova Cotação de Fornecedor"
-        subtitle="Fornecedor fixo para lançamento em lote"
-        kbdHint="Enter"
-      >
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <fieldset disabled={isFechada} style={{ border: 'none', padding: 0, margin: 0 }}>
-            <Stack gap="xs">
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
-              <AppAutocomplete
-                ref={fornecedorRef}
-                label="Fornecedor (Fixo)"
-                size="xs"
-                placeholder="Selecione o fornecedor..."
-                data={nomesFornecedores}
-                required
-                limit={8}
-                {...form.getInputProps('fornecedorNome')}
-                onTabOrEnterNextRef={produtoRef}
-              />
-
-              <Stack gap={2}>
-                <Group justify="space-between" align="center">
-                  <Text size="xs" fw={500}>
-                    Produto <Text span c="red">*</Text>
-                  </Text>
-                  {produtoSelecionado && (
-                    <Button
-                      variant="subtle"
-                      color="blue"
-                      size="compact-xs"
-                      leftSection={<IconEdit size={11} />}
-                      onClick={() => handleAbrirEdicaoProduto(produtoSelecionado)}
-                    >
-                      Editar
-                    </Button>
-                  )}
-                </Group>
-                <AppAutocomplete
-                  ref={produtoRef}
-                  size="xs"
-                  placeholder="Digite ou selecione o produto..."
-                  data={nomesTodosProdutos}
-                  required
-                  limit={10}
-                  {...form.getInputProps('produtoNome')}
-                  onTabOrEnterNextRef={marcaRef}
-                />
-              </Stack>
-
-              <TextInput
-                ref={marcaRef}
-                label="Marca (Opcional)"
-                size="xs"
-                placeholder="Ex: Ypê, Bombril, 3M..."
-                {...form.getInputProps('marca')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    embalagemRef.current?.focus()
-                  }
-                }}
-              />
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="xs">
-              <AppAutocomplete
-                ref={embalagemRef}
-                label="Embalagem"
-                size="xs"
-                placeholder="Ex: Caixa c/ 24 un, Fardo c/ 12 un"
-                data={SUGESTOES_EMBALAGEM}
-                required
-                {...form.getInputProps('embalagem')}
-                onTabOrEnterNextRef={qtdRef}
-              />
-
-              <NumberInput
-                ref={qtdRef}
-                label="Qtd na Embalagem"
-                size="xs"
-                placeholder="Ex: 24"
-                min={0.001}
-                decimalScale={3}
-                required
-                {...form.getInputProps('qtd_por_embalagem')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    unidadeRef.current?.focus()
-                  }
-                }}
-              />
-
-              <AppAutocomplete
-                ref={unidadeRef}
-                label="Unidade Medida"
-                size="xs"
-                placeholder="Ex: UN, KG, L, PCT, CX"
-                data={SUGESTOES_UNIDADES}
-                required
-                {...form.getInputProps('unidade')}
-                onTabOrEnterNextRef={precoRef}
-              />
-
-              <NumberInput
-                ref={precoRef}
-                label="Preço Embalagem (R$)"
-                size="xs"
-                placeholder="0,00"
-                min={0}
-                decimalScale={2}
-                fixedDecimalScale
-                thousandSeparator="."
-                decimalSeparator=","
-                prefix="R$ "
-                required
-                {...form.getInputProps('preco_embalagem')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    form.onSubmit(handleSubmit)()
-                  }
-                }}
-              />
-            </SimpleGrid>
-
-            {/* Live Preview do Preço Unitário Normalizado + Inteligência de Tendência Histórica */}
-            <Alert
-              icon={<IconCalculator size={18} />}
-              color="teal"
-              variant="light"
-              radius="sm"
-              p="xs"
-            >
-              <Stack gap={4}>
-                <Group justify="space-between" align="center">
-                  <div>
-                    <Text size="xs" fw={600}>
-                      {form.values.produtoNome
-                        ? `Item: ${form.values.produtoNome} (Un: ${form.values.unidade || 'UN'})`
-                        : 'Preencha os dados do item para visualizar o preço normalizado.'}
-                      {fornecedorSelecionado &&
-                        ` • Fornecedor: ${fornecedorSelecionado.nome}`}
-                      {form.values.marca &&
-                        ` • Marca: ${form.values.marca}`}
-                    </Text>
-                  </div>
-                  <Badge size="sm" color="teal" variant="filled">
-                    {precoUnitarioPreview > 0
-                      ? `${formatMoney(precoUnitarioPreview)} / ${
-                          form.values.unidade || 'UN'
-                        }`
-                      : 'R$ 0,00'}
-                  </Badge>
-                </Group>
-
-                {/* Painel Inteligente de Comparação Histórica */}
-                {produtoSelecionado && (
-                  <ProductStatsCard
-                    statsProduto={statsProduto}
-                    precoUnitarioPreview={precoUnitarioPreview}
-                  />
-                )}
-              </Stack>
-            </Alert>
-
-            <Group justify="flex-end">
+    <Stack
+      gap="xs"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box style={{ flexShrink: 0 }}>
+        {/* Cabeçalho */}
+        <PageHeader
+          icon={IconReceipt}
+          iconColor={themeColor}
+          title="Cotações de Preços"
+          subtitle="Normalização automática de preço por unidade"
+          rightSection={
+            <Group gap="xs">
               <Button
-                type="submit"
-                variant="filled"
+                variant="light"
                 color={themeColor}
                 size="xs"
-                leftSection={<IconPlus size={14} />}
-                loading={submitting}
+                leftSection={<IconUpload size={14} />}
+                loading={exportandoExcel}
+                onClick={handleExportarExcel}
               >
-                Salvar Cotação <Kbd ml={4} size="xs">Enter</Kbd>
+                Exportar para Excel
               </Button>
+              <RoundHeaderSelector
+                rodadas={rodadas}
+                selectedRodadaId={selectedRodadaId}
+                themeColor={themeColor}
+                onSelectRodada={(id) => {
+                  setSelectedRodadaId(id)
+                  onRodadaChange?.(id)
+                  carregarCotacoesENecessidades(id)
+                }}
+              />
             </Group>
-          </Stack>
-          </fieldset>
-        </form>
-      </SectionCard>
+          }
+        />
+      </Box>
+
+      <Box style={{ flexShrink: 0 }}>
+        {/* Formulário Turbo de Cadastro de Cotação */}
+        <SectionCard
+          title="Nova Cotação de Fornecedor"
+          subtitle="Fornecedor fixo para lançamento em lote"
+          kbdHint="Enter"
+        >
+          <form onSubmit={form.onSubmit(handleSubmit)}>
+            <fieldset disabled={isFechada} style={{ border: 'none', padding: 0, margin: 0 }}>
+              <Stack gap="xs">
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+                <AppAutocomplete
+                  ref={fornecedorRef}
+                  label="Fornecedor (Fixo)"
+                  size="xs"
+                  placeholder="Selecione o fornecedor..."
+                  data={nomesFornecedores}
+                  required
+                  limit={8}
+                  {...form.getInputProps('fornecedorNome')}
+                  onTabOrEnterNextRef={produtoRef}
+                />
+
+                <Stack gap={2}>
+                  <Group justify="space-between" align="center">
+                    <Text size="xs" fw={500}>
+                      Produto <Text span c="red">*</Text>
+                    </Text>
+                    {produtoSelecionado && (
+                      <Button
+                        variant="subtle"
+                        color="blue"
+                        size="compact-xs"
+                        leftSection={<IconEdit size={11} />}
+                        onClick={() => handleAbrirEdicaoProduto(produtoSelecionado)}
+                      >
+                        Editar
+                      </Button>
+                    )}
+                  </Group>
+                  <AppAutocomplete
+                    ref={produtoRef}
+                    size="xs"
+                    placeholder="Digite ou selecione o produto..."
+                    data={nomesTodosProdutos}
+                    required
+                    limit={10}
+                    {...form.getInputProps('produtoNome')}
+                    onTabOrEnterNextRef={marcaRef}
+                  />
+                </Stack>
+
+                <TextInput
+                  ref={marcaRef}
+                  label="Marca (Opcional)"
+                  size="xs"
+                  placeholder="Ex: Ypê, Bombril, 3M..."
+                  {...form.getInputProps('marca')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      embalagemRef.current?.focus()
+                    }
+                  }}
+                />
+              </SimpleGrid>
+
+              <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="xs">
+                <AppAutocomplete
+                  ref={embalagemRef}
+                  label="Embalagem"
+                  size="xs"
+                  placeholder="Ex: Caixa c/ 24 un, Fardo c/ 12 un"
+                  data={SUGESTOES_EMBALAGEM}
+                  required
+                  {...form.getInputProps('embalagem')}
+                  onTabOrEnterNextRef={qtdRef}
+                />
+
+                <NumberInput
+                  ref={qtdRef}
+                  label="Qtd na Embalagem"
+                  size="xs"
+                  placeholder="Ex: 24"
+                  min={0.001}
+                  decimalScale={3}
+                  required
+                  {...form.getInputProps('qtd_por_embalagem')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      unidadeRef.current?.focus()
+                    }
+                  }}
+                />
+
+                <AppAutocomplete
+                  ref={unidadeRef}
+                  label="Unidade Medida"
+                  size="xs"
+                  placeholder="Ex: UN, KG, L, PCT, CX"
+                  data={SUGESTOES_UNIDADES}
+                  required
+                  {...form.getInputProps('unidade')}
+                  onTabOrEnterNextRef={precoRef}
+                />
+
+                <NumberInput
+                  ref={precoRef}
+                  label="Preço Embalagem (R$)"
+                  size="xs"
+                  placeholder="0,00"
+                  min={0}
+                  decimalScale={2}
+                  fixedDecimalScale
+                  thousandSeparator="."
+                  decimalSeparator=","
+                  prefix="R$ "
+                  required
+                  {...form.getInputProps('preco_embalagem')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      form.onSubmit(handleSubmit)()
+                    }
+                  }}
+                />
+              </SimpleGrid>
+
+              {/* Live Preview do Preço Unitário Normalizado + Inteligência de Tendência Histórica */}
+              <Alert
+                icon={<IconCalculator size={18} />}
+                color="teal"
+                variant="light"
+                radius="sm"
+                p="xs"
+              >
+                <Stack gap={4}>
+                  <Group justify="space-between" align="center">
+                    <div>
+                      <Text size="xs" fw={600}>
+                        {form.values.produtoNome
+                          ? `Item: ${form.values.produtoNome} (Un: ${form.values.unidade || 'UN'})`
+                          : 'Preencha os dados do item para visualizar o preço normalizado.'}
+                        {fornecedorSelecionado &&
+                          ` • Fornecedor: ${fornecedorSelecionado.nome}`}
+                        {form.values.marca &&
+                          ` • Marca: ${form.values.marca}`}
+                      </Text>
+                    </div>
+                    <Badge size="xs" color="teal" variant="filled">
+                      {precoUnitarioPreview > 0
+                        ? `${formatMoney(precoUnitarioPreview)} / ${
+                            form.values.unidade || 'UN'
+                          }`
+                        : 'R$ 0,00'}
+                    </Badge>
+                  </Group>
+
+                  {/* Painel Inteligente de Comparação Histórica */}
+                  {produtoSelecionado && (
+                    <ProductStatsCard
+                      statsProduto={statsProduto}
+                      precoUnitarioPreview={precoUnitarioPreview}
+                    />
+                  )}
+                </Stack>
+              </Alert>
+
+              <Group justify="flex-end">
+                <Button
+                  type="submit"
+                  variant="filled"
+                  color={themeColor}
+                  size="xs"
+                  leftSection={<IconPlus size={14} />}
+                  loading={submitting}
+                >
+                  Salvar Cotação <Kbd ml={4} size="xs">Enter</Kbd>
+                </Button>
+              </Group>
+            </Stack>
+            </fieldset>
+          </form>
+        </SectionCard>
+      </Box>
 
       {/* Mantine React Table */}
-      {loading ? (
-        <Center p="xl">
-          <Loader size="lg" />
-        </Center>
-      ) : (
-        <MantineReactTable table={table} />
-      )}
+      <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {loading ? (
+          <Center p="xl">
+            <Loader size="lg" />
+          </Center>
+        ) : (
+          <MantineReactTable table={table} />
+        )}
+      </Box>
 
 
       {/* Modal de Edição Completa de Cotação */}

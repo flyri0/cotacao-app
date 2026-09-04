@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Center,
   FileInput,
@@ -36,10 +37,9 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
 } from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import { PageHeader, SectionCard } from './common'
 import { EditSupplierModal } from './fornecedores'
-import { formatMoney } from '../utils'
+import { formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
 import type { Fornecedor } from '../types'
 
@@ -485,46 +485,30 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
   )
 
   const table = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<Fornecedor>({
+      enableTopToolbar: true,
+    }),
     columns,
     data: fornecedores,
-    localization: MRT_Localization_PT_BR,
     enableRowActions: false,
-    enablePagination: true,
-    enableBottomToolbar: true,
-    enableTopToolbar: true,
-    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
-    mantineTableHeadCellProps: {
-      style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
-      },
-    },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTableProps: {
-      striped: true,
-      highlightOnHover: true,
-      withTableBorder: true,
-    },
-    mantinePaperProps: {
-      withBorder: true,
-      radius: 'sm',
-      shadow: 'none',
-    },
   })
 
   return (
-    <Stack gap="xs" style={{ width: '100%' }}>
-      <PageHeader
-        icon={IconTruck}
-        iconColor={themeColor}
-        title="Cadastro de Fornecedores"
+    <Stack
+      gap="xs"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box style={{ flexShrink: 0 }}>
+        <PageHeader
+          icon={IconTruck}
+          iconColor={themeColor}
+          title="Cadastro de Fornecedores"
         subtitle="Cadastro mestre e pedidos mínimos"
         badge={{
           label: `${fornecedores.length} ${fornecedores.length === 1 ? 'fornecedor' : 'fornecedores'}`,
@@ -607,15 +591,18 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
           </Stack>
         </form>
       </SectionCard>
+      </Box>
 
       {/* Mantine React Table */}
-      {loading ? (
-        <Center p="xl">
-          <Loader size="lg" />
-        </Center>
-      ) : (
-        <MantineReactTable table={table} />
-      )}
+      <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {loading ? (
+          <Center p="xl" style={{ flex: 1 }}>
+            <Loader size="lg" />
+          </Center>
+        ) : (
+          <MantineReactTable table={table} />
+        )}
+      </Box>
 
       {/* Modal de Edição de Fornecedor */}
       <EditSupplierModal

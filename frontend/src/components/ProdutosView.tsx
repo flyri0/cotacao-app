@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Center,
   FileInput,
@@ -39,10 +40,9 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
 } from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import { AppAutocomplete, PageHeader, SectionCard } from './common'
 import { BatchCategoryModal, EditProductModal } from './produtos'
-import { downloadBase64File } from '../utils'
+import { downloadBase64File, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
 import type { Produto } from '../types'
 
@@ -621,19 +621,16 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
   )
 
   const table = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<Produto>({
+      enableTopToolbar: true,
+    }),
     columns,
     data: produtos,
-    localization: MRT_Localization_PT_BR,
     enableRowActions: false,
     enableRowSelection: true,
     getRowId: (row) => String(row.id),
     onRowSelectionChange: setRowSelection,
     state: { rowSelection },
-    enablePagination: true,
-    enableBottomToolbar: true,
-    enableTopToolbar: true,
-    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
     renderTopToolbarCustomActions: () => {
       if (selectedProductIds.length === 0) return null
       return (
@@ -650,7 +647,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         >
           <Group justify="space-between" align="center" wrap="wrap" gap="xs">
             <Group gap="xs" align="center" wrap="wrap">
-              <Badge size="sm" variant="filled" color={themeColor}>
+              <Badge size="xs" variant="filled" color={themeColor}>
                 {selectedProductIds.length} produto{selectedProductIds.length > 1 ? 's' : ''} selecionado{selectedProductIds.length > 1 ? 's' : ''}
               </Badge>
               <Button
@@ -702,37 +699,24 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
         </Paper>
       )
     },
-    mantineTableHeadCellProps: {
-      style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
-      },
-    },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTableProps: {
-      striped: true,
-      highlightOnHover: true,
-      withTableBorder: true,
-    },
-    mantinePaperProps: {
-      withBorder: true,
-      radius: 'sm',
-      shadow: 'none',
-    },
   })
 
   return (
-    <Stack gap="xs" style={{ width: '100%' }}>
-      <PageHeader
-        icon={IconPackage}
-        iconColor={themeColor}
-        title="Cadastro de Produtos"
+    <Stack
+      gap="xs"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box style={{ flexShrink: 0 }}>
+        <PageHeader
+          icon={IconPackage}
+          iconColor={themeColor}
+          title="Cadastro de Produtos"
         subtitle="Cadastre itens digitando e usando Enter"
         badge={{
           label: `${produtos.length} ${produtos.length === 1 ? 'produto' : 'produtos'}`,
@@ -816,15 +800,18 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
           </Group>
         </form>
       </SectionCard>
+      </Box>
 
       {/* Mantine React Table */}
-      {loading ? (
-        <Center p="xl">
-          <Loader size="lg" />
-        </Center>
-      ) : (
-        <MantineReactTable table={table} />
-      )}
+      <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {loading ? (
+          <Center p="xl" style={{ flex: 1 }}>
+            <Loader size="lg" />
+          </Center>
+        ) : (
+          <MantineReactTable table={table} />
+        )}
+      </Box>
 
       {/* Modal de Edição de Produto */}
       <EditProductModal

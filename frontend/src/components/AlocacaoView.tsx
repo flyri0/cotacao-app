@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Center,
   Group,
@@ -29,7 +30,6 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
 } from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import {
   AppSelect,
   EmptyState,
@@ -38,7 +38,7 @@ import {
   RoundHeaderSelector,
   StatCard,
 } from './common'
-import { calculatePackaging, formatMoney } from '../utils'
+import { calculatePackaging, formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
 import type { Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
 
@@ -768,135 +768,122 @@ export function AlocacaoView({
   )
 
   const table = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<LinhaAlocacao>({
+      enableTopToolbar: true,
+    }),
     columns,
     data: linhas,
     memoMode: 'rows',
-    localization: MRT_Localization_PT_BR,
     enableRowActions: false,
-    enablePagination: false,
-    enableBottomToolbar: false,
-    enableTopToolbar: true,
-    initialState: { density: 'xs' },
-    mantineTableHeadCellProps: {
-      style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
-      },
-    },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTableProps: {
-      striped: true,
-      highlightOnHover: true,
-      withTableBorder: true,
-    },
-    mantinePaperProps: {
-      withBorder: true,
-      radius: 'sm',
-      shadow: 'none',
-    },
   })
 
   return (
-    <Stack gap="xs" style={{ width: '100%' }}>
-      {/* Cabeçalho Superior com Seletor e Botões de Ação */}
-      <PageHeader
-        icon={IconListCheck}
-        iconColor={themeColor}
-        title="Alocação de Compras"
-        subtitle="Divisão e arredondamento automático para embalagens fechadas"
-        rightSection={
-          <Group gap="xs">
-            <RoundHeaderSelector
-              rodadas={rodadas}
-              selectedRodadaId={selectedRodadaId}
-              themeColor={themeColor}
-              onSelectRodada={(id) => {
-                setSelectedRodadaId(id)
-                onRodadaChange?.(id)
-                carregarDados(id)
-              }}
-            />
+    <Stack
+      gap="xs"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box style={{ flexShrink: 0 }}>
+        {/* Cabeçalho Superior com Seletor e Botões de Ação */}
+        <PageHeader
+          icon={IconListCheck}
+          iconColor={themeColor}
+          title="Alocação de Compras"
+          subtitle="Divisão e arredondamento automático para embalagens fechadas"
+          rightSection={
+            <Group gap="xs">
+              <RoundHeaderSelector
+                rodadas={rodadas}
+                selectedRodadaId={selectedRodadaId}
+                themeColor={themeColor}
+                onSelectRodada={(id) => {
+                  setSelectedRodadaId(id)
+                  onRodadaChange?.(id)
+                  carregarDados(id)
+                }}
+              />
 
-            <Button
-              variant="light"
-              color={themeColor}
-              size="xs"
-              leftSection={<IconSparkles size={14} />}
-              onClick={handleSugerirMenorPreco}
-              disabled={isFechada}
-            >
-              Sugerir Menor Preço
-            </Button>
+              <Button
+                variant="light"
+                color={themeColor}
+                size="xs"
+                leftSection={<IconSparkles size={14} />}
+                onClick={handleSugerirMenorPreco}
+                disabled={isFechada}
+              >
+                Sugerir Menor Preço
+              </Button>
 
-            {!isFechada && (
-              statusAutosave === 'salvando' ? (
-                <Badge variant="light" color={themeColor} size="xs" leftSection={<Loader size={10} color={themeColor} />}>
-                  Salvando...
-                </Badge>
-              ) : statusAutosave === 'erro' ? (
-                <Badge variant="light" color="red" size="xs" leftSection={<IconAlertCircle size={12} />}>
-                  Erro ao salvar
-                </Badge>
-              ) : (
-                <Badge variant="subtle" color="teal" size="xs" leftSection={<IconCheck size={12} />}>
-                  Salvo automaticamente
-                </Badge>
-              )
-            )}
-          </Group>
-        }
-      />
-
-      {/* Cartões de Resumo Analítico */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
-        <StatCard
-          label="Total do Pedido"
-          value={formatMoney(totaisGerais.subtotalGeral)}
-          subtitle="Total faturado"
-          icon={IconScale}
-          color="teal"
-          badge={{ label: 'Embalagens Fechadas', color: 'teal' }}
+              {!isFechada && (
+                statusAutosave === 'salvando' ? (
+                  <Badge variant="light" color={themeColor} size="xs" leftSection={<Loader size={10} color={themeColor} />}>
+                    Salvando...
+                  </Badge>
+                ) : statusAutosave === 'erro' ? (
+                  <Badge variant="light" color="red" size="xs" leftSection={<IconAlertCircle size={12} />}>
+                    Erro ao salvar
+                  </Badge>
+                ) : (
+                  <Badge variant="subtle" color="teal" size="xs" leftSection={<IconCheck size={12} />}>
+                    Salvo automaticamente
+                  </Badge>
+                )
+              )}
+            </Group>
+          }
         />
 
-        <StatCard
-          label="Produtos & Linhas"
-          value={`${totaisGerais.produtosComAlocacao} de ${necessidades.length}`}
-          subtitle={`${linhas.length} ${linhas.length === 1 ? 'linha' : 'linhas'}`}
-          icon={IconArrowsSplit}
-          color={themeColor}
-          badge={{ label: `${totaisGerais.totalItensComprados} itens`, color: themeColor }}
-        />
+        {/* Cartões de Resumo Analítico */}
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+          <StatCard
+            label="Total do Pedido"
+            value={formatMoney(totaisGerais.subtotalGeral)}
+            subtitle="Total faturado"
+            icon={IconScale}
+            color="teal"
+            badge={{ label: 'Embalagens Fechadas', color: 'teal' }}
+          />
 
-        <StatCard
-          label="Fornecedores"
-          value={`${totaisGerais.fornecedoresContemplados} ${totaisGerais.fornecedoresContemplados === 1 ? 'fornecedor' : 'fornecedores'}`}
-          subtitle="Com compras alocadas"
-          icon={IconTruck}
-          color="teal"
-          badge={{ label: 'Ativos', color: 'teal' }}
-        />
-      </SimpleGrid>
+          <StatCard
+            label="Produtos & Linhas"
+            value={`${totaisGerais.produtosComAlocacao} de ${necessidades.length}`}
+            subtitle={`${linhas.length} ${linhas.length === 1 ? 'linha' : 'linhas'}`}
+            icon={IconArrowsSplit}
+            color={themeColor}
+            badge={{ label: `${totaisGerais.totalItensComprados} itens`, color: themeColor }}
+          />
+
+          <StatCard
+            label="Fornecedores"
+            value={`${totaisGerais.fornecedoresContemplados} ${totaisGerais.fornecedoresContemplados === 1 ? 'fornecedor' : 'fornecedores'}`}
+            subtitle="Com compras alocadas"
+            icon={IconTruck}
+            color="teal"
+            badge={{ label: 'Ativos', color: 'teal' }}
+          />
+        </SimpleGrid>
+      </Box>
 
       {/* Tabela Mantine React Table */}
-      {loading ? (
-        <Center p="xl">
-          <Loader size="lg" />
-        </Center>
-      ) : linhas.length === 0 ? (
-        <EmptyState
-          title="Nenhum produto registrado nesta rodada para alocar"
-          description="Adicione produtos na aba Necessidades e lance Cotações para distribuir suas compras."
-        />
-      ) : (
-        <MantineReactTable table={table} />
-      )}
+      <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {loading ? (
+          <Center p="xl" style={{ flex: 1 }}>
+            <Loader size="lg" />
+          </Center>
+        ) : linhas.length === 0 ? (
+          <EmptyState
+            title="Nenhum produto registrado nesta rodada para alocar"
+            description="Adicione produtos na aba Necessidades e lance Cotações para distribuir suas compras."
+          />
+        ) : (
+          <MantineReactTable table={table} />
+        )}
+      </Box>
     </Stack>
   )
 }

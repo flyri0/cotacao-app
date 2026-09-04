@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
   Badge,
+  Box,
   Center,
   Group,
   Loader,
@@ -34,9 +35,8 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
 } from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
 import { AppAutocomplete, AppSelect, PageHeader } from './common'
-import { formatMoney } from '../utils'
+import { formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
 import type {
   CotacaoHistoricoItem,
@@ -323,57 +323,32 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
   )
 
   const tableHistoricoProd = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<CotacaoHistoricoItem>({
+      enableTopToolbar: true,
+    }),
     columns: columnsHistoricoProd,
     data: estatisticasProduto?.cotacoes_historico || [],
-    localization: MRT_Localization_PT_BR,
-    enableRowActions: false,
-    enablePagination: true,
-    enableBottomToolbar: true,
-    enableTopToolbar: true,
-    initialState: { density: 'xs', pagination: { pageSize: 10, pageIndex: 0 } },
-    mantineTableHeadCellProps: {
+    mantineTableContainerProps: {
       style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
+        maxHeight: 380,
+        overflowY: 'auto',
       },
     },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
-    mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
 
   const tableRankingProd = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<RankingFornecedorItem>({
+      enableTopToolbar: false,
+    }),
     columns: columnsRankingProd,
     data: estatisticasProduto?.ranking_fornecedores || [],
-    localization: MRT_Localization_PT_BR,
-    enableRowActions: false,
-    enablePagination: false,
-    enableBottomToolbar: false,
-    enableTopToolbar: false,
-    initialState: { density: 'xs' },
-    mantineTableHeadCellProps: {
+    enableRowVirtualization: false,
+    mantineTableContainerProps: {
       style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
+        maxHeight: 260,
+        overflowY: 'auto',
       },
     },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
-    mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
 
   // =========================================================================
@@ -447,30 +422,17 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
   )
 
   const tableHistoricoForn = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<CotacaoHistoricoItem>({
+      enableTopToolbar: true,
+    }),
     columns: columnsHistoricoForn,
     data: estatisticasFornecedor?.cotacoes_historico || [],
-    localization: MRT_Localization_PT_BR,
-    enableRowActions: false,
-    enablePagination: true,
-    enableBottomToolbar: true,
-    enableTopToolbar: true,
-    initialState: { density: 'xs', pagination: { pageSize: 10, pageIndex: 0 } },
-    mantineTableHeadCellProps: {
+    mantineTableContainerProps: {
       style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
+        maxHeight: 420,
+        overflowY: 'auto',
       },
     },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
-    mantinePaperProps: { withBorder: true, radius: 'sm', shadow: 'none' },
   })
 
   // =========================================================================
@@ -596,31 +558,16 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
   )
 
   const tableGlobal = useMantineReactTable({
-    enableDensityToggle: false,
+    ...getVirtualizedTableProps<HistoricoGlobalCotacaoItem>({
+      enableTopToolbar: false,
+    }),
     columns: columnsGlobal,
     data: dadosFiltradosGlobal,
-    localization: MRT_Localization_PT_BR,
-    enableRowActions: false,
-    enablePagination: true,
-    initialState: { density: 'xs', pagination: { pageSize: 15, pageIndex: 0 } },
-    mantineTableHeadCellProps: {
+    mantineTableContainerProps: {
       style: {
-        padding: '6px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-        whiteSpace: 'nowrap',
+        maxHeight: 520,
+        overflowY: 'auto',
       },
-    },
-    mantineTableBodyCellProps: {
-      style: {
-        padding: '4px 8px',
-        fontSize: 'var(--app-font-base, 13px)',
-      },
-    },
-    mantineTableProps: { striped: true, highlightOnHover: true, withTableBorder: true },
-    mantinePaperProps: {
-      withBorder: true,
-      radius: 'sm',
-      shadow: 'none',
     },
   })
 
@@ -729,17 +676,40 @@ return Array.from(map.values())
   }, [dadosFiltradosGlobal])
 
   return (
-    <Stack gap="xs" style={{ width: '100%' }}>
-      {/* Cabeçalho */}
-      <PageHeader
-        icon={IconHistory}
-        iconColor={themeColor}
-        title="Estatísticas & Histórico Comercial"
-        subtitle="Inteligência de compras, evolução temporal e comparativos"
-      />
+    <Stack
+      gap="xs"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 68px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box style={{ flexShrink: 0 }}>
+        {/* Cabeçalho */}
+        <PageHeader
+          icon={IconHistory}
+          iconColor={themeColor}
+          title="Estatísticas & Histórico Comercial"
+          subtitle="Inteligência de compras, evolução temporal e comparativos"
+        />
+      </Box>
 
-      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm">
-        <Tabs.List>
+      <Tabs
+        value={activeTab}
+        onChange={setActiveTab}
+        variant="outline"
+        radius="sm"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        <Tabs.List style={{ flexShrink: 0 }}>
           <Tabs.Tab value="produto" leftSection={<IconPackage size={15} />}>
             Por Produto
           </Tabs.Tab>
@@ -754,7 +724,7 @@ return Array.from(map.values())
         {/* ================================================================= */}
         {/* ABA 1: ANÁLISE POR PRODUTO                                        */}
         {/* ================================================================= */}
-        <Tabs.Panel value="produto" pt="xs">
+        <Tabs.Panel value="produto" pt="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Stack gap="xs">
             <Group justify="space-between" align="center">
               <Text size="xs" fw={600}>
@@ -1004,7 +974,7 @@ return Array.from(map.values())
         {/* ================================================================= */}
         {/* ABA 2: ESTATÍSTICAS POR FORNECEDOR */}
         {/* ================================================================= */}
-        <Tabs.Panel value="fornecedor" pt="xs">
+        <Tabs.Panel value="fornecedor" pt="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Stack gap="xs">
             <Group justify="space-between" align="center">
               <Text size="xs" fw={600}>
@@ -1171,8 +1141,8 @@ return Array.from(map.values())
         {/* ================================================================= */}
         {/* ABA 3: HISTÓRICO GLOBAL COM FILTROS */}
         {/* ================================================================= */}
-        <Tabs.Panel value="global" pt="lg">
-          <Stack gap="md">
+        <Tabs.Panel value="global" pt="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          <Stack gap="xs">
             {/* Barra de Filtros Multidimensionais */}
             <Paper withBorder p="md" radius="md">
               <Stack gap="xs">
