@@ -35,6 +35,7 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
 } from 'mantine-react-table'
+import { useDebouncedValue } from '@mantine/hooks'
 import { AppAutocomplete, AppSelect, PageHeader } from './common'
 import { formatMoney, getVirtualizedTableProps } from '../utils'
 import { getApi } from '../services/api'
@@ -49,6 +50,63 @@ import type {
   RankingFornecedorItem,
   Rodada,
 } from '../types'
+
+interface ProductSearchAutocompleteProps {
+  produtos: Produto[]
+  selectedProdutoNome: string
+  onSelectProduto: (produto: Produto) => void
+}
+
+function ProductSearchAutocomplete({
+  produtos,
+  selectedProdutoNome,
+  onSelectProduto,
+}: ProductSearchAutocompleteProps) {
+  const [inputValue, setInputValue] = useState(selectedProdutoNome)
+  const [debouncedQuery] = useDebouncedValue(inputValue, 150)
+
+  useEffect(() => {
+    setInputValue(selectedProdutoNome)
+  }, [selectedProdutoNome])
+
+  const filteredSuggestions = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q) return []
+    const results: string[] = []
+    for (let i = 0; i < produtos.length; i++) {
+      const nome = produtos[i].nome
+      if (nome.toLowerCase().includes(q)) {
+        results.push(nome)
+        if (results.length >= 15) break
+      }
+    }
+    return results
+  }, [debouncedQuery, produtos])
+
+  const handleOptionSubmit = (nome: string) => {
+    setInputValue(nome)
+    const found = produtos.find(
+      (p) => p.nome.trim().toLowerCase() === nome.trim().toLowerCase(),
+    )
+    if (found) {
+      onSelectProduto(found)
+    }
+  }
+
+  return (
+    <AppAutocomplete
+      placeholder="Digite para buscar produto..."
+      size="xs"
+      data={filteredSuggestions}
+      value={inputValue}
+      onChange={setInputValue}
+      onOptionSubmit={handleOptionSubmit}
+      style={{ width: 320 }}
+      limit={15}
+      leftSection={<IconSearch size={14} />}
+    />
+  )
+}
 
 export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [activeTab, setActiveTab] = useState<string | null>('produto')
@@ -161,15 +219,10 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     [produtoSelecionadoId, fornecedorSelecionadoId],
   )
 
-  const handleSelectProdutoNome = (nome: string) => {
-    setProdutoBusca(nome)
-    const prod = produtos.find(
-      (p) => p.nome.trim().toLowerCase() === nome.trim().toLowerCase(),
-    )
-    if (prod) {
-      setProdutoSelecionadoId(prod.id)
-      carregarEstatisticasProduto(prod.id)
-    }
+  const handleSelectProduto = (prod: Produto) => {
+    setProdutoBusca(prod.nome)
+    setProdutoSelecionadoId(prod.id)
+    carregarEstatisticasProduto(prod.id)
   }
 
   const handleSelectFornecedor = (val: string | null) => {
@@ -180,7 +233,14 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
     }
   }
 
-  const nomesProdutos = useMemo(() => produtos.map((p) => p.nome), [produtos])
+  const opcoesFornecedores = useMemo(
+    () =>
+      fornecedores.map((f) => ({
+        value: f.id.toString(),
+        label: f.nome,
+      })),
+    [fornecedores],
+  )
   const categoriasUnicas = useMemo(() => {
     const cats = new Set<string>()
     produtos.forEach((p) => {
@@ -742,16 +802,10 @@ return Array.from(map.values())
               <Text size="xs" fw={600}>
                 Pesquise e selecione um produto para auditar seu histórico:
               </Text>
-              <AppAutocomplete
-                placeholder="Digite o nome do produto..."
-                size="xs"
-                data={nomesProdutos}
-                value={produtoBusca}
-                onChange={setProdutoBusca}
-                onOptionSubmit={handleSelectProdutoNome}
-                style={{ width: 300 }}
-                limit={8}
-                leftSection={<IconSearch size={14} />}
+              <ProductSearchAutocomplete
+                produtos={produtos}
+                selectedProdutoNome={produtoBusca}
+                onSelectProduto={handleSelectProduto}
               />
             </Group>
 
@@ -995,14 +1049,13 @@ return Array.from(map.values())
               <AppSelect
                 placeholder="Selecione o fornecedor"
                 size="xs"
-                data={fornecedores.map((f) => ({
-                  value: f.id.toString(),
-                  label: f.nome,
-                }))}
+                data={opcoesFornecedores}
                 value={fornecedorSelecionadoId ? fornecedorSelecionadoId.toString() : null}
                 onChange={handleSelectFornecedor}
                 style={{ width: 280 }}
                 allowDeselect={false}
+                searchable
+                limit={20}
               />
             </Group>
 
