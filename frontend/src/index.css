@@ -408,17 +408,18 @@ body,
 }
 
 /* Telas sem tabela (Configurações, Pedidos, etc.) com scroll interno suave */
-.scrollable-view {
+.scrollable-view,
+.mantine-AppShell-main {
   scrollbar-width: thin;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
-.scrollable-view::-webkit-scrollbar {
+.scrollable-view::-webkit-scrollbar,
+.mantine-AppShell-main::-webkit-scrollbar {
   width: 8px;
 }
 
-.scrollable-view::-webkit-scrollbar-thumb {
+.scrollable-view::-webkit-scrollbar-thumb,
+.mantine-AppShell-main::-webkit-scrollbar-thumb {
   background-color: var(--mantine-color-gray-5);
   border-radius: 4px;
 }

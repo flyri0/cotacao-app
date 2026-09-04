@@ -41,6 +41,7 @@ import {
   IconDeviceDesktop,
   IconDeviceFloppy,
   IconDimensions,
+  IconFileDatabase,
   IconFolder,
   IconFolderCheck,
   IconFolderOpen,
@@ -57,6 +58,7 @@ import {
   IconTypography,
   IconX,
 } from '@tabler/icons-react'
+
 import { AppSelect, PageHeader } from './common'
 import { getApi } from '../services/api'
 import type { ConfiguracoesApp } from '../types'
@@ -105,6 +107,8 @@ export function ConfiguracoesView({
   const [loadingAcaoBanco, setLoadingAcaoBanco] = useState(false)
 
   // Modais
+  const [modalExportarOpened, { open: openModalExportar, close: closeModalExportar }] =
+    useDisclosure(false)
   const [modalImportarOpened, { open: openModalImportar, close: closeModalImportar }] =
     useDisclosure(false)
   const [modalFormatar1Opened, { open: openModalFormatar1, close: closeModalFormatar1 }] =
@@ -113,10 +117,12 @@ export function ConfiguracoesView({
     useDisclosure(false)
 
   // Timers de 5 segundos
+  const [timerExportar, setTimerExportar] = useState<number>(5)
   const [timerImportar, setTimerImportar] = useState<number>(5)
   const [timerFormatar, setTimerFormatar] = useState<number>(5)
 
   // Estados de confirmação
+  const [nomeArquivoBackup, setNomeArquivoBackup] = useState('')
   const [arquivoImportar, setArquivoImportar] = useState<File | null>(null)
   const [palavraConfirmacaoFormatar, setPalavraConfirmacaoFormatar] = useState('')
 
@@ -184,6 +190,16 @@ export function ConfiguracoesView({
         clearInterval(timerRef.current)
       }
     }, 1000)
+  }
+
+  const handleOpenExportar = () => {
+    const dataHora = new Date()
+      .toISOString()
+      .replace(/[-:T]/g, '')
+      .slice(0, 15)
+    setNomeArquivoBackup(`backup_cotacao_${dataHora}.db`)
+    iniciarTimer(setTimerExportar)
+    openModalExportar()
   }
 
   const handleOpenImportar = () => {
@@ -417,6 +433,88 @@ export function ConfiguracoesView({
     }
   }
 
+  // AÇÃO 1: Escolher Local do Backup via Diálogo Nativo do SO (Salvar Como...)
+  const handleSalvarBackupDialogoNativo = async () => {
+    try {
+      setLoadingAcaoBanco(true)
+      const api = await getApi()
+      const res = await api.select_location_and_save_backup(nomeArquivoBackup)
+
+      if (res.cancelado) {
+        notifications.show({
+          title: 'Operação Cancelada',
+          message: 'Nenhum local foi selecionado para o backup.',
+          color: 'gray',
+          icon: <IconAlertCircle size={16} />,
+        })
+        return
+      }
+
+      if (res.conteudo_base64) {
+        // Fallback em navegador
+        const linkSource = `data:application/octet-stream;base64,${res.conteudo_base64}`
+        const downloadLink = document.createElement('a')
+        downloadLink.href = linkSource
+        downloadLink.download = res.nome_arquivo || nomeArquivoBackup
+        downloadLink.click()
+      }
+
+      notifications.show({
+        title: 'Backup Gravado com Sucesso',
+        message: res.caminho
+          ? `Arquivo salvo em: ${res.caminho}`
+          : `Arquivo ${res.nome_arquivo || nomeArquivoBackup} baixado com sucesso.`,
+        color: 'teal',
+        icon: <IconDatabaseExport size={16} />,
+        autoClose: 6000,
+      })
+
+      closeModalExportar()
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erro ao salvar backup',
+        message: error?.message || 'Falha ao gravar arquivo de backup.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setLoadingAcaoBanco(false)
+    }
+  }
+
+  // AÇÃO 2C: Baixar Diretamente pelo Navegador (Base64)
+  const handleDownloadDiretoNavegador = async () => {
+    try {
+      setLoadingAcaoBanco(true)
+      const api = await getApi()
+      const res = await api.export_database()
+
+      const linkSource = `data:application/octet-stream;base64,${res.conteudo_base64}`
+      const downloadLink = document.createElement('a')
+      downloadLink.href = linkSource
+      downloadLink.download = nomeArquivoBackup || res.nome_arquivo
+      downloadLink.click()
+
+      notifications.show({
+        title: 'Download de Backup Iniciado',
+        message: `O arquivo ${nomeArquivoBackup || res.nome_arquivo} foi enviado ao navegador.`,
+        color: 'teal',
+        icon: <IconDatabaseExport size={16} />,
+      })
+
+      closeModalExportar()
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erro ao exportar',
+        message: error?.message || 'Falha ao gerar arquivo de backup.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setLoadingAcaoBanco(false)
+    }
+  }
+
   // AÇÃO 3: Importar Banco de Dados (.db em Base64)
   const handleConfirmarImportacao = async () => {
     if (!arquivoImportar) {
@@ -518,18 +616,7 @@ export function ConfiguracoesView({
   }
 
   return (
-    <Stack
-      gap="sm"
-      className="scrollable-view"
-      style={{
-        width: '100%',
-        height: 'calc(100vh - 68px)',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        paddingRight: 8,
-        paddingBottom: 40,
-      }}
-    >
+    <Stack gap="sm" style={{ width: '100%', paddingBottom: 48 }}>
       {/* Cabeçalho */}
       <PageHeader
         icon={IconSettings}
@@ -915,15 +1002,6 @@ export function ConfiguracoesView({
                       size="xs"
                       variant="light"
                       color="teal"
-                      leftSection={<IconDatabaseImport size={14} />}
-                      onClick={handleOpenImportar}
-                    >
-                      Restaurar .db
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="light"
-                      color="teal"
                       leftSection={<IconDatabaseExport size={14} />}
                       onClick={handleTestarBackupAgora}
                       loading={executandoBackupAuto}
@@ -947,41 +1025,155 @@ export function ConfiguracoesView({
           </Stack>
         </Paper>
 
-        {/* Zona de Perigo: Formatar / Limpar Tudo */}
-        <Paper
-          withBorder
-          p="sm"
-          radius="sm"
-          mt="xs"
-          style={{ borderColor: 'var(--mantine-color-red-light-color)' }}
-        >
-          <Group justify="space-between" align="center" wrap="wrap">
-            <Group gap="xs">
-              <ThemeIcon color="red" variant="light" size="md" radius="sm">
-                <IconTrash size={18} />
-              </ThemeIcon>
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+          {/* Card 1: Backup / Restaurar */}
+          <Paper withBorder p="md" radius="md">
+            <Stack justify="space-between" h="100%">
               <div>
-                <Title order={5} c="red">
-                  Zona de Perigo: Formatar Banco de Dados
-                </Title>
+                <Group gap="xs" mb="xs">
+                  <ThemeIcon color="teal" variant="light" size="lg" radius="md">
+                    <IconFileDatabase size={20} />
+                  </ThemeIcon>
+                  <Title order={4}>Backup & Restauração</Title>
+                </Group>
                 <Text size="xs" c="dimmed">
-                  Exclui permanentemente todos os produtos, fornecedores, cotações e alocações. Requer dupla confirmação de segurança.
+                  Gere cópias de segurança escolhendo a pasta de destino no computador ou restaure um backup existente.
                 </Text>
               </div>
-            </Group>
 
+              <Group gap="xs" mt="md" grow>
+                <Button
+                  variant="outline"
+                  color="teal"
+                  size="xs"
+                  leftSection={<IconDatabaseExport size={14} />}
+                  onClick={handleOpenExportar}
+                >
+                  Fazer Backup...
+                </Button>
+                <Button
+                  variant="light"
+                  color="teal"
+                  size="xs"
+                  leftSection={<IconDatabaseImport size={14} />}
+                  onClick={handleOpenImportar}
+                >
+                  Importar .db
+                </Button>
+              </Group>
+            </Stack>
+          </Paper>
+
+          {/* Card 2: Formatar / Limpar Tudo */}
+          <Paper withBorder p="md" radius="md" style={{ borderColor: '#ffa8a8' }}>
+            <Stack justify="space-between" h="100%">
+              <div>
+                <Group gap="xs" mb="xs">
+                  <ThemeIcon color="red" variant="light" size="lg" radius="md">
+                    <IconTrash size={20} />
+                  </ThemeIcon>
+                  <Title order={4} c="red.8">
+                    Formatar Banco
+                  </Title>
+                </Group>
+                <Text size="xs" c="dimmed">
+                  Exclui permanentemente todos os produtos, fornecedores, cotações e alocações. Requer <b>dupla confirmação</b>.
+                </Text>
+              </div>
+
+              <Button
+                variant="filled"
+                color="red"
+                leftSection={<IconTrash size={16} />}
+                onClick={handleOpenFormatar}
+                mt="md"
+              >
+                Formatar Banco...
+              </Button>
+            </Stack>
+          </Paper>
+        </SimpleGrid>
+      </Card>
+
+      {/* MODAL 2: Exportar Backup do Banco com Pergunta de Local (Timer 5s) */}
+      <Modal
+        opened={modalExportarOpened}
+        onClose={closeModalExportar}
+        title={
+          <Group gap="xs">
+            <IconDatabaseExport size={22} color="#12b886" />
+            <Text fw={700}>Exportar Cópia de Segurança (Backup do Banco)</Text>
+          </Group>
+        }
+        size="lg"
+        centered
+      >
+        <Stack gap="md">
+          <Alert color="teal" variant="light">
+            <Text size="sm">
+              Será gerado um arquivo com a cópia exata de todos os dados do banco local{' '}
+              <b>cotacao.db</b> (produtos, fornecedores, necessidades, cotações e alocações).
+            </Text>
+          </Alert>
+
+          <TextInput
+            label="Nome do Arquivo de Backup"
+            description="Você pode personalizar o nome do arquivo gerado"
+            value={nomeArquivoBackup}
+            onChange={(e) => setNomeArquivoBackup(e.currentTarget.value)}
+            required
+          />
+
+          <Divider label="Onde você deseja salvar o backup?" labelPosition="center" my="xs" />
+
+          {/* Opção Principal: Diálogo do Sistema Operacional */}
+          <Paper withBorder p="md" radius="md">
+            <Group justify="space-between" align="center">
+              <div>
+                <Group gap="xs">
+                  <ThemeIcon color="teal" variant="light" size="md">
+                    <IconFolder size={18} />
+                  </ThemeIcon>
+                  <Text fw={600} size="sm">
+                    Escolher Local pelo Sistema Operacional (Recomendado)
+                  </Text>
+                </Group>
+                <Text size="xs" c="dimmed" mt={2}>
+                  Abre a janela nativa do Windows para você escolher a pasta de destino desejada.
+                </Text>
+              </div>
+
+              <Button
+                color="teal"
+                variant="filled"
+                disabled={timerExportar > 0 || !nomeArquivoBackup.trim()}
+                loading={loadingAcaoBanco}
+                onClick={handleSalvarBackupDialogoNativo}
+              >
+                {timerExportar > 0
+                  ? `Aguarde (${timerExportar}s)...`
+                  : 'Escolher Pasta & Salvar'}
+              </Button>
+            </Group>
+          </Paper>
+
+          <Group justify="space-between" mt="md">
             <Button
-              variant="filled"
-              color="red"
+              variant="subtle"
+              color="gray"
               size="xs"
-              leftSection={<IconTrash size={14} />}
-              onClick={handleOpenFormatar}
+              disabled={timerExportar > 0}
+              onClick={handleDownloadDiretoNavegador}
             >
-              Formatar Banco...
+              Baixar via Navegador
+            </Button>
+
+            <Button variant="default" onClick={closeModalExportar}>
+              Fechar
             </Button>
           </Group>
-        </Paper>
-      </Card>
+        </Stack>
+      </Modal>
 
       {/* MODAL 3: Importar Banco de Dados (Timer 5s) */}
       <Modal
@@ -989,18 +1181,15 @@ export function ConfiguracoesView({
         onClose={closeModalImportar}
         title={
           <Group gap="xs">
-            <ThemeIcon color="teal" variant="light" size="md" radius="sm">
-              <IconDatabaseImport size={18} />
-            </ThemeIcon>
+            <IconDatabaseImport size={20} color="#12b886" />
             <Text fw={700}>Importar Banco de Dados (.db)</Text>
           </Group>
         }
-        radius="sm"
         centered
       >
-        <Stack gap="sm">
+        <Stack gap="md">
           <Alert color="teal" variant="light">
-            <Text size="xs">
+            <Text size="sm">
               Você está prestes a carregar um arquivo <b>.db</b> ou <b>.sqlite</b>. Os dados
               atuais serão substituídos integralmente pelo arquivo selecionado.
             </Text>
@@ -1012,17 +1201,15 @@ export function ConfiguracoesView({
             accept=".db,.sqlite"
             value={arquivoImportar}
             onChange={setArquivoImportar}
-            size="xs"
             required
           />
 
-          <Group justify="flex-end" gap="xs" mt="md">
-            <Button variant="subtle" color="gray" size="xs" onClick={closeModalImportar}>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={closeModalImportar}>
               Cancelar
             </Button>
             <Button
               color="teal"
-              size="xs"
               disabled={timerImportar > 0 || !arquivoImportar}
               loading={loadingAcaoBanco}
               onClick={handleConfirmarImportacao}

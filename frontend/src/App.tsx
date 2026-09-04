@@ -148,6 +148,8 @@ export default function App() {
     )
   }
 
+  const isScrollableTab = activeTab === 'configuracoes' || activeTab === 'pedido'
+
   return (
     <AppShell
       header={{ height: 48 }}
@@ -178,8 +180,27 @@ export default function App() {
         onOpenModalEncerrar={openModalEncerrar}
       />
 
-      <AppShell.Main>
-        <Container fluid px={4} style={{ width: '100%', maxWidth: '100%' }}>
+      <AppShell.Main
+        style={{
+          height: '100vh',
+          maxHeight: '100vh',
+          overflowY: isScrollableTab ? 'auto' : 'hidden',
+          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          boxSizing: 'border-box',
+        }}
+      >
+        <Container
+          fluid
+          px={4}
+          style={{
+            width: '100%',
+            maxWidth: '100%',
+            flex: isScrollableTab ? 'initial' : 1,
+            minHeight: 0,
+          }}
+        >
           {activeTab === 'produtos' && <ProdutosView themeColor={themeColor} />}
           {activeTab === 'fornecedores' && <FornecedoresView themeColor={themeColor} />}
           {activeTab === 'rodadas' && (
