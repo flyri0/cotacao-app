@@ -1,14 +1,9 @@
 import { useState } from 'react'
 import {
   Badge,
-  Button,
-  Card,
   Center,
   Container,
   Divider,
-  FileInput,
-  Group,
-  Paper,
   SimpleGrid,
   Stack,
   Text,
@@ -16,19 +11,13 @@ import {
   Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import {
-  IconAlertCircle,
-  IconCheck,
-  IconDatabaseImport,
-  IconFlask,
-  IconPlus,
-  IconScale,
-  IconSparkles,
-  IconX,
-} from '@tabler/icons-react'
-import { getApi } from '../services/api'
+import { IconAlertCircle, IconCheck, IconScale, IconX, IconSparkles } from '@tabler/icons-react'
+import { getApi } from '../../services/api'
+import { BlankDatabaseCard } from './BlankDatabaseCard'
+import { RestoreBackupCard } from './RestoreBackupCard'
+import { DemoDatabaseCard } from './DemoDatabaseCard'
 
-interface BoasVindasViewProps {
+interface BoasVindasProps {
   onInicializado: () => void
   appNome?: string
   appSubtitulo?: string
@@ -40,7 +29,7 @@ export function BoasVindasView({
   appNome = 'Mapa de Cotações',
   appSubtitulo = 'Comparativo e Alocação Inteligente',
   themeColor = 'blue',
-}: BoasVindasViewProps) {
+}: BoasVindasProps) {
   const [loading, setLoading] = useState(false)
   const [arquivoImportar, setArquivoImportar] = useState<File | null>(null)
 
@@ -179,117 +168,18 @@ export function BoasVindasView({
 
           {/* Cards de Escolha Principal */}
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" style={{ width: '100%' }}>
-            {/* Opção 1: Criar Banco em Branco */}
-            <Card withBorder shadow="sm" radius="md" p="xl">
-              <Stack justify="space-between" h="100%">
-                <div>
-                  <Group gap="xs" mb="sm">
-                    <ThemeIcon color="blue" variant="light" size="xl" radius="md">
-                      <IconPlus size={24} />
-                    </ThemeIcon>
-                    <div>
-                      <Title order={3}>Banco em Branco</Title>
-                      <Text size="xs" c="dimmed">
-                        Recomendado para produção
-                      </Text>
-                    </div>
-                  </Group>
-                  <Text size="sm" c="dimmed" mt="xs">
-                    Inicie com um catálogo 100% limpo para cadastrar seus próprios produtos, fornecedores e criar suas primeiras rodadas de cotação.
-                  </Text>
-                </div>
-
-                <Button
-                  size="md"
-                  color="blue"
-                  variant="filled"
-                  leftSection={<IconPlus size={18} />}
-                  onClick={handleCriarEmBranco}
-                  loading={loading}
-                  mt="xl"
-                  fullWidth
-                >
-                  Iniciar com Banco Vazio
-                </Button>
-              </Stack>
-            </Card>
-
-            {/* Opção 2: Importar Backup Existente */}
-            <Card withBorder shadow="sm" radius="md" p="xl">
-              <Stack justify="space-between" h="100%">
-                <div>
-                  <Group gap="xs" mb="sm">
-                    <ThemeIcon color="teal" variant="light" size="xl" radius="md">
-                      <IconDatabaseImport size={24} />
-                    </ThemeIcon>
-                    <div>
-                      <Title order={3}>Restaurar Backup</Title>
-                      <Text size="xs" c="dimmed">
-                        Importar arquivo .db existente
-                      </Text>
-                    </div>
-                  </Group>
-                  <Text size="sm" c="dimmed" mt="xs" mb="sm">
-                    Carregue um arquivo de cópia de segurança salvo anteriormente no seu computador com todo o histórico e cadastros.
-                  </Text>
-
-                  <FileInput
-                    placeholder="Selecione o arquivo .db"
-                    accept=".db,.sqlite"
-                    value={arquivoImportar}
-                    onChange={setArquivoImportar}
-                    size="xs"
-                  />
-                </div>
-
-                <Button
-                  size="md"
-                  color="teal"
-                  variant="filled"
-                  leftSection={<IconDatabaseImport size={18} />}
-                  onClick={handleImportarBackup}
-                  disabled={!arquivoImportar}
-                  loading={loading}
-                  mt="xl"
-                  fullWidth
-                >
-                  Restaurar e Abrir
-                </Button>
-              </Stack>
-            </Card>
+            <BlankDatabaseCard onCreateBlank={handleCriarEmBranco} loading={loading} />
+            <RestoreBackupCard 
+              arquivoImportar={arquivoImportar}
+              setArquivoImportar={setArquivoImportar}
+              onImportBackup={handleImportarBackup}
+              loading={loading}
+            />
           </SimpleGrid>
 
           <Divider label="Ou use dados fictícios para explorar" labelPosition="center" style={{ width: '100%' }} />
 
-          {/* Opção 3: Dados de Teste & Demonstração (Discreto / Menos Chamativo) */}
-          <Paper withBorder p="md" radius="md" style={{ width: '100%' }}>
-            <Group justify="space-between" align="center">
-              <div>
-                <Group gap="xs">
-                  <ThemeIcon color="gray" variant="light" size="md" radius="sm">
-                    <IconFlask size={16} />
-                  </ThemeIcon>
-                  <Text fw={600} size="sm">
-                    Carregar Banco de Dados de Demonstração & Testes
-                  </Text>
-                </Group>
-                <Text size="xs" c="dimmed" mt={4}>
-                  Popula o sistema com 50 produtos em 6 categorias, 8 fornecedores, 3 rodadas fechadas (histórico de preços) e 1 rodada aberta em andamento com cotações e alocações.
-                </Text>
-              </div>
-
-              <Button
-                variant="subtle"
-                color="gray"
-                size="sm"
-                leftSection={<IconSparkles size={14} />}
-                onClick={handleCarregarDemo}
-                loading={loading}
-              >
-                Carregar Dados de Teste
-              </Button>
-            </Group>
-          </Paper>
+          <DemoDatabaseCard onLoadDemo={handleCarregarDemo} loading={loading} />
         </Stack>
       </Container>
     </Center>

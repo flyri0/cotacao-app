@@ -1,11 +1,9 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
-  ActionIcon,
   Badge,
   Button,
   Center,
   Group,
-  Kbd,
   Loader,
   Modal,
   Paper,
@@ -13,7 +11,6 @@ import {
   Stack,
   Text,
   TextInput,
-  Tooltip,
   useComputedColorScheme,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
@@ -32,15 +29,15 @@ import {
 import {
   MantineReactTable,
   useMantineReactTable,
-  type MRT_ColumnDef,
 } from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { RoundHeaderSelector } from './common/RoundHeaderSelector'
-import { SectionCard } from './common/SectionCard'
-import { AppAutocomplete, AppSelect } from './common/AppSelect'
-import { getApi } from '../services/api'
-import type { Necessidade, Produto, Rodada } from '../types'
+import { MRT_Localization_PT_BR } from '../../locales/mrtPtBr'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { RoundHeaderSelector } from '../../components/form/RoundHeaderSelector'
+import { AppSelect } from '../../components/form/AppSelect'
+import { getApi } from '../../services/api'
+import type { Necessidade, Produto, Rodada } from '../../types'
+import { NecessidadesForm } from './NecessidadesForm'
+import { useNecessidadesColumns } from './useNecessidadesColumns'
 
 interface NecessidadesViewProps {
   rodadaAtivaId?: number
@@ -74,6 +71,19 @@ export function NecessidadesView({
   const selectedNeedIds = useMemo(() => {
     return Object.keys(rowSelection).filter((k) => rowSelection[k]).map(Number)
   }, [rowSelection])
+
+  const carregarNecessidades = async (rodadaId: number) => {
+    try {
+      setLoading(true)
+      const api = await getApi()
+      const nec = await api.list_needs(rodadaId)
+      setNecessidades(nec)
+    } catch (error) {
+      console.error('Erro ao carregar necessidades:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleExcluirEmMassa = () => {
     if (selectedNeedIds.length === 0 || isFechada) return
@@ -169,26 +179,6 @@ export function NecessidadesView({
     }
   }
 
-  const produtoInputRef = useRef<HTMLInputElement>(null)
-
-  const form = useForm({
-    initialValues: {
-      produtoNome: '',
-    },
-    validate: {
-      produtoNome: (value) =>
-        value.trim().length === 0 ? 'Informe o nome do produto' : null,
-    },
-  })
-
-  // Produto selecionado no autocomplete
-  const produtoSelecionado = useMemo(() => {
-    return produtos.find(
-      (p) =>
-        p.nome.trim().toLowerCase() === form.values.produtoNome.trim().toLowerCase(),
-    )
-  }, [produtos, form.values.produtoNome])
-
   const carregarDadosIniciais = async () => {
     try {
       setLoading(true)
@@ -225,25 +215,10 @@ export function NecessidadesView({
     }
   }
 
-  const carregarNecessidades = async (rodadaId: number) => {
-    try {
-      setLoading(true)
-      const api = await getApi()
-      const nec = await api.list_needs(rodadaId)
-      setNecessidades(nec)
-    } catch (error) {
-      console.error('Erro ao carregar necessidades:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
     carregarDadosIniciais()
-    setTimeout(() => produtoInputRef.current?.focus(), 150)
   }, [])
 
-  // Adição ultra rápida de produto à rodada (com auto-cadastro para novos produtos)
   const adicionarProdutoPorNome = async (nomeProduto: string) => {
     const nomeLimpo = nomeProduto.trim()
     if (!nomeLimpo) return
@@ -280,7 +255,6 @@ export function NecessidadesView({
           icon: <IconPackage size={16} />,
           autoClose: 3500,
         })
-        // Recarrega lista mestre de produtos para atualizar o autocomplete
         await carregarDadosIniciais()
       } else {
         notifications.show({
@@ -292,13 +266,7 @@ export function NecessidadesView({
         })
       }
 
-      form.setFieldValue('produtoNome', '')
       await carregarNecessidades(selectedRodadaId)
-
-      // Mantém o cursor pronto para o próximo item
-      setTimeout(() => {
-        produtoInputRef.current?.focus()
-      }, 50)
     } catch (error: any) {
       console.error('Erro ao adicionar à rodada:', error)
       notifications.show({
@@ -307,14 +275,10 @@ export function NecessidadesView({
         color: 'red',
         icon: <IconX size={16} />,
       })
-      produtoInputRef.current?.focus()
+      throw error
     } finally {
       setSubmitting(false)
     }
-  }
-
-  const handleSubmit = async (values: typeof form.values) => {
-    await adicionarProdutoPorNome(values.produtoNome)
   }
 
   const handleRemover = (id: number, produtoNome: string) => {
@@ -354,13 +318,11 @@ export function NecessidadesView({
           })
         } finally {
           setDeletingId(null)
-          produtoInputRef.current?.focus()
         }
       },
     })
   }
 
-  // Apenas produtos que AINDA NÃO foram adicionados a esta rodada para facilitar a busca rápida
   const nomesProdutosDisponiveis = useMemo(() => {
     const idsJaAdicionados = new Set(necessidades.map((n) => n.id_produto))
     return produtos
@@ -368,57 +330,11 @@ export function NecessidadesView({
       .map((p) => p.nome)
   }, [produtos, necessidades])
 
-  const columns = useMemo<MRT_ColumnDef<Necessidade>[]>(
-    () => [
-      {
-        accessorKey: 'produto_nome',
-        header: 'Produto em Falta',
-        size: 280,
-        Cell: ({ cell }) => (
-          <Text fw={600} size="xs" truncate="end">
-            {cell.getValue<string>()}
-          </Text>
-        ),
-      },
-      {
-        accessorKey: 'produto_categoria',
-        header: 'Categoria',
-        size: 160,
-        Cell: ({ cell }) => {
-          const val = cell.getValue<string | null>()
-          return (
-            <Text size="xs" truncate="end" c={!val ? 'dimmed' : undefined}>
-              {val || '-'}
-            </Text>
-          )
-        },
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 80,
-        mantineTableHeadCellProps: { align: 'center' },
-        mantineTableBodyCellProps: { align: 'center' },
-        Cell: ({ row }) => (
-          <Group justify="center">
-            <Tooltip label="Remover produto da rodada">
-              <ActionIcon
-                color="red"
-                variant="subtle"
-                size="sm"
-                loading={deletingId === row.original.id}
-                disabled={isFechada}
-                onClick={() => handleRemover(row.original.id, row.original.produto_nome)}
-              >
-                <IconTrash size={16} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        ),
-      },
-    ],
-    [deletingId, isFechada],
-  )
+  const columns = useNecessidadesColumns({
+    deletingId,
+    isFechada,
+    handleRemover,
+  })
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
@@ -523,63 +439,15 @@ export function NecessidadesView({
         }
       />
 
-      {/* Formulário Ultrarrápido de Inclusão por Teclado */}
-      <SectionCard
-        title="Adicionar Produto à Rodada"
-        subtitle="Pressione Enter para incluir"
-        kbdHint="Enter"
-      >
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <fieldset disabled={isFechada} style={{ border: 'none', padding: 0, margin: 0 }}>
-            <Group align="flex-end" gap="xs">
-            <AppAutocomplete
-              ref={produtoInputRef}
-              label="Produto"
-              size="xs"
-              placeholder="Digite o nome do produto..."
-              data={nomesProdutosDisponiveis}
-              required
-              limit={8}
-              style={{ flex: 1 }}
-              {...form.getInputProps('produtoNome')}
-              onOptionSubmit={(val) => {
-                form.setFieldValue('produtoNome', val)
-                adicionarProdutoPorNome(val)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  if (form.values.produtoNome.trim()) {
-                    adicionarProdutoPorNome(form.values.produtoNome)
-                  }
-                }
-              }}
-            />
+      <NecessidadesForm
+        isFechada={isFechada}
+        submitting={submitting}
+        themeColor={themeColor}
+        produtos={produtos}
+        nomesProdutosDisponiveis={nomesProdutosDisponiveis}
+        onSubmit={adicionarProdutoPorNome}
+      />
 
-            <Button
-              type="submit"
-              variant="filled"
-              color={themeColor}
-              size="xs"
-              leftSection={<IconPlus size={14} />}
-              loading={submitting}
-            >
-              Adicionar <Kbd ml={4} size="xs">Enter</Kbd>
-            </Button>
-          </Group>
-
-          {produtoSelecionado && produtoSelecionado.categoria && (
-            <Group mt={4} gap="xs">
-              <Badge variant="dot" color="teal" size="sm">
-                {produtoSelecionado.categoria}
-              </Badge>
-            </Group>
-          )}
-          </fieldset>
-        </form>
-      </SectionCard>
-
-      {/* Mantine React Table */}
       {loading ? (
         <Center p="xl">
           <Loader size="lg" />
@@ -588,7 +456,6 @@ export function NecessidadesView({
         <MantineReactTable table={table} />
       )}
 
-      {/* Modal Criar Nova Rodada */}
       <Modal
         opened={modalNovaRodadaOpened}
         onClose={closeModalNovaRodada}
@@ -654,4 +521,3 @@ export function NecessidadesView({
 }
 
 export default NecessidadesView
-

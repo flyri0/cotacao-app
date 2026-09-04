@@ -1,12 +1,9 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import {
-  ActionIcon,
-  Alert,
   Badge,
   Button,
   Center,
   Group,
-  Kbd,
   Loader,
   Modal,
   NumberInput,
@@ -15,7 +12,6 @@ import {
   Stack,
   Text,
   TextInput,
-  Tooltip,
   useComputedColorScheme,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
@@ -24,29 +20,21 @@ import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
 import {
   IconAlertCircle,
-  IconCalculator,
   IconCheck,
   IconEdit,
   IconPackage,
-  IconPlus,
   IconReceipt,
   IconTrash,
-  IconTrendingDown,
-  IconTrendingUp,
   IconUpload,
   IconX,
 } from '@tabler/icons-react'
-import {
-  MantineReactTable,
-  useMantineReactTable,
-  type MRT_ColumnDef,
-} from 'mantine-react-table'
-import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { RoundHeaderSelector } from './common/RoundHeaderSelector'
-import { SectionCard } from './common/SectionCard'
-import { AppAutocomplete, AppSelect } from './common/AppSelect'
-import { getApi } from '../services/api'
+import { MantineReactTable, useMantineReactTable } from 'mantine-react-table'
+import { MRT_Localization_PT_BR } from '../../locales/mrtPtBr'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { RoundHeaderSelector } from '../../components/form/RoundHeaderSelector'
+import { SectionCard } from '../../components/ui/SectionCard'
+import { AppAutocomplete, AppSelect } from '../../components/form/AppSelect'
+import { getApi } from '../../services/api'
 import type {
   Cotacao,
   EstatisticasProduto,
@@ -54,7 +42,10 @@ import type {
   Necessidade,
   Produto,
   Rodada,
-} from '../types'
+} from '../../types'
+
+import { CotacoesForm, type CotacoesFormValues, type CotacoesFormRef } from './CotacoesForm'
+import { useCotacoesColumns } from './useCotacoesColumns'
 
 // Helper para download de arquivos Base64
 function downloadBase64File(
@@ -79,7 +70,6 @@ function downloadBase64File(
   URL.revokeObjectURL(url)
 }
 
-// Formatação inteligente: mínimo 2 casas (R$ 5,00) e máximo 4 casas (R$ 0,043)
 function formatMoney(valor: number, maxDigits = 4): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -144,9 +134,6 @@ export function CotacoesView({
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  // Estatísticas de inteligência de preço do produto atualmente em foco
-  const [statsProduto, setStatsProduto] = useState<EstatisticasProduto | null>(null)
-
   const [exportandoExcel, setExportandoExcel] = useState(false)
 
   const rodadaAtual = rodadas.find((r) => r.id === selectedRodadaId)
@@ -170,6 +157,268 @@ export function CotacoesView({
   const selectedQuoteIds = useMemo(() => {
     return Object.keys(rowSelection).filter((k) => rowSelection[k]).map(Number)
   }, [rowSelection])
+
+  const formRef = useRef<CotacoesFormRef>(null)
+
+  const form = useForm<CotacoesFormValues>({
+    initialValues: {
+      fornecedorNome: '',
+      produtoNome: '',
+      marca: '',
+      embalagem: 'Unidade',
+      qtd_por_embalagem: 1,
+      unidade: 'UN',
+      preco_embalagem: 0,
+    },
+    validate: {
+      fornecedorNome: (value) =>
+        value.trim().length === 0 ? 'Informe o fornecedor' : null,
+      produtoNome: (value) =>
+        value.trim().length === 0 ? 'Informe o produto' : null,
+      embalagem: (value) =>
+        value.trim().length === 0 ? 'Informe a embalagem' : null,
+      unidade: (value) =>
+        value.trim().length === 0 ? 'Informe a unidade de medida' : null,
+      qtd_por_embalagem: (value) =>
+        value <= 0 ? 'Quantidade por embalagem deve ser maior que zero' : null,
+      preco_embalagem: (value) =>
+        value < 0 ? 'O preço da embalagem não pode ser negativo' : null,
+    },
+  })
+
+  const [statsProduto, setStatsProduto] = useState<EstatisticasProduto | null>(null)
+  
+  const produtoSelecionado = useMemo(() => {
+    return produtos.find(
+      (p) =>
+        p.nome.trim().toLowerCase() === form.values.produtoNome.trim().toLowerCase(),
+    )
+  }, [produtos, form.values.produtoNome])
+
+  useEffect(() => {
+    if (!produtoSelecionado) {
+      setStatsProduto(null)
+      return
+    }
+
+    let isMounted = true
+    const buscarHistorico = async () => {
+      try {
+        const api = await getApi()
+        const stats = await api.get_product_statistics(produtoSelecionado.id)
+        if (isMounted) {
+          setStatsProduto(stats)
+        }
+      } catch (err) {
+        console.error('Erro ao buscar histórico do produto:', err)
+      }
+    }
+
+    buscarHistorico()
+    return () => {
+      isMounted = false
+    }
+  }, [produtoSelecionado?.id])
+
+  // Estado para Modal de Edição de Produto
+  const [modalEditarProdutoOpened, { open: openModalEditarProduto, close: closeModalEditarProduto }] =
+    useDisclosure(false)
+  const [produtoParaEditar, setProdutoParaEditar] = useState<Produto | null>(null)
+  const [salvandoEdicaoProduto, setSalvandoEdicaoProduto] = useState(false)
+
+  const formEdicaoProduto = useForm({
+    initialValues: {
+      nome: '',
+      categoria: '',
+    },
+    validate: {
+      nome: (value) =>
+        value.trim().length === 0 ? 'O nome do produto é obrigatório' : null,
+    },
+  })
+
+  // Estado para Modal de Edição Completa de Cotação
+  const [modalEditarCotacaoOpened, { open: openModalEditarCotacao, close: closeModalEditarCotacao }] =
+    useDisclosure(false)
+  const [cotacaoParaEditar, setCotacaoParaEditar] = useState<Cotacao | null>(null)
+  const [salvandoEdicaoCotacao, setSalvandoEdicaoCotacao] = useState(false)
+
+  const formEdicaoCotacao = useForm({
+    initialValues: {
+      fornecedorNome: '',
+      produtoNome: '',
+      produtoCategoria: '',
+      marca: '',
+      embalagem: 'Unidade',
+      qtd_por_embalagem: 1,
+      unidade: 'UN',
+      preco_embalagem: 0,
+    },
+    validate: {
+      fornecedorNome: (value) =>
+        value.trim().length === 0 ? 'Informe o fornecedor' : null,
+      produtoNome: (value) =>
+        value.trim().length === 0 ? 'Informe o produto' : null,
+      embalagem: (value) =>
+        value.trim().length === 0 ? 'Informe a embalagem' : null,
+      unidade: (value) =>
+        value.trim().length === 0 ? 'Informe a unidade de medida' : null,
+      qtd_por_embalagem: (value) =>
+        value <= 0 ? 'Quantidade por embalagem deve ser maior que zero' : null,
+      preco_embalagem: (value) =>
+        value < 0 ? 'O preço da embalagem não pode ser negativo' : null,
+    },
+  })
+
+  const carregarDadosIniciais = async () => {
+    try {
+      setLoading(true)
+      const api = await getApi()
+      const [listaRodadas, listaProdutos, listaFornecedores] = await Promise.all([
+        api.list_rounds(),
+        api.list_products(false),
+        api.list_suppliers(true),
+      ])
+
+      setRodadas(listaRodadas)
+      setProdutos(listaProdutos)
+      setFornecedores(listaFornecedores)
+
+      // Se houver uma rodada ativa definida externamente ou seleciona a mais recente
+      if (rodadaAtivaId) {
+        setSelectedRodadaId(rodadaAtivaId)
+        await carregarCotacoesENecessidades(rodadaAtivaId)
+      } else if (listaRodadas.length > 0) {
+        const primeiraAberta =
+          listaRodadas.find((r) => r.status === 'aberta') || listaRodadas[0]
+        setSelectedRodadaId(primeiraAberta.id)
+        onRodadaChange?.(primeiraAberta.id)
+        await carregarCotacoesENecessidades(primeiraAberta.id)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados iniciais de cotações:', error)
+      notifications.show({
+        title: 'Erro ao carregar dados',
+        message: 'Não foi possível carregar as informações da base.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const carregarCotacoesENecessidades = async (idRodada: number) => {
+    try {
+      setLoading(true)
+      const api = await getApi()
+      const [listaCotacoes, listaNecessidades] = await Promise.all([
+        api.list_quotes(idRodada),
+        api.list_needs(idRodada),
+      ])
+      setCotacoes(listaCotacoes)
+      setNecessidades(listaNecessidades)
+    } catch (error) {
+      console.error('Erro ao carregar cotações:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    carregarDadosIniciais()
+    setTimeout(() => formRef.current?.focusProduto(), 150)
+  }, [])
+
+  const handleSubmit = async (values: CotacoesFormValues) => {
+    if (!selectedRodadaId) {
+      notifications.show({
+        title: 'Selecione uma rodada',
+        message: 'É necessário selecionar uma rodada ativa para registrar cotações.',
+        color: 'orange',
+        icon: <IconAlertCircle size={16} />,
+      })
+      return
+    }
+
+    const forn = fornecedores.find(
+      (f) =>
+        f.nome.trim().toLowerCase() === values.fornecedorNome.trim().toLowerCase(),
+    )
+    if (!forn) {
+      form.setFieldError('fornecedorNome', 'Fornecedor não encontrado no cadastro.')
+      notifications.show({
+        title: 'Fornecedor não cadastrado',
+        message: `O fornecedor "${values.fornecedorNome}" não foi encontrado. Cadastre-o na aba Fornecedores antes de cotar.`,
+        color: 'red',
+        icon: <IconAlertCircle size={16} />,
+      })
+      formRef.current?.focusFornecedor()
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      const api = await getApi()
+      const salva = await api.create_quote(
+        selectedRodadaId,
+        forn.id,
+        null,
+        values.produtoNome,
+        values.marca || null,
+        values.embalagem,
+        values.qtd_por_embalagem,
+        values.unidade,
+        values.preco_embalagem,
+      )
+
+      if (salva.produto_novo) {
+        notifications.show({
+          title: 'Novo Produto Cadastrado',
+          message: `"${salva.produto_nome}" foi cadastrado no catálogo e incluído nas necessidades desta rodada.`,
+          color: 'teal',
+          icon: <IconPackage size={16} />,
+          autoClose: 3500,
+        })
+        await carregarDadosIniciais()
+      }
+
+      notifications.show({
+        title: 'Cotação Registrada',
+        message: `"${salva.produto_nome}" (${salva.fornecedor_nome}): ${formatMoney(
+          salva.preco_unitario,
+        )} / ${salva.unidade}${salva.marca ? ` [${salva.marca}]` : ''}`,
+        color: 'green',
+        icon: <IconCheck size={16} />,
+        autoClose: 2000,
+      })
+
+      // Mantém o fornecedor e unidade ativos para lançamento contínuo em lote!
+      form.setValues({
+        produtoNome: '',
+        marca: '',
+        fornecedorNome: values.fornecedorNome,
+        embalagem: 'Unidade',
+        qtd_por_embalagem: 1,
+        unidade: values.unidade || 'UN',
+        preco_embalagem: 0,
+      })
+
+      await carregarCotacoesENecessidades(selectedRodadaId)
+      setTimeout(() => formRef.current?.focusProduto(), 50)
+    } catch (error: any) {
+      console.error('Erro ao salvar cotação:', error)
+      notifications.show({
+        title: 'Erro ao salvar cotação',
+        message: error?.message || 'Falha ao registrar cotação.',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+      formRef.current?.focusPreco()
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const handleEditarEmMassa = async () => {
     if (selectedQuoteIds.length === 0 || isFechada) return
@@ -285,197 +534,6 @@ export function CotacoesView({
         }
       },
     })
-  }
-
-  // Estado para Modal de Edição de Produto
-  const [modalEditarProdutoOpened, { open: openModalEditarProduto, close: closeModalEditarProduto }] =
-    useDisclosure(false)
-  const [produtoParaEditar, setProdutoParaEditar] = useState<Produto | null>(null)
-  const [salvandoEdicaoProduto, setSalvandoEdicaoProduto] = useState(false)
-
-  const formEdicaoProduto = useForm({
-    initialValues: {
-      nome: '',
-      categoria: '',
-    },
-    validate: {
-      nome: (value) =>
-        value.trim().length === 0 ? 'O nome do produto é obrigatório' : null,
-    },
-  })
-
-  // Estado para Modal de Edição Completa de Cotação
-  const [modalEditarCotacaoOpened, { open: openModalEditarCotacao, close: closeModalEditarCotacao }] =
-    useDisclosure(false)
-  const [cotacaoParaEditar, setCotacaoParaEditar] = useState<Cotacao | null>(null)
-  const [salvandoEdicaoCotacao, setSalvandoEdicaoCotacao] = useState(false)
-
-  const formEdicaoCotacao = useForm({
-    initialValues: {
-      fornecedorNome: '',
-      produtoNome: '',
-      produtoCategoria: '',
-      marca: '',
-      embalagem: 'Unidade',
-      qtd_por_embalagem: 1,
-      unidade: 'UN',
-      preco_embalagem: 0,
-    },
-    validate: {
-      fornecedorNome: (value) =>
-        value.trim().length === 0 ? 'Informe o fornecedor' : null,
-      produtoNome: (value) =>
-        value.trim().length === 0 ? 'Informe o produto' : null,
-      embalagem: (value) =>
-        value.trim().length === 0 ? 'Informe a embalagem' : null,
-      unidade: (value) =>
-        value.trim().length === 0 ? 'Informe a unidade de medida' : null,
-      qtd_por_embalagem: (value) =>
-        value <= 0 ? 'Quantidade por embalagem deve ser maior que zero' : null,
-      preco_embalagem: (value) =>
-        value < 0 ? 'O preço da embalagem não pode ser negativo' : null,
-    },
-  })
-
-  // Referências para navegação ultrarrápida por teclado
-  const fornecedorRef = useRef<HTMLInputElement>(null)
-  const produtoRef = useRef<HTMLInputElement>(null)
-  const marcaRef = useRef<HTMLInputElement>(null)
-  const embalagemRef = useRef<HTMLInputElement>(null)
-  const qtdRef = useRef<HTMLInputElement>(null)
-  const unidadeRef = useRef<HTMLInputElement>(null)
-  const precoRef = useRef<HTMLInputElement>(null)
-
-  const form = useForm({
-    initialValues: {
-      fornecedorNome: '',
-      produtoNome: '',
-      marca: '',
-      embalagem: 'Unidade',
-      qtd_por_embalagem: 1,
-      unidade: 'UN',
-      preco_embalagem: 0,
-    },
-    validate: {
-      fornecedorNome: (value) =>
-        value.trim().length === 0 ? 'Informe o fornecedor' : null,
-      produtoNome: (value) =>
-        value.trim().length === 0 ? 'Informe o produto' : null,
-      embalagem: (value) =>
-        value.trim().length === 0 ? 'Informe a embalagem' : null,
-      unidade: (value) =>
-        value.trim().length === 0 ? 'Informe a unidade de medida' : null,
-      qtd_por_embalagem: (value) =>
-        value <= 0 ? 'Quantidade por embalagem deve ser maior que zero' : null,
-      preco_embalagem: (value) =>
-        value < 0 ? 'O preço da embalagem não pode ser negativo' : null,
-    },
-  })
-
-  const produtoSelecionado = useMemo(() => {
-    return produtos.find(
-      (p) =>
-        p.nome.trim().toLowerCase() === form.values.produtoNome.trim().toLowerCase(),
-    )
-  }, [produtos, form.values.produtoNome])
-
-  const fornecedorSelecionado = useMemo(() => {
-    return fornecedores.find(
-      (f) =>
-        f.nome.trim().toLowerCase() ===
-        form.values.fornecedorNome.trim().toLowerCase(),
-    )
-  }, [fornecedores, form.values.fornecedorNome])
-
-  // Busca estatísticas históricas do produto sempre que o produto selecionado mudar
-  useEffect(() => {
-    if (!produtoSelecionado) {
-      setStatsProduto(null)
-      return
-    }
-
-    let isMounted = true
-    const buscarHistorico = async () => {
-      try {
-        const api = await getApi()
-        const stats = await api.get_product_statistics(produtoSelecionado.id)
-        if (isMounted) {
-          setStatsProduto(stats)
-        }
-      } catch (err) {
-        console.error('Erro ao buscar histórico do produto:', err)
-      }
-    }
-
-    buscarHistorico()
-    return () => {
-      isMounted = false
-    }
-  }, [produtoSelecionado?.id])
-
-  // Preço unitário pré-calculado em tempo real no formulário
-  const precoUnitarioPreview = useMemo(() => {
-    const qtd = form.values.qtd_por_embalagem || 0
-    const preco = form.values.preco_embalagem || 0
-    if (qtd > 0 && preco > 0) {
-      return preco / qtd
-    }
-    return 0
-  }, [form.values.qtd_por_embalagem, form.values.preco_embalagem])
-
-  const carregarDadosIniciais = async () => {
-    try {
-      setLoading(true)
-      const api = await getApi()
-      const [listaRodadas, listaProdutos, listaFornecedores] = await Promise.all([
-        api.list_rounds(),
-        api.list_products(false),
-        api.list_suppliers(true),
-      ])
-
-      setRodadas(listaRodadas)
-      setProdutos(listaProdutos)
-      setFornecedores(listaFornecedores)
-
-      // Se houver uma rodada ativa definida externamente ou seleciona a mais recente
-      if (rodadaAtivaId) {
-        setSelectedRodadaId(rodadaAtivaId)
-        await carregarCotacoesENecessidades(rodadaAtivaId)
-      } else if (listaRodadas.length > 0) {
-        const primeiraAberta =
-          listaRodadas.find((r) => r.status === 'aberta') || listaRodadas[0]
-        setSelectedRodadaId(primeiraAberta.id)
-        onRodadaChange?.(primeiraAberta.id)
-        await carregarCotacoesENecessidades(primeiraAberta.id)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados iniciais de cotações:', error)
-      notifications.show({
-        title: 'Erro ao carregar dados',
-        message: 'Não foi possível carregar as informações da base.',
-        color: 'red',
-        icon: <IconX size={16} />,
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const carregarCotacoesENecessidades = async (idRodada: number) => {
-    try {
-      setLoading(true)
-      const api = await getApi()
-      const [listaCotacoes, listaNecessidades] = await Promise.all([
-        api.list_quotes(idRodada),
-        api.list_needs(idRodada),
-      ])
-      setCotacoes(listaCotacoes)
-      setNecessidades(listaNecessidades)
-    } catch (error) {
-      console.error('Erro ao carregar cotações:', error)
-    } finally {
-      setLoading(false)
-    }
   }
 
   const handleAbrirEdicaoProduto = (produto: Produto) => {
@@ -607,101 +665,6 @@ export function CotacoesView({
     }
   }
 
-  useEffect(() => {
-    carregarDadosIniciais()
-    setTimeout(() => produtoRef.current?.focus(), 150)
-  }, [])
-
-  const handleSubmit = async (values: typeof form.values) => {
-    if (!selectedRodadaId) {
-      notifications.show({
-        title: 'Selecione uma rodada',
-        message: 'É necessário selecionar uma rodada ativa para registrar cotações.',
-        color: 'orange',
-        icon: <IconAlertCircle size={16} />,
-      })
-      return
-    }
-
-    const forn = fornecedores.find(
-      (f) =>
-        f.nome.trim().toLowerCase() === values.fornecedorNome.trim().toLowerCase(),
-    )
-    if (!forn) {
-      form.setFieldError('fornecedorNome', 'Fornecedor não encontrado no cadastro.')
-      notifications.show({
-        title: 'Fornecedor não cadastrado',
-        message: `O fornecedor "${values.fornecedorNome}" não foi encontrado. Cadastre-o na aba Fornecedores antes de cotar.`,
-        color: 'red',
-        icon: <IconAlertCircle size={16} />,
-      })
-      fornecedorRef.current?.focus()
-      return
-    }
-
-    try {
-      setSubmitting(true)
-      const api = await getApi()
-      const salva = await api.create_quote(
-        selectedRodadaId,
-        forn.id,
-        null,
-        values.produtoNome,
-        values.marca || null,
-        values.embalagem,
-        values.qtd_por_embalagem,
-        values.unidade,
-        values.preco_embalagem,
-      )
-
-      if (salva.produto_novo) {
-        notifications.show({
-          title: 'Novo Produto Cadastrado',
-          message: `"${salva.produto_nome}" foi cadastrado no catálogo e incluído nas necessidades desta rodada.`,
-          color: 'teal',
-          icon: <IconPackage size={16} />,
-          autoClose: 3500,
-        })
-        await carregarDadosIniciais()
-      }
-
-      notifications.show({
-        title: 'Cotação Registrada',
-        message: `"${salva.produto_nome}" (${salva.fornecedor_nome}): ${formatMoney(
-          salva.preco_unitario,
-        )} / ${salva.unidade}${salva.marca ? ` [${salva.marca}]` : ''}`,
-        color: 'green',
-        icon: <IconCheck size={16} />,
-        autoClose: 2000,
-      })
-
-      // Mantém o fornecedor e unidade ativos para lançamento contínuo em lote!
-      form.setValues({
-        produtoNome: '',
-        marca: '',
-        fornecedorNome: values.fornecedorNome,
-        embalagem: 'Unidade',
-        qtd_por_embalagem: 1,
-        unidade: values.unidade || 'UN',
-        preco_embalagem: 0,
-      })
-
-      await carregarCotacoesENecessidades(selectedRodadaId)
-      setTimeout(() => produtoRef.current?.focus(), 50)
-    } catch (error: any) {
-      console.error('Erro ao salvar cotação:', error)
-      notifications.show({
-        title: 'Erro ao salvar cotação',
-        message: error?.message || 'Falha ao registrar cotação.',
-        color: 'red',
-        icon: <IconX size={16} />,
-      })
-      precoRef.current?.focus()
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   const handleRemover = (id: number, produtoNome: string, fornecedorNome: string) => {
     modals.openConfirmModal({
       title: 'Excluir Cotação',
@@ -740,7 +703,7 @@ export function CotacoesView({
           })
         } finally {
           setDeletingId(null)
-          produtoRef.current?.focus()
+          formRef.current?.focusProduto()
         }
       },
     })
@@ -807,134 +770,13 @@ export function CotacoesView({
     [fornecedores],
   )
 
-  const columns = useMemo<MRT_ColumnDef<Cotacao>[]>(
-    () => [
-      {
-        accessorKey: 'produto_nome',
-        header: 'Produto',
-        size: 220,
-        Cell: ({ cell }) => (
-          <Text fw={600} size="xs" truncate="end">
-            {cell.getValue<string>()}
-          </Text>
-        ),
-      },
-      {
-        accessorKey: 'marca',
-        header: 'Marca',
-        size: 110,
-        Cell: ({ cell }) => {
-          const val = cell.getValue<string | null>()
-          return (
-            <Text size="xs" truncate="end" c={!val ? 'dimmed' : undefined}>
-              {val || '-'}
-            </Text>
-          )
-        },
-      },
-      {
-        accessorKey: 'fornecedor_nome',
-        header: 'Fornecedor',
-        size: 160,
-        Cell: ({ cell }) => (
-          <Text size="xs" truncate="end">
-            {cell.getValue<string>()}
-          </Text>
-        ),
-      },
-      {
-        accessorKey: 'embalagem',
-        header: 'Embalagem',
-        size: 140,
-        Cell: ({ cell }) => (
-          <Text size="xs" truncate="end">
-            {cell.getValue<string>()}
-          </Text>
-        ),
-      },
-      {
-        accessorKey: 'qtd_por_embalagem',
-        header: 'Qtd / Emb.',
-        size: 110,
-        mantineTableHeadCellProps: { align: 'right' },
-        mantineTableBodyCellProps: { align: 'right' },
-        Cell: ({ row }) => (
-          <Text size="xs">
-            {row.original.qtd_por_embalagem} {row.original.unidade || 'UN'}
-          </Text>
-        ),
-      },
-      {
-        accessorKey: 'preco_embalagem',
-        header: 'Preço Emb.',
-        size: 130,
-        mantineTableHeadCellProps: { align: 'right' },
-        mantineTableBodyCellProps: { align: 'right' },
-        Cell: ({ cell }) => (
-          <Text size="xs">
-            {formatMoney(cell.getValue<number>(), 2)}
-          </Text>
-        ),
-      },
-      {
-        accessorKey: 'preco_unitario',
-        header: 'Preço Unitário',
-        size: 150,
-        mantineTableHeadCellProps: { align: 'right' },
-        mantineTableBodyCellProps: { align: 'right' },
-        Cell: ({ row }) => (
-          <Text fw={700} size="xs" c="teal">
-            {formatMoney(row.original.preco_unitario)} / {row.original.unidade || 'UN'}
-          </Text>
-        ),
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 85,
-        mantineTableHeadCellProps: { align: 'center' },
-        mantineTableBodyCellProps: { align: 'center' },
-        Cell: ({ row }) => {
-          const item = row.original
-          return (
-            <Group gap={4} justify="center" wrap="nowrap">
-              <Tooltip label={`Editar cotação de "${item.produto_nome}"`}>
-                <ActionIcon
-                  variant="subtle"
-                  color={themeColor}
-                  size="sm"
-                  disabled={isFechada}
-                  onClick={() => handleAbrirEdicaoCotacao(item)}
-                >
-                  <IconEdit size={16} />
-                </ActionIcon>
-              </Tooltip>
-
-              <Tooltip label="Remover esta cotação">
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  size="sm"
-                  loading={deletingId === item.id}
-                  disabled={isFechada}
-                  onClick={() =>
-                    handleRemover(
-                      item.id,
-                      item.produto_nome,
-                      item.fornecedor_nome,
-                    )
-                  }
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          )
-        },
-      },
-    ],
-    [deletingId, produtos, isFechada, themeColor],
-  )
+  const columns = useCotacoesColumns({
+    isFechada,
+    themeColor,
+    deletingId,
+    onEdit: handleAbrirEdicaoCotacao,
+    onRemove: handleRemover,
+  })
 
   const table = useMantineReactTable({
     enableDensityToggle: false,
@@ -1029,7 +871,6 @@ export function CotacoesView({
 
   return (
     <Stack gap="xs" style={{ width: '100%' }}>
-      {/* Cabeçalho */}
       <PageHeader
         icon={IconReceipt}
         iconColor={themeColor}
@@ -1061,227 +902,27 @@ export function CotacoesView({
         }
       />
 
-      {/* Formulário Turbo de Cadastro de Cotação */}
       <SectionCard
         title="Nova Cotação de Fornecedor"
         subtitle="Fornecedor fixo para lançamento em lote"
         kbdHint="Enter"
       >
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <fieldset disabled={isFechada} style={{ border: 'none', padding: 0, margin: 0 }}>
-            <Stack gap="xs">
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
-              <AppAutocomplete
-                ref={fornecedorRef}
-                label="Fornecedor (Fixo)"
-                size="xs"
-                placeholder="Selecione o fornecedor..."
-                data={nomesFornecedores}
-                required
-                limit={8}
-                {...form.getInputProps('fornecedorNome')}
-                onTabOrEnterNextRef={produtoRef}
-              />
-
-              <Stack gap={2}>
-                <Group justify="space-between" align="center">
-                  <Text size="xs" fw={500}>
-                    Produto <Text span c="red">*</Text>
-                  </Text>
-                  {produtoSelecionado && (
-                    <Button
-                      variant="subtle"
-                      color="blue"
-                      size="compact-xs"
-                      leftSection={<IconEdit size={11} />}
-                      onClick={() => handleAbrirEdicaoProduto(produtoSelecionado)}
-                    >
-                      Editar
-                    </Button>
-                  )}
-                </Group>
-                <AppAutocomplete
-                  ref={produtoRef}
-                  size="xs"
-                  placeholder="Digite ou selecione o produto..."
-                  data={nomesTodosProdutos}
-                  required
-                  limit={10}
-                  {...form.getInputProps('produtoNome')}
-                  onTabOrEnterNextRef={marcaRef}
-                />
-              </Stack>
-
-              <TextInput
-                ref={marcaRef}
-                label="Marca (Opcional)"
-                size="xs"
-                placeholder="Ex: Ypê, Bombril, 3M..."
-                {...form.getInputProps('marca')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    embalagemRef.current?.focus()
-                  }
-                }}
-              />
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="xs">
-              <AppAutocomplete
-                ref={embalagemRef}
-                label="Embalagem"
-                size="xs"
-                placeholder="Ex: Caixa c/ 24 un, Fardo c/ 12 un"
-                data={SUGESTOES_EMBALAGEM}
-                required
-                {...form.getInputProps('embalagem')}
-                onTabOrEnterNextRef={qtdRef}
-              />
-
-              <NumberInput
-                ref={qtdRef}
-                label="Qtd na Embalagem"
-                size="xs"
-                placeholder="Ex: 24"
-                min={0.001}
-                decimalScale={3}
-                required
-                {...form.getInputProps('qtd_por_embalagem')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    unidadeRef.current?.focus()
-                  }
-                }}
-              />
-
-              <AppAutocomplete
-                ref={unidadeRef}
-                label="Unidade Medida"
-                size="xs"
-                placeholder="Ex: UN, KG, L, PCT, CX"
-                data={SUGESTOES_UNIDADES}
-                required
-                {...form.getInputProps('unidade')}
-                onTabOrEnterNextRef={precoRef}
-              />
-
-              <NumberInput
-                ref={precoRef}
-                label="Preço Embalagem (R$)"
-                size="xs"
-                placeholder="0,00"
-                min={0}
-                decimalScale={2}
-                fixedDecimalScale
-                thousandSeparator="."
-                decimalSeparator=","
-                prefix="R$ "
-                required
-                {...form.getInputProps('preco_embalagem')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    form.onSubmit(handleSubmit)()
-                  }
-                }}
-              />
-            </SimpleGrid>
-
-            {/* Live Preview do Preço Unitário Normalizado + Inteligência de Tendência Histórica */}
-            <Alert
-              icon={<IconCalculator size={18} />}
-              color="teal"
-              variant="light"
-              radius="sm"
-              p="xs"
-            >
-              <Stack gap={4}>
-                <Group justify="space-between" align="center">
-                  <div>
-                    <Text size="xs" fw={600}>
-                      {form.values.produtoNome
-                        ? `Item: ${form.values.produtoNome} (Un: ${form.values.unidade || 'UN'})`
-                        : 'Preencha os dados do item para visualizar o preço normalizado.'}
-                      {fornecedorSelecionado &&
-                        ` • Fornecedor: ${fornecedorSelecionado.nome}`}
-                      {form.values.marca &&
-                        ` • Marca: ${form.values.marca}`}
-                    </Text>
-                  </div>
-                  <Badge size="sm" color="teal" variant="filled">
-                    {precoUnitarioPreview > 0
-                      ? `${formatMoney(precoUnitarioPreview)} / ${
-                          form.values.unidade || 'UN'
-                        }`
-                      : 'R$ 0,00'}
-                  </Badge>
-                </Group>
-
-                {/* Painel Inteligente de Comparação Histórica */}
-                {produtoSelecionado && statsProduto && statsProduto.total_cotacoes > 0 && (
-                  <Paper withBorder p={4} radius="xs" bg="var(--mantine-color-body)">
-                    <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                      <Group gap="xs">
-                        <Text size="10px" c="dimmed">
-                          Histórico: <b>{statsProduto.total_cotacoes}</b>
-                        </Text>
-                        <Text size="10px" c="dimmed">
-                          Menor: <Text span c="teal" fw={700}>{formatMoney(statsProduto.menor_preco)}</Text>
-                          {statsProduto.melhor_fornecedor && ` (${statsProduto.melhor_fornecedor})`}
-                        </Text>
-                        <Text size="10px" c="dimmed">
-                          Média: <b>{formatMoney(statsProduto.preco_medio)}</b>
-                        </Text>
-                      </Group>
-
-                      {/* Badge Comparativo com Variação Percentual */}
-                      {precoUnitarioPreview > 0 && (
-                        <Group gap="xs">
-                          {precoUnitarioPreview < statsProduto.menor_preco ? (
-                            <Badge color="teal" size="xs" variant="filled" leftSection={<IconTrendingDown size={12} />}>
-                              🔥 NOVO RECORDE (-{(((statsProduto.menor_preco - precoUnitarioPreview) / statsProduto.menor_preco) * 100).toFixed(1)}%)
-                            </Badge>
-                          ) : precoUnitarioPreview <= statsProduto.preco_medio ? (
-                            <Badge color="teal" size="xs" variant="light" leftSection={<IconTrendingDown size={12} />}>
-                              ✓ Abaixo média (-{(((statsProduto.preco_medio - precoUnitarioPreview) / statsProduto.preco_medio) * 100).toFixed(1)}%)
-                            </Badge>
-                          ) : precoUnitarioPreview > statsProduto.maior_preco ? (
-                            <Badge color="red" size="xs" variant="filled" leftSection={<IconTrendingUp size={12} />}>
-                              🚨 MAIOR (+{(((precoUnitarioPreview - statsProduto.maior_preco) / statsProduto.maior_preco) * 100).toFixed(1)}%)
-                            </Badge>
-                          ) : (
-                            <Badge color="orange" size="xs" variant="light" leftSection={<IconTrendingUp size={12} />}>
-                              ⚠️ +{(((precoUnitarioPreview - statsProduto.preco_medio) / statsProduto.preco_medio) * 100).toFixed(1)}%
-                            </Badge>
-                          )}
-                        </Group>
-                      )}
-                    </Group>
-                  </Paper>
-                )}
-              </Stack>
-            </Alert>
-
-            <Group justify="flex-end">
-              <Button
-                type="submit"
-                variant="filled"
-                color={themeColor}
-                size="xs"
-                leftSection={<IconPlus size={14} />}
-                loading={submitting}
-              >
-                Salvar Cotação <Kbd ml={4} size="xs">Enter</Kbd>
-              </Button>
-            </Group>
-          </Stack>
-          </fieldset>
-        </form>
+        <CotacoesForm
+          ref={formRef}
+          isFechada={isFechada}
+          themeColor={themeColor}
+          fornecedores={fornecedores}
+          nomesFornecedores={nomesFornecedores}
+          nomesTodosProdutos={nomesTodosProdutos}
+          submitting={submitting}
+          onSubmit={handleSubmit}
+          onEditarProduto={handleAbrirEdicaoProduto}
+          form={form}
+          statsProduto={statsProduto}
+          produtoSelecionado={produtoSelecionado}
+        />
       </SectionCard>
 
-      {/* Mantine React Table */}
       {loading ? (
         <Center p="xl">
           <Loader size="lg" />
@@ -1289,7 +930,6 @@ export function CotacoesView({
       ) : (
         <MantineReactTable table={table} />
       )}
-
 
       {/* Modal de Edição Completa de Cotação */}
       <Modal
@@ -1577,6 +1217,3 @@ export function CotacoesView({
     </Stack>
   )
 }
-
-export default CotacoesView
-
