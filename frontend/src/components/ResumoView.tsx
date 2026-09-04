@@ -27,20 +27,10 @@ import {
   type MRT_ColumnDef,
 } from 'mantine-react-table'
 import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { RoundHeaderSelector } from './common/RoundHeaderSelector'
-import { StatCard } from './common/StatCard'
+import { PageHeader, RoundHeaderSelector, StatCard } from './common'
+import { calculatePackaging, formatMoney } from '../utils'
 import { getApi } from '../services/api'
 import type { Alocacao, Cotacao, Fornecedor, Rodada } from '../types'
-
-function formatMoney(valor: number, maxDigits = 2): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: maxDigits,
-  }).format(valor || 0)
-}
 
 interface ResumoViewProps {
   rodadaAtivaId?: number
@@ -142,10 +132,11 @@ export function ResumoView({
             c.id_produto === aloc.id_produto &&
             c.id_fornecedor === forn.id,
         )
-        const fator = cot && cot.qtd_por_embalagem > 0 ? cot.qtd_por_embalagem : 1
-        const precoEmb = cot ? cot.preco_embalagem : 0
-        const embComprar = Math.ceil(aloc.quantidade / fator)
-        const subtotal = embComprar * precoEmb
+        const { embComprar, subtotal } = calculatePackaging(
+          aloc.quantidade,
+          cot?.qtd_por_embalagem,
+          cot?.preco_embalagem,
+        )
 
         totalAlocado += subtotal
 

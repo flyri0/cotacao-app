@@ -35,10 +35,8 @@ import {
   IconTrendingUp,
   IconX,
 } from '@tabler/icons-react'
-import { PageHeader } from './common/PageHeader'
-import { StatCard } from './common/StatCard'
-import { EmptyState } from './common/EmptyState'
-import { AppSelect } from './common/AppSelect'
+import { AppSelect, EmptyState, PageHeader, StatCard } from './common'
+import { formatMoney } from '../utils'
 import { getApi } from '../services/api'
 import type { RodadaComMetricas } from '../types'
 
@@ -119,9 +117,6 @@ export function RodadasView({
     carregarRodadas()
   }, [])
 
-  // Formatação de Moeda
-  const formatMoney = (val?: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 
   // Formatação de Data
   const formatDate = (isoStr?: string) => {

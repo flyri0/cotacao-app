@@ -8,7 +8,6 @@ import {
   Group,
   Kbd,
   Loader,
-  Modal,
   NumberInput,
   Paper,
   SimpleGrid,
@@ -31,8 +30,6 @@ import {
   IconPlus,
   IconReceipt,
   IconTrash,
-  IconTrendingDown,
-  IconTrendingUp,
   IconUpload,
   IconX,
 } from '@tabler/icons-react'
@@ -42,10 +39,20 @@ import {
   type MRT_ColumnDef,
 } from 'mantine-react-table'
 import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { RoundHeaderSelector } from './common/RoundHeaderSelector'
-import { SectionCard } from './common/SectionCard'
-import { AppAutocomplete, AppSelect } from './common/AppSelect'
+import {
+  AppAutocomplete,
+  PageHeader,
+  RoundHeaderSelector,
+  SectionCard,
+} from './common'
+import {
+  BatchQuotesModal,
+  EditQuoteModal,
+  ProductStatsCard,
+} from './cotacoes'
+import { EditProductModal } from './produtos'
+import { SUGESTOES_EMBALAGEM, SUGESTOES_UNIDADES } from '../constants'
+import { downloadBase64File, formatMoney } from '../utils'
 import { getApi } from '../services/api'
 import type {
   Cotacao,
@@ -55,71 +62,6 @@ import type {
   Produto,
   Rodada,
 } from '../types'
-
-// Helper para download de arquivos Base64
-function downloadBase64File(
-  base64Data: string,
-  fileName: string,
-  mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-) {
-  const byteCharacters = atob(base64Data)
-  const byteNumbers = new Array(byteCharacters.length)
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i)
-  }
-  const byteArray = new Uint8Array(byteNumbers)
-  const blob = new Blob([byteArray], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
-
-// Formatação inteligente: mínimo 2 casas (R$ 5,00) e máximo 4 casas (R$ 0,043)
-function formatMoney(valor: number, maxDigits = 4): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: maxDigits,
-  }).format(valor || 0)
-}
-
-const SUGESTOES_EMBALAGEM = [
-  'Caixa c/ 24 un',
-  'Caixa c/ 12 un',
-  'Caixa c/ 50 un',
-  'Caixa c/ 5000 un',
-  'Caixa c/ 2500 un',
-  'Fardo c/ 12 un',
-  'Fardo c/ 10 pct',
-  'Fardo c/ 8 pct',
-  'Pacote c/ 500 un',
-  'Pacote avulso',
-  'Tira c/ 100 un',
-  'Frasco 1L',
-  'Galão 5L',
-  'Unidade',
-]
-
-const SUGESTOES_UNIDADES = [
-  'UN',
-  'KG',
-  'L',
-  'PCT',
-  'CX',
-  'FARDO',
-  'FRASCO',
-  'GALAO',
-  'ROLO',
-  'PAR',
-  'LATA',
-  'M',
-]
 
 interface CotacoesViewProps {
   rodadaAtivaId?: number
@@ -1220,46 +1162,11 @@ export function CotacoesView({
                 </Group>
 
                 {/* Painel Inteligente de Comparação Histórica */}
-                {produtoSelecionado && statsProduto && statsProduto.total_cotacoes > 0 && (
-                  <Paper withBorder p={4} radius="xs" bg="var(--mantine-color-body)">
-                    <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                      <Group gap="xs">
-                        <Text size="10px" c="dimmed">
-                          Histórico: <b>{statsProduto.total_cotacoes}</b>
-                        </Text>
-                        <Text size="10px" c="dimmed">
-                          Menor: <Text span c="teal" fw={700}>{formatMoney(statsProduto.menor_preco)}</Text>
-                          {statsProduto.melhor_fornecedor && ` (${statsProduto.melhor_fornecedor})`}
-                        </Text>
-                        <Text size="10px" c="dimmed">
-                          Média: <b>{formatMoney(statsProduto.preco_medio)}</b>
-                        </Text>
-                      </Group>
-
-                      {/* Badge Comparativo com Variação Percentual */}
-                      {precoUnitarioPreview > 0 && (
-                        <Group gap="xs">
-                          {precoUnitarioPreview < statsProduto.menor_preco ? (
-                            <Badge color="teal" size="xs" variant="filled" leftSection={<IconTrendingDown size={12} />}>
-                              🔥 NOVO RECORDE (-{(((statsProduto.menor_preco - precoUnitarioPreview) / statsProduto.menor_preco) * 100).toFixed(1)}%)
-                            </Badge>
-                          ) : precoUnitarioPreview <= statsProduto.preco_medio ? (
-                            <Badge color="teal" size="xs" variant="light" leftSection={<IconTrendingDown size={12} />}>
-                              ✓ Abaixo média (-{(((statsProduto.preco_medio - precoUnitarioPreview) / statsProduto.preco_medio) * 100).toFixed(1)}%)
-                            </Badge>
-                          ) : precoUnitarioPreview > statsProduto.maior_preco ? (
-                            <Badge color="red" size="xs" variant="filled" leftSection={<IconTrendingUp size={12} />}>
-                              🚨 MAIOR (+{(((precoUnitarioPreview - statsProduto.maior_preco) / statsProduto.maior_preco) * 100).toFixed(1)}%)
-                            </Badge>
-                          ) : (
-                            <Badge color="orange" size="xs" variant="light" leftSection={<IconTrendingUp size={12} />}>
-                              ⚠️ +{(((precoUnitarioPreview - statsProduto.preco_medio) / statsProduto.preco_medio) * 100).toFixed(1)}%
-                            </Badge>
-                          )}
-                        </Group>
-                      )}
-                    </Group>
-                  </Paper>
+                {produtoSelecionado && (
+                  <ProductStatsCard
+                    statsProduto={statsProduto}
+                    precoUnitarioPreview={precoUnitarioPreview}
+                  />
                 )}
               </Stack>
             </Alert>
@@ -1292,288 +1199,52 @@ export function CotacoesView({
 
 
       {/* Modal de Edição Completa de Cotação */}
-      <Modal
+      <EditQuoteModal
         opened={modalEditarCotacaoOpened}
         onClose={closeModalEditarCotacao}
-        title={
-          <Group gap="xs">
-            <IconEdit size={18} />
-            <Text fw={700}>Editar Cotação</Text>
-          </Group>
-        }
-        centered
-        radius="sm"
-        size="lg"
-      >
-        <form onSubmit={formEdicaoCotacao.onSubmit(handleSalvarEdicaoCotacao)}>
-          <Stack gap="sm">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-              <AppAutocomplete
-                label="Fornecedor"
-                size="xs"
-                placeholder="Selecione o fornecedor..."
-                data={nomesFornecedores}
-                required
-                limit={8}
-                {...formEdicaoCotacao.getInputProps('fornecedorNome')}
-              />
-
-              <AppAutocomplete
-                label="Produto"
-                size="xs"
-                placeholder="Digite ou selecione o produto..."
-                data={nomesTodosProdutos}
-                required
-                limit={10}
-                {...formEdicaoCotacao.getInputProps('produtoNome')}
-              />
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-              <TextInput
-                label="Categoria do Produto (Opcional)"
-                size="xs"
-                placeholder="Ex: Alimentos, Limpeza, Embalagens..."
-                {...formEdicaoCotacao.getInputProps('produtoCategoria')}
-              />
-
-              <TextInput
-                label="Marca (Opcional)"
-                size="xs"
-                placeholder="Ex: Ypê, Bombril, 3M..."
-                {...formEdicaoCotacao.getInputProps('marca')}
-              />
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="xs">
-              <AppAutocomplete
-                label="Embalagem"
-                size="xs"
-                placeholder="Ex: Caixa c/ 24 un"
-                data={SUGESTOES_EMBALAGEM}
-                required
-                {...formEdicaoCotacao.getInputProps('embalagem')}
-              />
-
-              <NumberInput
-                label="Qtd na Embalagem"
-                size="xs"
-                placeholder="Ex: 24"
-                min={0.001}
-                decimalScale={3}
-                required
-                {...formEdicaoCotacao.getInputProps('qtd_por_embalagem')}
-              />
-
-              <AppAutocomplete
-                label="Unidade Medida"
-                size="xs"
-                placeholder="Ex: UN, KG, L"
-                data={SUGESTOES_UNIDADES}
-                required
-                {...formEdicaoCotacao.getInputProps('unidade')}
-              />
-
-              <NumberInput
-                label="Preço Embalagem (R$)"
-                size="xs"
-                placeholder="0,00"
-                min={0}
-                decimalScale={2}
-                fixedDecimalScale
-                thousandSeparator="."
-                decimalSeparator=","
-                prefix="R$ "
-                required
-                {...formEdicaoCotacao.getInputProps('preco_embalagem')}
-              />
-            </SimpleGrid>
-
-            {formEdicaoCotacao.values.qtd_por_embalagem > 0 && (
-              <Paper p="xs" radius="sm" withBorder bg="var(--mantine-color-gray-light)">
-                <Group justify="space-between" align="center">
-                  <Text size="xs" c="dimmed">Preço Unitário Calculado:</Text>
-                  <Text fw={700} size="sm" c="teal">
-                    {formatMoney(
-                      (formEdicaoCotacao.values.preco_embalagem || 0) /
-                        (formEdicaoCotacao.values.qtd_por_embalagem || 1)
-                    )}{' '}
-                    /{' '}
-                    {formEdicaoCotacao.values.unidade || 'UN'}
-                  </Text>
-                </Group>
-              </Paper>
-            )}
-
-            <Group justify="flex-end" gap="xs" mt="md">
-              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditarCotacao}>
-                Cancelar
-              </Button>
-              <Button
-                variant="filled"
-                color={themeColor}
-                size="xs"
-                type="submit"
-                leftSection={<IconCheck size={14} />}
-                loading={salvandoEdicaoCotacao}
-              >
-                Salvar Alterações
-              </Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
+        form={formEdicaoCotacao}
+        nomesFornecedores={nomesFornecedores}
+        nomesTodosProdutos={nomesTodosProdutos}
+        onSave={handleSalvarEdicaoCotacao}
+        loading={salvandoEdicaoCotacao}
+        themeColor={themeColor}
+      />
 
       {/* Modal de Edição de Produto */}
-      <Modal
+      <EditProductModal
         opened={modalEditarProdutoOpened}
         onClose={closeModalEditarProduto}
-        title={
-          <Group gap="xs">
-            <IconEdit size={18} />
-            <Text fw={700}>Editar Cadastro do Produto</Text>
-          </Group>
-        }
-        centered
-        radius="sm"
-        size="md"
-      >
-        <form onSubmit={formEdicaoProduto.onSubmit(handleSalvarEdicaoProduto)}>
-          <Stack gap="sm">
-            <TextInput
-              label="Nome do Produto"
-              size="xs"
-              placeholder="Nome do produto..."
-              required
-              {...formEdicaoProduto.getInputProps('nome')}
-            />
-
-            <TextInput
-              label="Categoria"
-              size="xs"
-              placeholder="Ex: Alimentos, Limpeza, Embalagens..."
-              {...formEdicaoProduto.getInputProps('categoria')}
-            />
-
-            <Group justify="flex-end" gap="xs" mt="md">
-              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditarProduto}>
-                Cancelar
-              </Button>
-              <Button
-                variant="filled"
-                color={themeColor}
-                size="xs"
-                type="submit"
-                leftSection={<IconCheck size={14} />}
-                loading={salvandoEdicaoProduto}
-              >
-                Salvar Alterações
-              </Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
+        nome={formEdicaoProduto.values.nome}
+        categoria={formEdicaoProduto.values.categoria}
+        onChangeNome={(val) => formEdicaoProduto.setFieldValue('nome', val)}
+        onChangeCategoria={(val) => formEdicaoProduto.setFieldValue('categoria', val)}
+        onSave={() => formEdicaoProduto.onSubmit(handleSalvarEdicaoProduto)()}
+        loading={salvandoEdicaoProduto}
+        themeColor={themeColor}
+      />
 
       {/* Modal de Edição em Massa de Cotações */}
-      <Modal
+      <BatchQuotesModal
         opened={modalMassaOpened}
         onClose={closeModalMassa}
-        title={
-          <Group gap="xs">
-            <IconEdit size={18} />
-            <Text fw={700}>
-              Editar Informações em Massa ({selectedQuoteIds.length} cotação{selectedQuoteIds.length > 1 ? 'ões' : ''})
-            </Text>
-          </Group>
-        }
-        centered
-        radius="sm"
-        size="lg"
-      >
-        <Stack gap="sm">
-          <Text size="xs" c="dimmed">
-            Preencha apenas os campos que deseja alterar em todas as cotações selecionadas. Os campos em branco manterão seus valores originais.
-          </Text>
-
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-            <AppSelect
-              label="Mudar Fornecedor"
-              size="xs"
-              placeholder="Manter fornecedor atual"
-              data={fornecedores.map((f) => ({ value: String(f.id), label: f.nome }))}
-              value={massaFornecedorId}
-              onChange={setMassaFornecedorId}
-              clearable
-            />
-
-            <TextInput
-              label="Definir Marca"
-              size="xs"
-              placeholder="Ex: Ypê, Bombril (opcional)"
-              value={massaMarca}
-              onChange={(e) => setMassaMarca(e.currentTarget.value)}
-            />
-
-            <TextInput
-              label="Descrição da Embalagem"
-              size="xs"
-              placeholder="Ex: Caixa c/ 12, Galão 5L"
-              value={massaEmbalagem}
-              onChange={(e) => setMassaEmbalagem(e.currentTarget.value)}
-            />
-
-            <Group grow gap="xs">
-              <NumberInput
-                label="Qtd na Emb."
-                size="xs"
-                placeholder="Ex: 12"
-                min={0.01}
-                value={massaQtdEmbalagem}
-                onChange={setMassaQtdEmbalagem}
-              />
-              <TextInput
-                label="Unidade"
-                size="xs"
-                placeholder="UN, CX, KG"
-                value={massaUnidade}
-                onChange={(e) => setMassaUnidade(e.currentTarget.value)}
-              />
-            </Group>
-          </SimpleGrid>
-
-          <Paper withBorder p="xs" radius="sm" mt="xs">
-            <Text size="xs" fw={700} mb={4}>
-              Reajuste Percentual de Preço (%)
-            </Text>
-            <Text size="11px" c="dimmed" mb="xs">
-              Aplica um acréscimo ou desconto percentual sobre o preço da embalagem de cada item selecionado (ex: +5% para reajuste de tabela ou -10% para desconto especial).
-            </Text>
-            <NumberInput
-              size="xs"
-              placeholder="Ex: 5 para +5%, -10 para -10%"
-              value={massaReajustePct}
-              onChange={setMassaReajustePct}
-              suffix="%"
-              decimalScale={2}
-            />
-          </Paper>
-
-          <Group justify="flex-end" gap="xs" mt="md">
-            <Button variant="subtle" color="gray" size="xs" onClick={closeModalMassa}>
-              Cancelar
-            </Button>
-            <Button
-              variant="filled"
-              color={themeColor}
-              size="xs"
-              loading={salvandoMassa}
-              onClick={handleEditarEmMassa}
-            >
-              Aplicar a Todas
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        selectedCount={selectedQuoteIds.length}
+        fornecedores={fornecedores}
+        fornecedorId={massaFornecedorId}
+        onChangeFornecedorId={setMassaFornecedorId}
+        marca={massaMarca}
+        onChangeMarca={setMassaMarca}
+        embalagem={massaEmbalagem}
+        onChangeEmbalagem={setMassaEmbalagem}
+        qtdEmbalagem={massaQtdEmbalagem}
+        onChangeQtdEmbalagem={setMassaQtdEmbalagem}
+        unidade={massaUnidade}
+        onChangeUnidade={setMassaUnidade}
+        reajustePct={massaReajustePct}
+        onChangeReajustePct={setMassaReajustePct}
+        onConfirm={handleEditarEmMassa}
+        loading={salvandoMassa}
+        themeColor={themeColor}
+      />
     </Stack>
   )
 }

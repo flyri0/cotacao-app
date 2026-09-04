@@ -35,10 +35,13 @@ import {
   type MRT_ColumnDef,
 } from 'mantine-react-table'
 import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { RoundHeaderSelector } from './common/RoundHeaderSelector'
-import { SectionCard } from './common/SectionCard'
-import { AppAutocomplete, AppSelect } from './common/AppSelect'
+import {
+  AppAutocomplete,
+  AppSelect,
+  PageHeader,
+  RoundHeaderSelector,
+  SectionCard,
+} from './common'
 import { getApi } from '../services/api'
 import type { Necessidade, Produto, Rodada } from '../types'
 

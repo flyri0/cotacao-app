@@ -40,32 +40,11 @@ import {
   type MRT_ColumnDef,
 } from 'mantine-react-table'
 import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { SectionCard } from './common/SectionCard'
-import { AppAutocomplete } from './common/AppSelect'
+import { AppAutocomplete, PageHeader, SectionCard } from './common'
+import { BatchCategoryModal, EditProductModal } from './produtos'
+import { downloadBase64File } from '../utils'
 import { getApi } from '../services/api'
 import type { Produto } from '../types'
-
-function downloadBase64File(
-  base64Data: string,
-  fileName: string,
-  mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-) {
-  const byteCharacters = atob(base64Data)
-  const byteNumbers = new Array(byteCharacters.length)
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i)
-  }
-  const byteArray = new Uint8Array(byteNumbers)
-  const blob = new Blob([byteArray], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-}
 
 export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -848,50 +827,18 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
       )}
 
       {/* Modal de Edição de Produto */}
-      <Modal
+      <EditProductModal
         opened={modalEditarOpened}
         onClose={closeModalEditar}
-        title={
-          <Group gap="xs">
-            <IconEdit size={18} />
-            <Text fw={700}>
-              Editar Produto: {produtoEmEdicao?.nome}
-            </Text>
-          </Group>
-        }
-        centered
-        radius="sm"
-        size="lg"
-      >
-        <form onSubmit={formEdicao.onSubmit(handleSalvarEdicao)}>
-          <Stack gap="sm">
-            <TextInput
-              label="Nome do Produto"
-              size="xs"
-              placeholder="Ex: Detergente Neutro 500ml"
-              required
-              {...formEdicao.getInputProps('nome')}
-            />
-
-            <AppAutocomplete
-              label="Categoria"
-              size="xs"
-              placeholder="Ex: Limpeza, Descartáveis"
-              data={categoriasSugeridas}
-              {...formEdicao.getInputProps('categoria')}
-            />
-
-            <Group justify="flex-end" gap="xs" mt="md">
-              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditar}>
-                Cancelar
-              </Button>
-              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvandoEdicao}>
-                Salvar Alterações
-              </Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
+        nome={formEdicao.values.nome}
+        categoria={formEdicao.values.categoria}
+        onChangeNome={(val) => formEdicao.setFieldValue('nome', val)}
+        onChangeCategoria={(val) => formEdicao.setFieldValue('categoria', val)}
+        onSave={() => formEdicao.onSubmit(handleSalvarEdicao)()}
+        loading={salvandoEdicao}
+        themeColor={themeColor}
+        categoriasSugeridas={categoriasSugeridas}
+      />
 
       {/* Modal de Importação Excel de Produtos */}
       <Modal
@@ -942,51 +889,17 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
       </Modal>
 
       {/* Modal de Alteração de Categoria em Massa */}
-      <Modal
+      <BatchCategoryModal
         opened={modalMassaCategoriaOpened}
         onClose={closeModalMassaCategoria}
-        title={
-          <Group gap="xs">
-            <IconTag size={18} />
-            <Text fw={700}>
-              Alterar Categoria em Massa ({selectedProductIds.length} produto{selectedProductIds.length > 1 ? 's' : ''})
-            </Text>
-          </Group>
-        }
-        centered
-        radius="sm"
-        size="md"
-      >
-        <Stack gap="sm">
-          <Text size="xs" c="dimmed">
-            Informe a nova categoria para todos os {selectedProductIds.length} produtos selecionados.
-          </Text>
-
-          <AppAutocomplete
-            label="Nova Categoria"
-            size="xs"
-            placeholder="Selecione ou digite a nova categoria..."
-            data={categoriasSugeridas}
-            value={novaCategoriaEmMassa}
-            onChange={setNovaCategoriaEmMassa}
-          />
-
-          <Group justify="flex-end" gap="xs" mt="md">
-            <Button variant="subtle" color="gray" size="xs" onClick={closeModalMassaCategoria}>
-              Cancelar
-            </Button>
-            <Button
-              variant="filled"
-              color={themeColor}
-              size="xs"
-              loading={salvandoMassa}
-              onClick={handleAlterarCategoriaEmMassa}
-            >
-              Aplicar a Todos
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        selectedCount={selectedProductIds.length}
+        categoriasSugeridas={categoriasSugeridas}
+        novaCategoria={novaCategoriaEmMassa}
+        onChangeCategoria={setNovaCategoriaEmMassa}
+        onConfirm={handleAlterarCategoriaEmMassa}
+        loading={salvandoMassa}
+        themeColor={themeColor}
+      />
     </Stack>
   )
 }

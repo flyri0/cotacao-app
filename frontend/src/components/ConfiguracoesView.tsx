@@ -57,8 +57,7 @@ import {
   IconTypography,
   IconX,
 } from '@tabler/icons-react'
-import { PageHeader } from './common/PageHeader'
-import { AppSelect } from './common/AppSelect'
+import { AppSelect, PageHeader } from './common'
 import { getApi } from '../services/api'
 import type { ConfiguracoesApp } from '../types'
 

@@ -37,18 +37,11 @@ import {
   type MRT_ColumnDef,
 } from 'mantine-react-table'
 import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { SectionCard } from './common/SectionCard'
+import { PageHeader, SectionCard } from './common'
+import { EditSupplierModal } from './fornecedores'
+import { formatMoney } from '../utils'
 import { getApi } from '../services/api'
 import type { Fornecedor } from '../types'
-
-
-function formatMoney(valor: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(valor || 0)
-}
 
 export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
@@ -625,78 +618,14 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
       )}
 
       {/* Modal de Edição de Fornecedor */}
-      <Modal
+      <EditSupplierModal
         opened={modalEditarOpened}
         onClose={closeModalEditar}
-        title={
-          <Group gap="xs">
-            <IconEdit size={18} />
-            <Text fw={700}>
-              Editar Fornecedor: {fornecedorEmEdicao?.nome}
-            </Text>
-          </Group>
-        }
-        centered
-        radius="sm"
-        size="lg"
-      >
-        <form onSubmit={formEdicao.onSubmit(handleSalvarEdicao)}>
-          <Stack gap="sm">
-            <TextInput
-              label="Nome / Razão Social"
-              size="xs"
-              placeholder="Ex: Distribuidora Alvorada"
-              required
-              {...formEdicao.getInputProps('nome')}
-            />
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-              <TextInput
-                label="Contato / Vendedor"
-                size="xs"
-                placeholder="Ex: Carlos Oliveira"
-                {...formEdicao.getInputProps('contato')}
-              />
-              <TextInput
-                label="Telefone / WhatsApp"
-                size="xs"
-                placeholder="Ex: (11) 98765-4321"
-                {...formEdicao.getInputProps('telefone')}
-              />
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-              <TextInput
-                label="E-mail"
-                size="xs"
-                placeholder="Ex: vendas@empresa.com.br"
-                {...formEdicao.getInputProps('email')}
-              />
-              <NumberInput
-                label="Pedido Mínimo (R$)"
-                size="xs"
-                placeholder="0,00"
-                min={0}
-                decimalScale={2}
-                fixedDecimalScale
-                thousandSeparator="."
-                decimalSeparator=","
-                prefix="R$ "
-                {...formEdicao.getInputProps('pedido_minimo')}
-              />
-            </SimpleGrid>
-
-            <Group justify="flex-end" gap="xs" mt="md">
-              <Button variant="subtle" color="gray" size="xs" onClick={closeModalEditar}>
-                Cancelar
-              </Button>
-              <Button type="submit" variant="filled" color={themeColor} size="xs" loading={salvandoEdicao}>
-                Salvar Alterações
-              </Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
+        form={formEdicao}
+        onSave={handleSalvarEdicao}
+        loading={salvandoEdicao}
+        themeColor={themeColor}
+      />
 
       {/* Modal de Importação Excel de Fornecedores */}
       <Modal

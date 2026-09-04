@@ -35,8 +35,8 @@ import {
   type MRT_ColumnDef,
 } from 'mantine-react-table'
 import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { AppAutocomplete, AppSelect } from './common/AppSelect'
+import { AppAutocomplete, AppSelect, PageHeader } from './common'
+import { formatMoney } from '../utils'
 import { getApi } from '../services/api'
 import type {
   CotacaoHistoricoItem,
@@ -48,15 +48,6 @@ import type {
   RankingFornecedorItem,
   Rodada,
 } from '../types'
-
-function formatMoney(valor: number, maxDigits = 4): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: maxDigits,
-  }).format(valor || 0)
-}
 
 export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string }) {
   const [activeTab, setActiveTab] = useState<string | null>('produto')

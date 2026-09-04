@@ -30,24 +30,17 @@ import {
   type MRT_ColumnDef,
 } from 'mantine-react-table'
 import { MRT_Localization_PT_BR } from '../locales/mrtPtBr'
-import { PageHeader } from './common/PageHeader'
-import { RoundHeaderSelector } from './common/RoundHeaderSelector'
-import { StatCard } from './common/StatCard'
-import { EmptyState } from './common/EmptyState'
-import { AppSelect } from './common/AppSelect'
+import {
+  AppSelect,
+  EmptyState,
+  PageHeader,
+  QuantityInput,
+  RoundHeaderSelector,
+  StatCard,
+} from './common'
+import { calculatePackaging, formatMoney } from '../utils'
 import { getApi } from '../services/api'
 import type { Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
-import { QuantityInput } from './common/QuantityInput'
-
-// Formatação inteligente: mínimo 2 casas (R$ 5,00) e máximo 4 casas (R$ 0,043)
-function formatMoney(valor: number, maxDigits = 4): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: maxDigits,
-  }).format(valor || 0)
-}
 
 interface AlocacaoViewProps {
   rodadaAtivaId?: number
@@ -453,12 +446,14 @@ export function AlocacaoView({
             Number(c.id_produto) === prodId &&
             Number(c.id_fornecedor) === fornId,
         )
-        const fator = cot && Number(cot.qtd_por_embalagem) > 0 ? Number(cot.qtd_por_embalagem) : 1
-        const precoEmb = cot ? Number(cot.preco_embalagem) || 0 : 0
-        const embComprar = Math.ceil(qtd / fator)
+        const { qtdEfetiva, subtotal } = calculatePackaging(
+          qtd,
+          cot ? Number(cot.qtd_por_embalagem) : 1,
+          cot ? Number(cot.preco_embalagem) || 0 : 0,
+        )
 
-        subtotalGeral += embComprar * precoEmb
-        totalItensComprados += embComprar * fator
+        subtotalGeral += subtotal
+        totalItensComprados += qtdEfetiva
       }
     })
 
@@ -661,11 +656,11 @@ export function AlocacaoView({
             )
           }
 
-          const fator =
-            cot.qtd_por_embalagem > 0 ? cot.qtd_por_embalagem : 1
-          const embComprar = Math.ceil(item.quantidade_alocada / fator)
-          const totalEfetivo = embComprar * fator
-          const diferenca = totalEfetivo - item.quantidade_alocada
+          const { embComprar, qtdEfetiva, sobra } = calculatePackaging(
+            item.quantidade_alocada,
+            cot.qtd_por_embalagem,
+            cot.preco_embalagem,
+          )
 
           return (
             <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -673,11 +668,11 @@ export function AlocacaoView({
                 {embComprar} {embComprar === 1 ? 'embalagem' : 'embalagens'}
               </Text>
               <Text size="10px" c="dimmed" truncate="end">
-                Total: <b>{totalEfetivo}</b> {cot.unidade || 'UN'}
-                {diferenca > 0 && (
+                Total: <b>{qtdEfetiva}</b> {cot.unidade || 'UN'}
+                {sobra > 0 && (
                   <Text span c={themeColor} fw={600}>
                     {' '}
-                    (+{diferenca} sobra)
+                    (+{sobra} sobra)
                   </Text>
                 )}
               </Text>
@@ -707,10 +702,11 @@ export function AlocacaoView({
             )
           }
 
-          const fator =
-            cot.qtd_por_embalagem > 0 ? cot.qtd_por_embalagem : 1
-          const embComprar = Math.ceil(item.quantidade_alocada / fator)
-          const subtotal = embComprar * cot.preco_embalagem
+          const { subtotal } = calculatePackaging(
+            item.quantidade_alocada,
+            cot.qtd_por_embalagem,
+            cot.preco_embalagem,
+          )
 
           return (
             <Text fw={700} size="xs" c="teal">

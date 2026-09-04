@@ -37,22 +37,10 @@ import {
   IconTruck,
   IconX,
 } from '@tabler/icons-react'
-import { PageHeader } from './common/PageHeader'
-import { RoundHeaderSelector } from './common/RoundHeaderSelector'
-import { StatCard } from './common/StatCard'
-import { EmptyState } from './common/EmptyState'
+import { EmptyState, PageHeader, RoundHeaderSelector, StatCard } from './common'
+import { formatMoney } from '../utils'
 import { getApi } from '../services/api'
 import type { Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
-
-// Formatação inteligente: mínimo 2 casas (R$ 5,00) e máximo 4 casas (R$ 0,043)
-function formatMoney(valor: number, maxDigits = 4): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: maxDigits,
-  }).format(valor || 0)
-}
 
 export interface LinhaComparacao {
   id: number
