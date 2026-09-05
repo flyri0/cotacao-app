@@ -111,6 +111,14 @@ def create_schema(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (id_produto) REFERENCES produtos (id),
             FOREIGN KEY (id_fornecedor) REFERENCES fornecedores (id)
         );
+
+        -- Índices para otimização de performance (Evitar table scans em exclusões/verificações de histórico)
+        CREATE INDEX IF NOT EXISTS idx_necessidades_produto ON necessidades(id_produto);
+        CREATE INDEX IF NOT EXISTS idx_cotacoes_produto ON cotacoes(id_produto);
+        CREATE INDEX IF NOT EXISTS idx_cotacoes_fornecedor ON cotacoes(id_fornecedor);
+        CREATE INDEX IF NOT EXISTS idx_alocacoes_rodada ON alocacoes(id_rodada);
+        CREATE INDEX IF NOT EXISTS idx_alocacoes_produto ON alocacoes(id_produto);
+        CREATE INDEX IF NOT EXISTS idx_alocacoes_fornecedor ON alocacoes(id_fornecedor);
         """
     )
     conn.commit()

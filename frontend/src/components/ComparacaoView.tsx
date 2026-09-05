@@ -207,16 +207,22 @@ export function ComparacaoView({
 
   // Linhas estruturadas com cotações indexadas e ranking pré-calculado
   const dadosLinhas = useMemo<LinhaComparacao[]>(() => {
+    // Agrupa cotações por produto para evitar iterações repetidas (O(N*M) -> O(N+M))
+    const cotacoesPorProduto = new Map<number, Cotacao[]>()
+    cotacoes.forEach((c) => {
+      if (!cotacoesPorProduto.has(c.id_produto)) {
+        cotacoesPorProduto.set(c.id_produto, [])
+      }
+      cotacoesPorProduto.get(c.id_produto)!.push(c)
+    })
+
     return necessidades.map((nec) => {
-      const cotsDoProd = cotacoes
-        .filter((c) => c.id_produto === nec.id_produto)
+      const cotsDoProd = (cotacoesPorProduto.get(nec.id_produto) || [])
         .sort((a, b) => a.preco_unitario - b.preco_unitario)
 
       const cotacoesPorFornecedor: Record<number, Cotacao> = {}
-      cotacoes.forEach((c) => {
-        if (c.id_produto === nec.id_produto) {
-          cotacoesPorFornecedor[c.id_fornecedor] = c
-        }
+      cotsDoProd.forEach((c) => {
+        cotacoesPorFornecedor[c.id_fornecedor] = c
       })
 
       const melhorCotacao = cotsDoProd.length > 0 ? cotsDoProd[0] : null
