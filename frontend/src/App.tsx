@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   AppShell,
   Center,
@@ -8,7 +8,7 @@ import {
   useMantineColorScheme,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { Notifications } from '@mantine/notifications'
+import { Notifications, notifications } from '@mantine/notifications'
 import { BoasVindasView } from './components/BoasVindasView'
 import { ProdutosView } from './components/ProdutosView'
 import { FornecedoresView } from './components/FornecedoresView'
@@ -50,6 +50,9 @@ export default function App() {
     app_tamanho_fonte: '13.5',
   })
 
+  const configuracoesRef = useRef(configuracoes)
+  configuracoesRef.current = configuracoes
+
   const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false)
   const [modalEncerrarOpened, { open: openModalEncerrar, close: closeModalEncerrar }] = useDisclosure(false)
   const [sistemaEncerrado, setSistemaEncerrado] = useState(false)
@@ -57,10 +60,59 @@ export default function App() {
   const isNavegador = typeof window !== 'undefined' && !window.pywebview?.api
   const themeColor = configuracoes.app_theme_color || 'blue'
 
-  // Hook global de atalhos do teclado (Ctrl+1..0, F1, Ctrl+K)
+  // Altera o tamanho da fonte via atalho (Ctrl+ / Ctrl-) com aplicação instantânea e persistência
+  const handleAjustarTamanhoFonte = useCallback(
+    async (delta: number) => {
+      const currentConfigs = configuracoesRef.current
+      const fontSize = currentConfigs.app_tamanho_fonte || '13.5'
+      let current = parseFloat(fontSize)
+      if (isNaN(current)) current = 13.5
+
+      // Ajusta em passos de 0.5px respeitando os limites mínimo (10px) e máximo (20px) do slider
+      const novo = Math.min(20, Math.max(10, Math.round((current + delta) * 2) / 2))
+      if (novo === current) return
+
+      const tamanhoStr = String(novo)
+      const novasConfigs: ConfiguracoesApp = {
+        ...currentConfigs,
+        app_tamanho_fonte: tamanhoStr,
+      }
+      configuracoesRef.current = novasConfigs
+
+      // Aplicação instantânea nas variáveis CSS do root (0ms)
+      document.documentElement.style.setProperty('font-size', `${novo}px`)
+      document.documentElement.style.setProperty('--app-font-base', `${novo}px`)
+      document.documentElement.style.setProperty('--app-font-sm', `${Math.round(novo * 0.88)}px`)
+      document.documentElement.style.setProperty('--app-font-xs', `${Math.round(novo * 0.81)}px`)
+      document.documentElement.removeAttribute('data-font-size')
+
+      setConfiguracoes(novasConfigs)
+
+      // Feedback visual rápido sem empilhar notificações
+      notifications.show({
+        id: 'font-size-zoom-toast',
+        title: 'Tamanho da Fonte',
+        message: `${novo}px ${novo === 13.5 ? '(Padrão)' : ''}`,
+        autoClose: 1200,
+        withCloseButton: false,
+      })
+
+      try {
+        const api = await getApi()
+        await api.save_settings(novasConfigs)
+      } catch (err) {
+        console.error('Erro ao salvar tamanho da fonte via atalho:', err)
+      }
+    },
+    [],
+  )
+
+  // Hook global de atalhos do teclado (Ctrl+1..0, F1, Ctrl+K, Ctrl+, Ctrl-)
   useGlobalKeyboardShortcuts({
     onSelectTab: setActiveTab,
     onOpenHelp: openHelp,
+    onIncreaseFontSize: () => handleAjustarTamanhoFonte(0.5),
+    onDecreaseFontSize: () => handleAjustarTamanhoFonte(-0.5),
   })
 
   // Sincroniza densidade e escala tipográfica dinâmica com o documento raiz

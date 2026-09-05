@@ -7,6 +7,7 @@ import {
   Divider,
   FileInput,
   Group,
+  Kbd,
   Modal,
   NumberInput,
   Paper,
@@ -699,13 +700,24 @@ export function ConfiguracoesView({
 
           {/* Opção 2: Tamanho da Fonte */}
           <Paper withBorder p="xs" radius="sm">
-            <Group gap={6} mb={4} align="center">
-              <ThemeIcon size={22} radius="xs" variant="light" color="indigo">
-                <IconTypography size={14} />
-              </ThemeIcon>
-              <Text fw={700} size="xs">
-                Tamanho da Fonte
-              </Text>
+            <Group justify="space-between" align="center" mb={4}>
+              <Group gap={6} align="center">
+                <ThemeIcon size={22} radius="xs" variant="light" color="indigo">
+                  <IconTypography size={14} />
+                </ThemeIcon>
+                <Text fw={700} size="xs">
+                  Tamanho da Fonte
+                </Text>
+              </Group>
+              <Group gap={3} align="center">
+                <Kbd size="xs">Ctrl</Kbd>
+                <Text size="xs" c="dimmed">+</Text>
+                <Kbd size="xs">+</Kbd>
+                <Text size="xs" c="dimmed" mx={2}>/</Text>
+                <Kbd size="xs">Ctrl</Kbd>
+                <Text size="xs" c="dimmed">-</Text>
+                <Kbd size="xs">-</Kbd>
+              </Group>
             </Group>
             <Text size="11px" c="dimmed" mb="xs">
               Altere o tamanho geral das fontes para facilitar a leitura sem distorcer o layout.

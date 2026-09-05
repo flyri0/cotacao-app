@@ -16,18 +16,42 @@ export type TabType =
 interface UseGlobalKeyboardShortcutsOptions {
   onSelectTab: (tab: TabType) => void
   onOpenHelp: () => void
+  onIncreaseFontSize?: () => void
+  onDecreaseFontSize?: () => void
 }
 
 /**
  * Listener nativo global de alta prioridade (fase de captura)
- * para alternância rápida de telas via atalhos do teclado.
+ * para alternância rápida de telas e ajuste de acessibilidade via atalhos do teclado.
  */
 export function useGlobalKeyboardShortcuts({
   onSelectTab,
   onOpenHelp,
+  onIncreaseFontSize,
+  onDecreaseFontSize,
 }: UseGlobalKeyboardShortcutsOptions) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Atalhos de Zoom de Fonte com Ctrl+ e Ctrl-
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key
+        const code = e.code
+
+        if (key === '+' || key === '=' || code === 'Equal' || code === 'NumpadAdd') {
+          e.preventDefault()
+          e.stopPropagation()
+          onIncreaseFontSize?.()
+          return
+        }
+
+        if (key === '-' || key === '_' || code === 'Minus' || code === 'NumpadSubtract') {
+          e.preventDefault()
+          e.stopPropagation()
+          onDecreaseFontSize?.()
+          return
+        }
+      }
+
       // Atalhos combinados com Ctrl ou Alt (Ctrl+1 .. Ctrl+0)
       if (e.ctrlKey || e.metaKey || e.altKey) {
         const key = e.key
@@ -111,7 +135,7 @@ export function useGlobalKeyboardShortcuts({
 
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [onSelectTab, onOpenHelp])
+  }, [onSelectTab, onOpenHelp, onIncreaseFontSize, onDecreaseFontSize])
 }
 
 export default useGlobalKeyboardShortcuts

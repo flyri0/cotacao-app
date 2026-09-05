@@ -118,6 +118,22 @@ export function HelpShortcutsModal({ opened, onClose }: HelpShortcutsModalProps)
           <Table.Tr>
             <Table.Td>
               <Group gap={4}>
+                <Kbd>Ctrl</Kbd> + <Kbd>+</Kbd>
+              </Group>
+            </Table.Td>
+            <Table.Td>Aumentar tamanho da fonte do sistema (+0.5px)</Table.Td>
+          </Table.Tr>
+          <Table.Tr>
+            <Table.Td>
+              <Group gap={4}>
+                <Kbd>Ctrl</Kbd> + <Kbd>-</Kbd>
+              </Group>
+            </Table.Td>
+            <Table.Td>Diminuir tamanho da fonte do sistema (-0.5px)</Table.Td>
+          </Table.Tr>
+          <Table.Tr>
+            <Table.Td>
+              <Group gap={4}>
                 <Kbd>Ctrl</Kbd> + <Kbd>S</Kbd>
               </Group>
             </Table.Td>
