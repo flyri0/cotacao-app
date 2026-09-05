@@ -1686,6 +1686,40 @@ class TestApi(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.api.batch_remove_quotes([1])
 
+    # -------------------------------------------------------------------------
+    # Testes de Sincronização Cross-Client (get_sync_status e track_mutation)
+    # -------------------------------------------------------------------------
+    def test_sync_status_e_track_mutation(self) -> None:
+        initial = self.api.get_sync_status(0)
+        self.assertGreaterEqual(initial["current_revision"], 1)
+        self.assertTrue(initial["reset"])
+        self.assertIn("ALL", initial["tags"])
+
+        rev0 = initial["current_revision"]
+        up_to_date = self.api.get_sync_status(rev0)
+        self.assertEqual(up_to_date["current_revision"], rev0)
+        self.assertFalse(up_to_date["reset"])
+        self.assertEqual(up_to_date["tags"], [])
+
+        # Criar produto deve incrementar revisão e incluir tag 'products'
+        prod = self.api.create_product("Produto Teste Sync")
+        after_prod = self.api.get_sync_status(rev0)
+        self.assertEqual(after_prod["current_revision"], rev0 + 1)
+        self.assertIn("products", after_prod["tags"])
+        self.assertFalse(after_prod["reset"])
+
+        # Salvar configurações deve registrar tag 'settings'
+        rev1 = after_prod["current_revision"]
+        self.api.save_settings({"app_tema": "dark"})
+        after_settings = self.api.get_sync_status(rev1)
+        self.assertEqual(after_settings["current_revision"], rev1 + 1)
+        self.assertIn("settings", after_settings["tags"])
+
+        # Consultar desde rev0 deve acumular tags de ambas as mutações
+        cumulative = self.api.get_sync_status(rev0)
+        self.assertIn("products", cumulative["tags"])
+        self.assertIn("settings", cumulative["tags"])
+
 
 if __name__ == "__main__":
     unittest.main()

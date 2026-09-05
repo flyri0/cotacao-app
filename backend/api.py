@@ -1,6 +1,7 @@
 import atexit
 import base64
 import contextlib
+import functools
 import os
 import sqlite3
 import sys
@@ -87,6 +88,21 @@ from backend.services.excel_service import (
 )
 
 
+def track_mutation(tags: Any):
+    """
+    Decorador para registrar mutações no contador de revisão da API.
+    Dispara atualização de tags para sincronização em tempo real entre instâncias.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            result = func(self, *args, **kwargs)
+            self._record_mutation(tags)
+            return result
+        return wrapper
+    return decorator
+
+
 class Api:
     """
     Fachada orquestradora da aplicação para chamadas do frontend e do servidor HTTP.
@@ -97,6 +113,11 @@ class Api:
         self._explicit_db_path = db_path
         self._file_lock_handle = None
         self._ensure_lock()
+
+        # Contador de versão e registro de mutações para sincronização cross-client (desktop e web)
+        self._data_revision: int = 1
+        self._mutation_events: List[Dict[str, Any]] = []
+        self._revision_lock = threading.Lock()
 
         self.backup_service = BackupManager(self)
         self._backup_worker_started = False
@@ -136,6 +157,48 @@ class Api:
             yield conn
         finally:
             conn.close()
+
+    # -------------------------------------------------------------------------
+    # SINCRONIZAÇÃO EM TEMPO REAL CROSS-CLIENT (DESKTOP / WEB)
+    # -------------------------------------------------------------------------
+    def _record_mutation(self, tags: Any) -> int:
+        with self._revision_lock:
+            self._data_revision += 1
+            tag_list = [tags] if isinstance(tags, str) else list(tags)
+            self._mutation_events.append({
+                "revision": self._data_revision,
+                "tags": tag_list,
+                "timestamp": time.time(),
+            })
+            if len(self._mutation_events) > 100:
+                self._mutation_events = self._mutation_events[-100:]
+            return self._data_revision
+
+    def get_sync_status(self, since_revision: int = 0) -> Dict[str, Any]:
+        """
+        Retorna o status de sincronização e tags invalidadas desde a revisão informada.
+        Permite que múltiplos clientes (desktop e abas do navegador) se mantenham
+        sincronizados em tempo real com overhead mínimo (<0.1ms em RAM).
+        """
+        with self._revision_lock:
+            current = self._data_revision
+            if since_revision <= 0 or (current - since_revision > 100):
+                return {
+                    "current_revision": current,
+                    "reset": True,
+                    "tags": ["ALL"],
+                }
+
+            events = [e for e in self._mutation_events if e["revision"] > since_revision]
+            tags = set()
+            for e in events:
+                tags.update(e.get("tags", []))
+
+            return {
+                "current_revision": current,
+                "reset": "ALL" in tags,
+                "tags": list(tags),
+            }
 
     # -------------------------------------------------------------------------
     # STATUS DE INICIALIZAÇÃO & SETUP INICIAL
@@ -180,6 +243,7 @@ class Api:
             self._ensure_lock()
             return status
 
+    @track_mutation("ALL")
     def initialize_empty_db(self) -> Dict[str, Any]:
         """Inicializa um banco 100% limpo para produção e salva seu caminho como ativo."""
         self._release_lock()
@@ -193,6 +257,7 @@ class Api:
         res["caminho"] = path
         return res
 
+    @track_mutation("ALL")
     def populate_demo_db(self) -> Dict[str, Any]:
         """Popula o banco com catálogo rico de teste e salva seu caminho como ativo."""
         self._release_lock()
@@ -204,6 +269,7 @@ class Api:
         res["caminho"] = path
         return res
 
+    @track_mutation("ALL")
     def format_database(self, com_seed: bool = False) -> Dict[str, Any]:
         self._release_lock()
         path = self.db_path
@@ -289,6 +355,7 @@ class Api:
         except Exception:
             pass
 
+    @track_mutation("ALL")
     def import_database(self, conteudo_base64: str) -> Dict[str, Any]:
         return self.backup_service.import_database(conteudo_base64)
 
@@ -299,6 +366,7 @@ class Api:
         with self._get_connection() as conn:
             return get_db_settings(conn)
 
+    @track_mutation(["settings"])
     def save_settings(self, novas_configuracoes: Dict[str, Any]) -> Dict[str, str]:
         with self._get_connection() as conn:
             return save_all_db_settings(conn, novas_configuracoes)
@@ -333,6 +401,7 @@ class Api:
             cursor.execute(query)
             return [dict(row) for row in cursor.fetchall()]
 
+    @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def alternar_status_produto(self, id_produto: int, ativo: Optional[bool] = None) -> Dict[str, Any]:
         with self._get_connection() as conn:
             val = 1 if ativo is True else (0 if ativo is False else None)
@@ -342,14 +411,17 @@ class Api:
             row = cursor.fetchone()
             return {"sucesso": sucesso, "produto": dict(row) if row else None}
 
+    @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def create_product(self, nome: str, categoria: Optional[str] = None) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return create_product_db(conn, nome, categoria)
 
+    @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def update_product(self, id_produto: int, nome: str, categoria: Optional[str] = None) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return update_product_db(conn, id_produto, nome, categoria)
 
+    @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def remove_product(self, id_produto: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -387,15 +459,18 @@ class Api:
         with self._get_connection() as conn:
             return get_product_statistics_db(conn, id_produto)
 
+    @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def batch_update_products_category(self, product_ids: List[int], nova_categoria: Optional[str]) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return batch_update_products_category_db(conn, product_ids, nova_categoria)
 
+    @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def batch_toggle_products_active(self, product_ids: List[int], ativo: Optional[bool] = None) -> Dict[str, Any]:
         with self._get_connection() as conn:
             val = 1 if ativo is True else (0 if ativo is False else None)
             return batch_toggle_products_active_db(conn, product_ids, val)
 
+    @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def batch_delete_products(self, product_ids: List[int]) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return batch_delete_products_db(conn, product_ids)
@@ -413,6 +488,7 @@ class Api:
             cursor.execute(query)
             return [dict(row) for row in cursor.fetchall()]
 
+    @track_mutation(["suppliers", "quotes", "stats", "allocations", "rounds"])
     def alternar_status_fornecedor(self, id_fornecedor: int, ativo: Optional[bool] = None) -> Dict[str, Any]:
         with self._get_connection() as conn:
             val = 1 if ativo is True else (0 if ativo is False else None)
@@ -422,6 +498,7 @@ class Api:
             row = cursor.fetchone()
             return {"sucesso": sucesso, "fornecedor": dict(row) if row else None}
 
+    @track_mutation(["suppliers", "quotes", "stats", "allocations", "rounds"])
     def create_supplier(
         self,
         nome: str,
@@ -433,6 +510,7 @@ class Api:
         with self._get_connection() as conn:
             return create_supplier_db(conn, nome, contato, telefone, email, pedido_minimo)
 
+    @track_mutation(["suppliers", "quotes", "stats", "allocations", "rounds"])
     def update_supplier(
         self,
         id_fornecedor: int,
@@ -445,6 +523,7 @@ class Api:
         with self._get_connection() as conn:
             return update_supplier_db(conn, id_fornecedor, nome, contato, telefone, email, pedido_minimo)
 
+    @track_mutation(["suppliers", "quotes", "stats", "allocations", "rounds"])
     def remove_supplier(self, id_fornecedor: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -490,6 +569,7 @@ class Api:
     def list_rounds_with_metrics(self) -> List[Dict[str, Any]]:
         return self.list_rounds()
 
+    @track_mutation(["rounds", "needs", "quotes", "allocations", "stats"])
     def create_round(
         self,
         descricao: str,
@@ -522,6 +602,7 @@ class Api:
             )
             return dict(cursor.fetchone())
 
+    @track_mutation(["rounds", "needs", "quotes", "allocations", "stats"])
     def update_round(self, id_rodada: int, descricao: str, status: str = "aberta") -> Dict[str, Any]:
         with self._get_connection() as conn:
             return update_round_db(conn, id_rodada, descricao, status)
@@ -530,6 +611,7 @@ class Api:
         with self._get_connection() as conn:
             return check_round_dependencies_db(conn, id_rodada)
 
+    @track_mutation(["rounds", "needs", "quotes", "allocations", "stats"])
     def remove_round(self, id_rodada: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -563,6 +645,7 @@ class Api:
                 "mensagem": f"Rodada #{id_rodada} excluída permanentemente com sucesso.",
             }
 
+    @track_mutation(["rounds", "needs", "quotes", "allocations", "stats"])
     def duplicate_round_needs(self, id_origem: int, id_destino: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_id(conn, id_destino)
@@ -576,6 +659,7 @@ class Api:
         with self._get_connection() as conn:
             return list_needs_db(conn, id_rodada)
 
+    @track_mutation(["needs", "rounds", "stats"])
     def create_need(
         self,
         id_rodada: int,
@@ -586,10 +670,12 @@ class Api:
         with self._get_connection() as conn:
             return create_need_db(conn, id_rodada, id_produto, produto_nome)
 
+    @track_mutation(["needs", "rounds", "stats"])
     def remove_need(self, id_necessidade: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return remove_need_db(conn, id_necessidade)
 
+    @track_mutation(["needs", "rounds", "stats"])
     def set_selected_supplier(
         self,
         id_rodada: int,
@@ -599,10 +685,12 @@ class Api:
         with self._get_connection() as conn:
             return set_selected_supplier_db(conn, id_rodada, id_produto, id_fornecedor)
 
+    @track_mutation(["needs", "rounds", "stats"])
     def reset_selected_suppliers(self, id_rodada: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return reset_selected_suppliers_db(conn, id_rodada)
 
+    @track_mutation(["needs", "rounds", "stats"])
     def batch_remove_needs(self, ids_necessidades: List[int]) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return batch_remove_needs_db(conn, ids_necessidades)
@@ -614,6 +702,7 @@ class Api:
         with self._get_connection() as conn:
             return list_quotes_db(conn, id_rodada, id_fornecedor)
 
+    @track_mutation(["quotes", "rounds", "stats", "allocations", "products", "needs"])
     def create_quote(
         self,
         id_rodada: int,
@@ -643,6 +732,7 @@ class Api:
     def save_quote(self, *args, **kwargs) -> Dict[str, Any]:
         return self.create_quote(*args, **kwargs)
 
+    @track_mutation(["quotes", "rounds", "stats", "allocations", "products", "needs"])
     def update_quote(
         self,
         id_cotacao: int,
@@ -672,15 +762,18 @@ class Api:
                 produto_categoria=produto_categoria,
             )
 
+    @track_mutation(["quotes", "rounds", "stats", "allocations"])
     def remove_quote(self, id_cotacao: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_entidade(conn, "cotacoes", id_cotacao)
             return remove_quote_db(conn, id_cotacao)
 
+    @track_mutation(["quotes", "rounds", "stats", "allocations"])
     def batch_remove_quotes(self, ids_cotacoes: List[int]) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return batch_remove_quotes_db(conn, ids_cotacoes)
 
+    @track_mutation(["quotes", "rounds", "stats", "allocations"])
     def batch_update_quotes(self, ids_cotacoes: List[int], updates: Dict[str, Any]) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return batch_update_quotes_db(conn, ids_cotacoes, updates)
@@ -700,11 +793,13 @@ class Api:
         with self._get_connection() as conn:
             return list_allocations_db(conn, id_rodada)
 
+    @track_mutation(["allocations", "stats"])
     def save_allocations(self, id_rodada: int, alocacoes: List[Dict[str, Any]]) -> Dict[str, Any]:
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_id(conn, id_rodada)
             return save_allocations_db(conn, id_rodada, alocacoes)
 
+    @track_mutation(["allocations", "stats"])
     def remove_allocation(self, id_alocacao: int) -> Dict[str, Any]:
         with self._get_connection() as conn:
             self._verificar_rodada_aberta_por_entidade(conn, "alocacoes", id_alocacao)
@@ -774,6 +869,7 @@ class Api:
             gerado = generate_quote_template_excel(conn, id_rodada, id_fornecedor)
             return self._salvar_excel_com_dialogo_ou_base64(gerado)
 
+    @track_mutation(["quotes", "rounds", "stats", "allocations", "products", "needs"])
     def import_quote_spreadsheet(self, id_rodada: int, id_fornecedor: int, conteudo_base64: str) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return process_quote_excel(conn, id_rodada, id_fornecedor, conteudo_base64)
@@ -783,10 +879,12 @@ class Api:
             gerado = export_products_excel_db(conn)
             return self._salvar_excel_com_dialogo_ou_base64(gerado)
 
+    @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def import_products_excel(self, conteudo_base64: str) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return import_products_excel_db(conn, conteudo_base64)
 
+    @track_mutation(["suppliers", "quotes", "stats", "allocations", "rounds"])
     def import_suppliers_excel(self, conteudo_base64: str) -> Dict[str, Any]:
         with self._get_connection() as conn:
             return import_suppliers_excel_db(conn, conteudo_base64)

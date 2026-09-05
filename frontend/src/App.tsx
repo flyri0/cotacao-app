@@ -28,7 +28,7 @@ import {
   ShutdownModal,
   ShutdownCompleteScreen,
 } from './components/layout'
-import { useGlobalKeyboardShortcuts, type TabType } from './hooks/useGlobalKeyboardShortcuts'
+import { useGlobalKeyboardShortcuts, type TabType, useDataCacheSubscription } from './hooks'
 import { getApi } from './services/api'
 import type { ConfiguracoesApp } from './types'
 
@@ -105,6 +105,11 @@ export default function App() {
   useEffect(() => {
     inicializarAplicativo()
   }, [])
+
+  // Sincroniza configurações e status do banco quando alterados por outro cliente
+  useDataCacheSubscription(['settings', 'db_status'], () => {
+    inicializarAplicativo()
+  })
 
   // Alternar rapidamente entre tema Claro e Escuro com persistência
   const handleToggleTheme = async () => {

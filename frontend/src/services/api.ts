@@ -4,8 +4,9 @@ import {
   getCacheConfigForRead,
   getInvalidationTagsForMutation,
 } from './apiCache'
+import { syncManager } from './syncService'
 
-export { apiCache }
+export { apiCache, syncManager }
 
 let cachedApi: PywebviewApi | null = null
 let heartbeatStarted = false
@@ -13,7 +14,7 @@ let heartbeatStarted = false
 /**
  * Envolve a API nativa ou HTTP com uma camada transparente de Cache em RAM.
  * Leituras retornam em 0ms quando em cache.
- * Mutações invalidam automaticamente as tags afetadas.
+ * Mutações invalidam automaticamente as tags afetadas e sincronizam outros clientes.
  */
 function createCachedApiProxy(targetApi: PywebviewApi): PywebviewApi {
   return new Proxy(targetApi, {
@@ -38,12 +39,14 @@ function createCachedApiProxy(targetApi: PywebviewApi): PywebviewApi {
           apiCache.set(cacheConfig.key, result, cacheConfig.tags)
         }
 
-        // 3. Se for mutação, invalida as tags correspondentes
+        // 3. Se for mutação, invalida as tags correspondentes e notifica sincronização
         const tagsToInvalidate = getInvalidationTagsForMutation(prop, args)
         if (tagsToInvalidate === 'ALL') {
           apiCache.clear()
+          syncManager.notifyLocalMutation('ALL')
         } else if (Array.isArray(tagsToInvalidate) && tagsToInvalidate.length > 0) {
           apiCache.invalidateTags(tagsToInvalidate)
+          syncManager.notifyLocalMutation(tagsToInvalidate)
         }
 
         return result
@@ -141,6 +144,8 @@ export async function getApi(): Promise<PywebviewApi> {
   // 1. Se pywebview já estiver injetado no window
   if (window.pywebview?.api) {
     cachedApi = createCachedApiProxy(window.pywebview.api)
+    syncManager.setApiGetter(getApi)
+    syncManager.init()
     return cachedApi
   }
 
@@ -172,12 +177,16 @@ export async function getApi(): Promise<PywebviewApi> {
 
   if (pywebviewApi) {
     cachedApi = createCachedApiProxy(pywebviewApi)
+    syncManager.setApiGetter(getApi)
+    syncManager.init()
     return cachedApi
   }
 
   // 3. Caso não seja pywebview, retorna o Proxy HTTP transparente para navegador padrão
   console.info('[Modo de Execução] Operando via Navegador Padrão com micro-servidor local.')
   cachedApi = createCachedApiProxy(createHttpApiProxy())
+  syncManager.setApiGetter(getApi)
+  syncManager.init()
   return cachedApi
 }
 

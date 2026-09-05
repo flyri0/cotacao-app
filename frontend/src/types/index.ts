@@ -393,11 +393,20 @@ export interface PywebviewApi {
     erros: string[]
   }>
 
+  // Sincronização em Tempo Real Cross-Client
+  get_sync_status?: (since_revision?: number) => Promise<SyncStatus>
+
   // Controle de Ciclo de Vida
   encerrar_sistema?: () => Promise<{
     sucesso: boolean
     mensagem?: string
   }>
+}
+
+export interface SyncStatus {
+  current_revision: number
+  reset: boolean
+  tags: string[]
 }
 
 declare global {

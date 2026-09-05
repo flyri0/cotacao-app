@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { getApi } from '../services/api'
 import type { Rodada } from '../types'
+import { useDataCacheSubscription } from './useDataCacheSubscription'
 
 /**
  * Hook centralizado para gerenciar a seleção de rodadas e sincronização de estado
@@ -15,6 +16,10 @@ export function useActiveRound(
     rodadaAtivaId || null,
   )
   const [loadingRodadas, setLoadingRodadas] = useState(true)
+
+  useDataCacheSubscription('rounds', () => {
+    carregarRodadas(undefined, true)
+  })
 
   const carregarRodadas = useCallback(
     async (forcarId?: number, silent = false): Promise<number | null> => {
