@@ -22,6 +22,8 @@ jobs:
             os: "windows-latest"
             artifact-name: "MapaCotacoes-Win10-Win11"
             output-exe: "MapaCotacoes-Win10-Win11.exe"
+            output-folder: "MapaCotacoes-Win10-Win11"
+            output-zip: "MapaCotacoes-Win10-Win11-Folder.zip"
             description: "Executável moderno otimizado para Windows 10 e Windows 11 (64-bit)"
 
           - name: "Windows-7-Legacy-x64"
@@ -30,6 +32,8 @@ jobs:
             os: "windows-latest"
             artifact-name: "MapaCotacoes-Win7-Legacy-x64"
             output-exe: "MapaCotacoes-Win7-Legacy-x64.exe"
+            output-folder: "MapaCotacoes-Win7-Legacy-x64"
+            output-zip: "MapaCotacoes-Win7-Legacy-x64-Folder.zip"
             description: "Executável retrocompatível para Windows 7 SP1 e Windows 8 (64-bit, requer WebView2 v109)"
 
           - name: "Windows-7-Legacy-x86"
@@ -38,6 +42,8 @@ jobs:
             os: "windows-latest"
             artifact-name: "MapaCotacoes-Win7-Legacy-x86"
             output-exe: "MapaCotacoes-Win7-Legacy-x86.exe"
+            output-folder: "MapaCotacoes-Win7-Legacy-x86"
+            output-zip: "MapaCotacoes-Win7-Legacy-x86-Folder.zip"
             description: "Executável retrocompatível para Windows 7 SP1 e Windows 8 (32-bit / x86, requer WebView2 v109)"
 
     steps:
@@ -77,20 +83,24 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_*.py" -v
 
-      - name: 🏗️ Gerar Executável Standalone com PyInstaller
+      - name: 🏗️ Gerar Executáveis com PyInstaller (Standalone e Pasta Descompactada)
         run: |
           pyinstaller app.spec --noconfirm --clean
           Rename-Item -Path "dist/MapaCotacoes.exe" -NewName "${{ matrix.target.output-exe }}"
+          Rename-Item -Path "dist/MapaCotacoes-Folder" -NewName "${{ matrix.target.output-folder }}"
+          Compress-Archive -Path "dist/${{ matrix.target.output-folder }}" -DestinationPath "dist/${{ matrix.target.output-zip }}"
 
-      - name: 📤 Fazer Upload do Artefato (.exe)
+      - name: 📤 Fazer Upload dos Artefatos (.exe e .zip)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target.artifact-name }}
-          path: dist/${{ matrix.target.output-exe }}
+          path: |
+            dist/${{ matrix.target.output-exe }}
+            dist/${{ matrix.target.output-zip }}
           retention-days: 30
 
   release:
-    name: 🚀 Criar Release no GitHub (quando gerada tag v*)
+    name: 🚀 Criar GitHub Release (quando gerada tag v*)
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -102,13 +112,16 @@ jobs:
         with:
           path: ./artifacts
 
-      - name: 📦 Criar GitHub Release com os executáveis
+      - name: 📦 Criar GitHub Release com os executáveis e pacotes descompactados
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ./artifacts/MapaCotacoes-Win10-Win11/MapaCotacoes-Win10-Win11.exe
+            ./artifacts/MapaCotacoes-Win10-Win11/MapaCotacoes-Win10-Win11-Folder.zip
             ./artifacts/MapaCotacoes-Win7-Legacy-x64/MapaCotacoes-Win7-Legacy-x64.exe
+            ./artifacts/MapaCotacoes-Win7-Legacy-x64/MapaCotacoes-Win7-Legacy-x64-Folder.zip
             ./artifacts/MapaCotacoes-Win7-Legacy-x86/MapaCotacoes-Win7-Legacy-x86.exe
+            ./artifacts/MapaCotacoes-Win7-Legacy-x86/MapaCotacoes-Win7-Legacy-x86-Folder.zip
           draft: false
           prerelease: false
           generate_release_notes: true

@@ -129,9 +129,11 @@ O Mapa de Cotações foi projetado para rodar com máxima fluidez e baixo consum
 
 ---
 
-## 📦 Como Compilar e Gerar o Executável Standalone (.exe)
+## 📦 Como Compilar e Gerar os Executáveis (Standalone e Pasta .zip)
 
-O processo de empacotamento embute todos os arquivos estáticos de produção do frontend (`HTML`, `CSS`, `JavaScript`) diretamente dentro de um único binário `.exe` executável.
+O fluxo de build gera automaticamente dois formatos de distribuição otimizados:
+1. **Standalone (`dist/MapaCotacoes.exe`)**: executável único auto-contido, prático para transporte e uso em computadores individuais.
+2. **Não-Standalone Descompactado (`dist/MapaCotacoes-Folder/` e `dist/MapaCotacoes-Folder.zip`)**: pasta descompactada contendo o executável e suas dependências diretamente no disco. **Ideal para ERPs em rede local e computadores legados/compartilhados**, pois elimina o tempo de descompactação em `%TEMP%` a cada inicialização e permite execução direta de uma pasta na rede.
 
 ### 🚀 Build Automático (Recomendado)
 
@@ -143,8 +145,12 @@ python build.py
 Esse script realiza:
 1. Validação de dependências (`Node.js`, `npm`, `PyInstaller`).
 2. Build de produção do frontend (`npm run build` gerando `frontend/dist`).
-3. Empacotamento do binário standalone com PyInstaller (`app.spec`).
-4. Geração do executável final em 📁 **`dist/MapaCotacoes.exe`**.
+3. Empacotamento dual com PyInstaller (`app.spec`): binário standalone e pasta descompactada.
+4. Compactação automática da pasta não-standalone em arquivo 📁 **`dist/MapaCotacoes-Folder.zip`**.
+5. Geração dos artefatos finais em:
+   - 📁 **`dist/MapaCotacoes.exe`** (executável standalone)
+   - 📁 **`dist/MapaCotacoes-Folder/`** (pasta descompactada para uso imediato em rede)
+   - 📁 **`dist/MapaCotacoes-Folder.zip`** (pacote zip para distribuição)
 
 ---
 
