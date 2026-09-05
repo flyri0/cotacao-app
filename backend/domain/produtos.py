@@ -157,7 +157,7 @@ def update_product_db(
     return dict(cursor.fetchone())
 
 
-def verificar_historico_produto_db(conn: sqlite3.Connection, id_produto: int) -> Dict[str, int]:
+def check_product_history_db(conn: sqlite3.Connection, id_produto: int) -> Dict[str, int]:
     """Retorna a contagem de registros vinculados a um produto em necessidades, cotações e alocações."""
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM necessidades WHERE id_produto = ?", (id_produto,))
@@ -174,7 +174,11 @@ def verificar_historico_produto_db(conn: sqlite3.Connection, id_produto: int) ->
     }
 
 
-def alternar_status_produto_db(conn: sqlite3.Connection, id_produto: int, ativo: Optional[int] = None) -> bool:
+# Alias de retrocompatibilidade
+verificar_historico_produto_db = check_product_history_db
+
+
+def toggle_product_status_db(conn: sqlite3.Connection, id_produto: int, ativo: Optional[int] = None) -> bool:
     """Alterna ou define explicitamente o status ativo (1 ou 0) de um produto."""
     cursor = conn.cursor()
     if ativo is None:
@@ -189,6 +193,10 @@ def alternar_status_produto_db(conn: sqlite3.Connection, id_produto: int, ativo:
         )
     conn.commit()
     return cursor.rowcount > 0
+
+
+# Alias de retrocompatibilidade
+alternar_status_produto_db = toggle_product_status_db
 
 
 def list_products_db(conn: sqlite3.Connection) -> List[Dict[str, Any]]:

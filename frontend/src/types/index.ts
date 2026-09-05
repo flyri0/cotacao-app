@@ -187,13 +187,15 @@ export interface PywebviewApi {
   format_database: (com_seed?: boolean) => Promise<{ sucesso: boolean; com_seed: boolean }>
   export_database: () => Promise<{ sucesso: boolean; nome_arquivo: string; conteudo_base64: string }>
   select_location_and_save_backup: (nome_sugerido?: string) => Promise<RespostaBackup>
-  salvar_backup_em_caminho: (caminho_completo: string) => Promise<RespostaBackup>
+  save_backup_to_path: (caminho_completo: string) => Promise<RespostaBackup>
+  salvar_backup_em_caminho?: (caminho_completo: string) => Promise<RespostaBackup>
   select_backup_directory: () => Promise<{ sucesso: boolean; cancelado?: boolean; caminho?: string; mensagem?: string }>
   execute_auto_backup: () => Promise<RespostaBackup>
   import_database: (conteudo_base64: string) => Promise<{ sucesso: boolean; mensagem: string }>
 
   list_products: (apenas_ativos?: boolean) => Promise<Produto[]>
-  alternar_status_produto: (id_produto: number, ativo?: boolean) => Promise<{ sucesso: boolean; produto: Produto }>
+  toggle_product_status: (id_produto: number, ativo?: boolean) => Promise<{ sucesso: boolean; produto: Produto }>
+  alternar_status_produto?: (id_produto: number, ativo?: boolean) => Promise<{ sucesso: boolean; produto: Produto }>
   create_product: (
     nome: string,
     categoria?: string | null,
@@ -226,7 +228,8 @@ export interface PywebviewApi {
   get_global_quotes_history: () => Promise<HistoricoGlobalCotacaoItem[]>
 
   list_suppliers: (apenas_ativos?: boolean) => Promise<Fornecedor[]>
-  alternar_status_fornecedor: (id_fornecedor: number, ativo?: boolean) => Promise<{ sucesso: boolean; fornecedor: Fornecedor }>
+  toggle_supplier_status: (id_fornecedor: number, ativo?: boolean) => Promise<{ sucesso: boolean; fornecedor: Fornecedor }>
+  alternar_status_fornecedor?: (id_fornecedor: number, ativo?: boolean) => Promise<{ sucesso: boolean; fornecedor: Fornecedor }>
   create_supplier: (
     nome: string,
     contato?: string | null,
@@ -397,6 +400,10 @@ export interface PywebviewApi {
   get_sync_status?: (since_revision?: number) => Promise<SyncStatus>
 
   // Controle de Ciclo de Vida
+  shutdown_system?: () => Promise<{
+    sucesso: boolean
+    mensagem?: string
+  }>
   encerrar_sistema?: () => Promise<{
     sucesso: boolean
     mensagem?: string

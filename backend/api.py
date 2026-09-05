@@ -38,9 +38,9 @@ from backend.domain.cotacoes import (
     update_quote_db,
 )
 from backend.domain.fornecedores import (
-    alternar_status_fornecedor_db,
     create_supplier_db,
     get_supplier_statistics_db,
+    toggle_supplier_status_db,
     update_supplier_db,
     verificar_historico_fornecedor_db,
 )
@@ -53,22 +53,22 @@ from backend.domain.necessidades import (
     set_selected_supplier_db,
 )
 from backend.domain.produtos import (
-    alternar_status_produto_db,
     batch_delete_products_db,
     batch_toggle_products_active_db,
     batch_update_products_category_db,
     create_product_db,
     get_product_statistics_db,
+    toggle_product_status_db,
     update_product_db,
     verificar_historico_produto_db,
 )
 from backend.domain.rodadas import (
     check_round_dependencies_db,
+    check_round_history_db,
     duplicate_round_needs_db,
     list_rounds_with_metrics_db,
     remove_round_db,
     update_round_db,
-    verificar_historico_rodada_db,
 )
 from backend.services.backup_service import BackupManager
 from backend.services.demo_service import populate_demo_db_db
@@ -310,7 +310,7 @@ class Api:
                     }
 
                 destino = caminhos if isinstance(caminhos, str) else caminhos[0]
-                return self._salvar_backup_em_caminho(destino)
+                return self.save_backup_to_path(destino)
             else:
                 export_res = self.export_database()
                 export_res["mensagem"] = "Download via navegador disponibilizado."
@@ -318,8 +318,12 @@ class Api:
         except Exception as e:
             raise ValueError(f"Falha ao acionar diálogo de backup: {e}")
 
-    def _salvar_backup_em_caminho(self, caminho_destino: str) -> Dict[str, Any]:
-        return self.backup_service.salvar_backup_em_caminho(caminho_destino)
+    def save_backup_to_path(self, caminho_destino: str) -> Dict[str, Any]:
+        return self.backup_service.save_backup_to_path(caminho_destino)
+
+    # Aliases de retrocompatibilidade
+    _salvar_backup_em_caminho = save_backup_to_path
+    salvar_backup_em_caminho = save_backup_to_path
 
     def select_backup_directory(self) -> Dict[str, Any]:
         return select_directory_dialog("Selecione a Pasta para o Backup Automático")
@@ -402,14 +406,17 @@ class Api:
             return [dict(row) for row in cursor.fetchall()]
 
     @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
-    def alternar_status_produto(self, id_produto: int, ativo: Optional[bool] = None) -> Dict[str, Any]:
+    def toggle_product_status(self, id_produto: int, ativo: Optional[bool] = None) -> Dict[str, Any]:
         with self._get_connection() as conn:
             val = 1 if ativo is True else (0 if ativo is False else None)
-            sucesso = alternar_status_produto_db(conn, id_produto, val)
+            sucesso = toggle_product_status_db(conn, id_produto, val)
             cursor = conn.cursor()
             cursor.execute("SELECT id, nome, categoria, ativo FROM produtos WHERE id = ?", (id_produto,))
             row = cursor.fetchone()
             return {"sucesso": sucesso, "produto": dict(row) if row else None}
+
+    # Alias de retrocompatibilidade
+    alternar_status_produto = toggle_product_status
 
     @track_mutation(["products", "needs", "quotes", "stats", "rounds"])
     def create_product(self, nome: str, categoria: Optional[str] = None) -> Dict[str, Any]:
@@ -489,10 +496,10 @@ class Api:
             return [dict(row) for row in cursor.fetchall()]
 
     @track_mutation(["suppliers", "quotes", "stats", "allocations", "rounds"])
-    def alternar_status_fornecedor(self, id_fornecedor: int, ativo: Optional[bool] = None) -> Dict[str, Any]:
+    def toggle_supplier_status(self, id_fornecedor: int, ativo: Optional[bool] = None) -> Dict[str, Any]:
         with self._get_connection() as conn:
             val = 1 if ativo is True else (0 if ativo is False else None)
-            sucesso = alternar_status_fornecedor_db(conn, id_fornecedor, val)
+            sucesso = toggle_supplier_status_db(conn, id_fornecedor, val)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT id, nome, contato, telefone, email, pedido_minimo, ativo FROM fornecedores WHERE id = ?",
@@ -500,6 +507,9 @@ class Api:
             )
             row = cursor.fetchone()
             return {"sucesso": sucesso, "fornecedor": dict(row) if row else None}
+
+    # Alias de retrocompatibilidade
+    alternar_status_fornecedor = toggle_supplier_status
 
     @track_mutation(["suppliers", "quotes", "stats", "allocations", "rounds"])
     def create_supplier(
@@ -624,7 +634,7 @@ class Api:
                 raise ValueError(f"Rodada #{id_rodada} não encontrada.")
             descricao = row["descricao"]
 
-            hist = verificar_historico_rodada_db(conn, id_rodada)
+            hist = check_round_history_db(conn, id_rodada)
             if hist["total"] > 0:
                 detalhes = []
                 if hist["necessidades"] > 0:
@@ -893,7 +903,7 @@ class Api:
     # -------------------------------------------------------------------------
     # ENCERRAMENTO DO SISTEMA
     # -------------------------------------------------------------------------
-    def encerrar_sistema(self) -> Dict[str, Any]:
+    def shutdown_system(self) -> Dict[str, Any]:
         def _do_shutdown():
             time.sleep(0.5)
             try:
@@ -907,3 +917,6 @@ class Api:
 
         threading.Thread(target=_do_shutdown, daemon=True).start()
         return {"sucesso": True, "mensagem": "Sistema sendo encerrado com sucesso."}
+
+    # Alias de retrocompatibilidade
+    encerrar_sistema = shutdown_system

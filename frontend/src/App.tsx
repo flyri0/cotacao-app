@@ -353,7 +353,7 @@ export default function App() {
           setSistemaEncerrado(true)
           try {
             const api = await getApi()
-            await api.encerrar_sistema?.()
+            await (api.shutdown_system || api.encerrar_sistema)?.()
           } catch {
             // Processo finalizado
           }

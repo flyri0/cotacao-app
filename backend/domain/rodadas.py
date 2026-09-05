@@ -61,7 +61,7 @@ def update_round_db(conn: sqlite3.Connection, id_rodada: int, descricao: str, st
     return dict(row)
 
 
-def verificar_historico_rodada_db(conn: sqlite3.Connection, id_rodada: int) -> Dict[str, int]:
+def check_round_history_db(conn: sqlite3.Connection, id_rodada: int) -> Dict[str, int]:
     """Retorna a contagem de cotações, alocações e necessidades vinculadas a uma rodada."""
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM necessidades WHERE id_rodada = ?", (id_rodada,))
@@ -77,6 +77,10 @@ def verificar_historico_rodada_db(conn: sqlite3.Connection, id_rodada: int) -> D
         "total": cot + aloc,
         "total_historico": cot + aloc,
     }
+
+
+# Alias de retrocompatibilidade
+verificar_historico_rodada_db = check_round_history_db
 
 
 def remove_round_db(conn: sqlite3.Connection, id_rodada: int) -> bool:

@@ -338,7 +338,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
     try {
       setTogglingId(p.id)
       const api = await getApi()
-      await api.alternar_status_produto(p.id, novoStatus)
+      await api.toggle_product_status(p.id, novoStatus)
 
       notifications.show({
         title: novoStatus ? 'Produto Ativado' : 'Produto Desativado',
@@ -506,7 +506,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
                     onClick={async () => {
                       modals.closeAll()
                       const api = await getApi()
-                      await api.alternar_status_produto(id, false)
+                      await api.toggle_product_status(id, false)
                       notifications.show({
                         title: 'Produto Desativado',
                         message: `O produto "${nome}" foi desativado com sucesso.`,

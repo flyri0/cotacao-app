@@ -46,10 +46,12 @@ from backend.domain.cotacoes import (
 )
 from backend.domain.fornecedores import (
     alternar_status_fornecedor_db,
+    check_supplier_history_db,
     create_supplier_db,
     get_supplier_statistics_db,
     list_suppliers_db,
     remove_supplier_db,
+    toggle_supplier_status_db,
     update_supplier_db,
     verificar_historico_fornecedor_db,
 )
@@ -62,15 +64,18 @@ from backend.domain.necessidades import (
 )
 from backend.domain.produtos import (
     alternar_status_produto_db,
+    check_product_history_db,
     create_product_db,
     get_product_statistics_db,
     list_products_db,
     remove_product_db,
+    toggle_product_status_db,
     update_product_db,
     verificar_historico_produto_db,
 )
 from backend.domain.rodadas import (
     check_round_dependencies_db,
+    check_round_history_db,
     create_round_db,
     duplicate_round_needs_db,
     list_rounds_db,

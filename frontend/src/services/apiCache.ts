@@ -227,6 +227,7 @@ export function getInvalidationTagsForMutation(method: string, args: any[]): str
     case 'create_product':
     case 'update_product':
     case 'remove_product':
+    case 'toggle_product_status':
     case 'alternar_status_produto':
     case 'batch_update_products_category':
     case 'batch_toggle_products_active':
@@ -239,6 +240,7 @@ export function getInvalidationTagsForMutation(method: string, args: any[]): str
     case 'create_supplier':
     case 'update_supplier':
     case 'remove_supplier':
+    case 'toggle_supplier_status':
     case 'alternar_status_fornecedor':
     case 'import_suppliers_excel':
       return ['suppliers', 'quotes', 'stats', 'allocations', 'rounds']

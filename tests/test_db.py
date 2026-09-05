@@ -235,6 +235,8 @@ class TestDatabaseSchema(unittest.TestCase):
         from backend.db import (
             alternar_status_fornecedor_db,
             alternar_status_produto_db,
+            toggle_supplier_status_db,
+            toggle_product_status_db,
         )
 
         cursor = self.conn.cursor()
@@ -244,27 +246,27 @@ class TestDatabaseSchema(unittest.TestCase):
         f_id = cursor.lastrowid
         self.conn.commit()
 
-        # Toggle produto (1 -> 0)
-        self.assertTrue(alternar_status_produto_db(self.conn, p_id, ativo=None))
+        # Toggle produto via toggle_product_status_db (1 -> 0)
+        self.assertTrue(toggle_product_status_db(self.conn, p_id, ativo=None))
         cursor.execute("SELECT ativo FROM produtos WHERE id = ?", (p_id,))
         self.assertEqual(cursor.fetchone()["ativo"], 0)
 
-        # Toggle produto (0 -> 1)
+        # Toggle produto via alias alternar_status_produto_db (0 -> 1)
         self.assertTrue(alternar_status_produto_db(self.conn, p_id, ativo=None))
         cursor.execute("SELECT ativo FROM produtos WHERE id = ?", (p_id,))
         self.assertEqual(cursor.fetchone()["ativo"], 1)
 
         # Definir explícito produto
-        alternar_status_produto_db(self.conn, p_id, ativo=0)
+        toggle_product_status_db(self.conn, p_id, ativo=0)
         cursor.execute("SELECT ativo FROM produtos WHERE id = ?", (p_id,))
         self.assertEqual(cursor.fetchone()["ativo"], 0)
 
-        # Toggle fornecedor (1 -> 0)
-        self.assertTrue(alternar_status_fornecedor_db(self.conn, f_id, ativo=None))
+        # Toggle fornecedor via toggle_supplier_status_db (1 -> 0)
+        self.assertTrue(toggle_supplier_status_db(self.conn, f_id, ativo=None))
         cursor.execute("SELECT ativo FROM fornecedores WHERE id = ?", (f_id,))
         self.assertEqual(cursor.fetchone()["ativo"], 0)
 
-        # Definir explícito fornecedor
+        # Definir explícito fornecedor via alias alternar_status_fornecedor_db
         alternar_status_fornecedor_db(self.conn, f_id, ativo=1)
         cursor.execute("SELECT ativo FROM fornecedores WHERE id = ?", (f_id,))
         self.assertEqual(cursor.fetchone()["ativo"], 1)

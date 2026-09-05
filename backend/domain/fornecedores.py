@@ -162,7 +162,7 @@ def update_supplier_db(
     return dict(cursor.fetchone())
 
 
-def verificar_historico_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: int) -> Dict[str, int]:
+def check_supplier_history_db(conn: sqlite3.Connection, id_fornecedor: int) -> Dict[str, int]:
     """Retorna a contagem de registros vinculados a um fornecedor em cotações e alocações."""
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM cotacoes WHERE id_fornecedor = ?", (id_fornecedor,))
@@ -176,7 +176,11 @@ def verificar_historico_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: i
     }
 
 
-def alternar_status_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: int, ativo: Optional[int] = None) -> bool:
+# Alias de retrocompatibilidade
+verificar_historico_fornecedor_db = check_supplier_history_db
+
+
+def toggle_supplier_status_db(conn: sqlite3.Connection, id_fornecedor: int, ativo: Optional[int] = None) -> bool:
     """Alterna ou define explicitamente o status ativo (1 ou 0) de um fornecedor."""
     cursor = conn.cursor()
     if ativo is None:
@@ -191,6 +195,10 @@ def alternar_status_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: int, 
         )
     conn.commit()
     return cursor.rowcount > 0
+
+
+# Alias de retrocompatibilidade
+alternar_status_fornecedor_db = toggle_supplier_status_db
 
 
 def list_suppliers_db(conn: sqlite3.Connection) -> List[Dict[str, Any]]:

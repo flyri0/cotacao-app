@@ -85,11 +85,15 @@ class TestApi(unittest.TestCase):
                 dest_path = dest.name
 
             try:
-                res = api_temp._salvar_backup_em_caminho(dest_path)
+                res = api_temp.save_backup_to_path(dest_path)
                 self.assertTrue(res["sucesso"])
                 self.assertEqual(res["caminho"], dest_path)
                 self.assertGreater(res["tamanho_bytes"], 0)
                 self.assertTrue(os.path.exists(dest_path))
+
+                # Testa alias de retrocompatibilidade
+                res_alias = api_temp._salvar_backup_em_caminho(dest_path)
+                self.assertTrue(res_alias["sucesso"])
             finally:
                 if os.path.exists(dest_path):
                     os.remove(dest_path)
@@ -227,8 +231,8 @@ class TestApi(unittest.TestCase):
         self.assertIn("Desativar", str(ctx.exception))
 
     def test_alternar_status_produto(self) -> None:
-        # Desativa produto 1
-        res = self.api.alternar_status_produto(1, False)
+        # Desativa produto 1 via toggle_product_status
+        res = self.api.toggle_product_status(1, False)
         self.assertTrue(res["sucesso"])
         self.assertEqual(res["produto"]["ativo"], 0)
 
@@ -237,7 +241,7 @@ class TestApi(unittest.TestCase):
         # Listagem total deve retornar 50
         self.assertEqual(len(self.api.list_products(apenas_ativos=False)), 50)
 
-        # Reativa produto 1
+        # Reativa produto 1 via alias de compatibilidade
         res_ativar = self.api.alternar_status_produto(1, True)
         self.assertTrue(res_ativar["sucesso"])
         self.assertEqual(res_ativar["produto"]["ativo"], 1)
@@ -259,8 +263,8 @@ class TestApi(unittest.TestCase):
         self.assertIn("Desativar", str(ctx.exception))
 
     def test_alternar_status_fornecedor(self) -> None:
-        # Desativa fornecedor 1
-        res = self.api.alternar_status_fornecedor(1, False)
+        # Desativa fornecedor 1 via toggle_supplier_status
+        res = self.api.toggle_supplier_status(1, False)
         self.assertTrue(res["sucesso"])
         self.assertEqual(res["fornecedor"]["ativo"], 0)
 
@@ -269,7 +273,7 @@ class TestApi(unittest.TestCase):
         # Listagem total deve retornar 8
         self.assertEqual(len(self.api.list_suppliers(apenas_ativos=False)), 8)
 
-        # Reativa fornecedor 1
+        # Reativa fornecedor 1 via alias de compatibilidade
         res_ativar = self.api.alternar_status_fornecedor(1, True)
         self.assertTrue(res_ativar["sucesso"])
         self.assertEqual(res_ativar["fornecedor"]["ativo"], 1)
@@ -1403,10 +1407,12 @@ class TestApi(unittest.TestCase):
                 self.assertFalse(res_err["salvo_em_disco"])
                 self.assertIn("aviso", res_err)
 
-            # Teste encerrar_sistema com mock de threading.Thread.start para não matar o processo de testes
+            # Teste shutdown_system e alias encerrar_sistema com mock de threading.Thread.start
             with patch("threading.Thread.start"):
-                res_exit = self.api.encerrar_sistema()
+                res_exit = self.api.shutdown_system()
                 self.assertTrue(res_exit["sucesso"])
+                res_exit_alias = self.api.encerrar_sistema()
+                self.assertTrue(res_exit_alias["sucesso"])
         finally:
             import shutil
 

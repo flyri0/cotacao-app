@@ -157,7 +157,21 @@ describe('apiCache', () => {
         'stats',
         'rounds',
       ])
+      expect(getInvalidationTagsForMutation('toggle_product_status', [])).toEqual([
+        'products',
+        'needs',
+        'quotes',
+        'stats',
+        'rounds',
+      ])
       expect(getInvalidationTagsForMutation('create_supplier', [])).toEqual([
+        'suppliers',
+        'quotes',
+        'stats',
+        'allocations',
+        'rounds',
+      ])
+      expect(getInvalidationTagsForMutation('toggle_supplier_status', [])).toEqual([
         'suppliers',
         'quotes',
         'stats',

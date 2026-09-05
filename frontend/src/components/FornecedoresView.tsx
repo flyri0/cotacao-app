@@ -204,7 +204,7 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
     try {
       setTogglingId(f.id)
       const api = await getApi()
-      await api.alternar_status_fornecedor(f.id, novoStatus)
+      await api.toggle_supplier_status(f.id, novoStatus)
 
       notifications.show({
         title: novoStatus ? 'Fornecedor Ativado' : 'Fornecedor Desativado',
@@ -335,7 +335,7 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
                     onClick={async () => {
                       modals.closeAll()
                       const api = await getApi()
-                      await api.alternar_status_fornecedor(id, false)
+                      await api.toggle_supplier_status(id, false)
                       notifications.show({
                         title: 'Fornecedor Desativado',
                         message: `O fornecedor "${nome}" foi desativado com sucesso.`,

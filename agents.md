@@ -83,30 +83,52 @@ pessoa/equipe de compras.
 5. **Configurações**: gerenciar backup/restauração/formatação do SQLite
    e preferências visuais/acessibilidade com live preview em tempo real.
 
-## Convenções de código
-- Python: type hints em funções públicas, `black` pra formatação.
-- Tabelas/colunas do banco em português, snake_case, batendo com a
-  linguagem do domínio acima (não traduzir pra inglês).
-- React: componentes funcionais, hooks. Um componente por tela
-  (Cadastros, Necessidades, Cotações, Comparação, Alocação, Resumo,
-  Pedido, Estatísticas, Rodadas, Configurações). Estado vem de cada
-  componente via `window.pywebview.api`, sem estado global desnecessário.
-- Toda função exposta em `js_api` retorna dict/lista serializável — nunca
-  objetos Python customizados.
-- Sem `localStorage`/`sessionStorage` no frontend — o estado que importa
-  vive no SQLite via a API Python.
-- **Design System & Interface**: toda alteração de UI, componente ou nova tela
-  deve seguir estritamente as diretrizes de `DESIGN_SYSTEM.md` na raiz do projeto
-  (herança da `themeColor`, cores semânticas estritas, alta densidade `size="xs"`
-  e alinhamentos de tabela).
+## Convenções de código e nomenclatura
+
+### 1. Funções, Métodos e APIs
+- **Métodos da API e Funções Públicas**: Inglês técnico em `snake_case` no Python (`create_product`, `toggle_product_status`, `list_quotes`, `get_sync_status`, `save_backup_to_path`, `shutdown_system`). Seguir a estrutura `verbo_substantivo` (`create_`, `update_`, `remove_`, `list_`, `get_`, `batch_`, `toggle_`).
+- **Funções Utilitárias e Hooks no Frontend**: `camelCase` em inglês no TypeScript (`formatMoney`, `calculatePackaging`, `downloadBase64File`, `useActiveRound`, `useAutosave`, `useDataCacheSubscription`).
+- **Aliases de Retrocompatibilidade**: Caso uma função pública seja renomeada, manter um alias no backend apontando para o novo nome para evitar quebras em pontos não migrados.
+- **Retorno Serializável**: Toda função exposta em `js_api` retorna dict/lista serializável — nunca objetos Python customizados.
+
+### 2. Banco de Dados e Domínio Comercial
+- **Tabelas e Colunas**: Estritamente em **Português**, no padrão `snake_case` (`produtos`, `fornecedores`, `cotacoes`, `alocacoes`, `preco_embalagem`, `qtd_por_embalagem`, `pedido_minimo`, `id_rodada`).
+- **NUNCA** traduzir termos centrais do negócio para o inglês nas tabelas ou queries SQL (ex: não usar `quotes`, `rounds`, `allocations` no schema SQLite).
+
+### 3. Comentários e Docstrings
+- **Idioma**: 100% em **Português (pt-BR)**.
+- **Foco do Comentário**: Documentar o **"porquê"** (regras de negócio, motivos de restrições, decisões não óbvias, tolerâncias de pedido mínimo, sobras de embalagens), e não apenas repetir o "o que" o código faz.
+- **Preservação**: Preservar comentários explicativos existentes ao realizar manutenções.
+
+### 4. Arquivos e Componentes
+- **Telas / Visões React**: `PascalCase` em Português com sufixo `View` em `frontend/src/components/` (`CotacoesView.tsx`, `AlocacaoView.tsx`, `ComparacaoView.tsx`, `ProdutosView.tsx`).
+- **Módulos de Domínio Python**: `snake_case` em Português batendo com as entidades (`alocacoes.py`, `cotacoes.py`, `produtos.py`, `fornecedores.py`, `rodadas.py`).
+- **Arquivos de Teste**:
+  - Backend: `test_<modulo>.py` em `tests/`.
+  - Frontend: `<modulo>.test.ts` em `frontend/src/test/`.
+- **Frontend / React**: componentes funcionais, hooks. Estado vem de cada componente via `window.pywebview.api`, sem estado global desnecessário.
+- **Sem `localStorage`/`sessionStorage`** no frontend — o estado que importa vive no SQLite via a API Python.
+- **Design System & Interface**: toda alteração de UI, componente ou nova tela deve seguir estritamente as diretrizes de `DESIGN_SYSTEM.md` na raiz do projeto (herança da `themeColor`, cores semânticas estritas, alta densidade `size="xs"` e alinhamentos de tabela).
 
 ## Comandos
-- `npm run dev` (dentro de `frontend/`) — Vite em modo desenvolvimento
-- `npm run build` (dentro de `frontend/`) — gera `frontend/dist`
-- `python app.py` — abre no modo padrão configurado (Janela Nativa ou Navegador Padrão)
-- `python app.py --browser` — força abertura no Navegador Padrão do sistema
-- `python app.py --window` — força abertura em Janela Nativa (pywebview)
-- `python -m unittest discover -s tests -p "test_*.py"` — executa todos os testes unitários de backend
+- **Desenvolvimento**:
+  - `npm run dev` (dentro de `frontend/`) — Vite em modo desenvolvimento
+  - `python app.py --dev` — executa o app conectado ao Vite
+  - `python app.py` — abre no modo padrão configurado (Janela Nativa ou Navegador Padrão)
+  - `python app.py --browser` — força abertura no Navegador Padrão do sistema
+  - `python app.py --window` — força abertura em Janela Nativa (pywebview)
+- **Qualidade Backend (Python)**:
+  - `python -m ruff check backend tests` — validação estática de código com Ruff (Python 3.8+)
+  - `python -m ruff format backend tests` — formatação automática de código
+  - `python -m pytest tests/` — executa todos os testes unitários do backend
+  - `python -m coverage run -m pytest tests/ && python -m coverage report -m` — relatório de cobertura de testes
+- **Qualidade Frontend (React / TypeScript)**:
+  - `npm run --prefix frontend lint` — validação de linter com Oxlint e ESLint
+  - `npm run --prefix frontend test` — executa a suíte de testes com Vitest
+  - `npm run --prefix frontend test:coverage` — relatório de cobertura do frontend
+  - `npm run --prefix frontend build` — compilação de produção com validação estrita de tipos
+- **Commits**:
+  - Padrão Conventional Commits validado automaticamente por hook git nativo (`commitlint`).
 
 ## O que não fazer
 - Não guardar preço unitário calculado no banco.

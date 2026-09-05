@@ -28,7 +28,7 @@ class BackupManager:
         nome_arquivo = f"backup_cotacao_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
         return {"sucesso": True, "nome_arquivo": nome_arquivo, "conteudo_base64": encoded}
 
-    def salvar_backup_em_caminho(self, caminho_destino: str) -> Dict[str, Any]:
+    def save_backup_to_path(self, caminho_destino: str) -> Dict[str, Any]:
         """Copia atomicamente o arquivo SQLite local para o caminho de destino."""
         caminho_destino = str(caminho_destino).strip() if caminho_destino else ""
         if not caminho_destino:
@@ -51,6 +51,9 @@ class BackupManager:
             "tamanho_bytes": tamanho,
             "mensagem": f"Backup salvo com sucesso em {caminho_destino}.",
         }
+
+    # Alias de retrocompatibilidade
+    salvar_backup_em_caminho = save_backup_to_path
 
     def execute_auto_backup(self, origem_gatilho: str = "manual") -> Dict[str, Any]:
         """Executa a cópia atômica do SQLite para a pasta configurada com rotação."""
