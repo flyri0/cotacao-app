@@ -422,6 +422,24 @@ export function AlocacaoView({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedRodadaId, isFechada, executarSalvarSilencioso])
 
+  // Mapa de indexação rápida das cotações
+  const { cotacoesMap, cotacoesPorProdutoMap } = useMemo(() => {
+    const cMap = new Map<string, typeof cotacoes[0]>()
+    const cProdMap = new Map<number, typeof cotacoes>()
+
+    cotacoes.forEach((c) => {
+      cMap.set(`${c.id_produto}-${c.id_fornecedor}`, c)
+
+      const pId = Number(c.id_produto)
+      if (!cProdMap.has(pId)) {
+        cProdMap.set(pId, [])
+      }
+      cProdMap.get(pId)!.push(c)
+    })
+
+    return { cotacoesMap: cMap, cotacoesPorProdutoMap: cProdMap }
+  }, [cotacoes])
+
   // Mapa de menor preço unitário por produto na rodada
   const menoresPrecosPorProduto = useMemo(() => {
     const map = new Map<number, number>()
@@ -452,11 +470,7 @@ export function AlocacaoView({
         produtosSet.add(prodId)
         fornecedoresSet.add(fornId)
 
-        const cot = cotacoes.find(
-          (c) =>
-            Number(c.id_produto) === prodId &&
-            Number(c.id_fornecedor) === fornId,
-        )
+        const cot = cotacoesMap.get(`${prodId}-${fornId}`)
         const { qtdEfetiva, subtotal } = calculatePackaging(
           qtd,
           cot ? Number(cot.qtd_por_embalagem) : 1,
@@ -474,7 +488,7 @@ export function AlocacaoView({
       produtosComAlocacao: produtosSet.size,
       fornecedoresContemplados: fornecedoresSet.size,
     }
-  }, [linhas, cotacoes])
+  }, [linhas, cotacoesMap])
 
   // Definição das Colunas da Mantine React Table reformulada
   const columns = useMemo<MRT_ColumnDef<LinhaAlocacao>[]>(
@@ -535,18 +549,14 @@ export function AlocacaoView({
         size: 220,
         accessorFn: (row) => {
           if (!row.id_fornecedor) return 'Sem Fornecedor'
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${row.id_produto}-${row.id_fornecedor}`)
           if (cot) return cot.fornecedor_nome
           const f = fornecedores.find((forn) => forn.id === row.id_fornecedor)
           return f ? f.nome : 'Sem Fornecedor'
         },
         Cell: ({ row }) => {
           const item = row.original
-          const cotsDoProd = cotacoes.filter(
-            (c) => c.id_produto === item.id_produto,
-          )
+          const cotsDoProd = cotacoesPorProdutoMap.get(item.id_produto) || []
           const menorPreco = menoresPrecosPorProduto.get(item.id_produto)
 
           const options = cotsDoProd.map((c) => {
@@ -586,20 +596,14 @@ export function AlocacaoView({
         header: 'Preço Unitário',
         size: 150,
         accessorFn: (row) => {
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${row.id_produto}-${row.id_fornecedor}`)
           return cot ? cot.preco_unitario : 0
         },
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
           const item = row.original
-          const cot = cotacoes.find(
-            (c) =>
-              c.id_produto === item.id_produto &&
-              c.id_fornecedor === item.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${item.id_produto}-${item.id_fornecedor}`)
 
           if (!item.id_fornecedor || !cot) {
             return (
@@ -635,18 +639,12 @@ export function AlocacaoView({
         header: 'Embalagem',
         size: 180,
         accessorFn: (row) => {
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${row.id_produto}-${row.id_fornecedor}`)
           return cot ? `${cot.marca ? `[${cot.marca}] ` : ''}${cot.embalagem}` : ''
         },
         Cell: ({ row }) => {
           const item = row.original
-          const cot = cotacoes.find(
-            (c) =>
-              c.id_produto === item.id_produto &&
-              c.id_fornecedor === item.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${item.id_produto}-${item.id_fornecedor}`)
 
           if (!item.id_fornecedor || !cot) {
             return (
@@ -673,9 +671,7 @@ export function AlocacaoView({
         header: 'Compra Efetiva',
         size: 170,
         accessorFn: (row) => {
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${row.id_produto}-${row.id_fornecedor}`)
           if (!row.id_fornecedor || row.quantidade_alocada <= 0 || !cot) return 0
           const { embComprar } = calculatePackaging(
             row.quantidade_alocada,
@@ -686,11 +682,7 @@ export function AlocacaoView({
         },
         Cell: ({ row }) => {
           const item = row.original
-          const cot = cotacoes.find(
-            (c) =>
-              c.id_produto === item.id_produto &&
-              c.id_fornecedor === item.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${item.id_produto}-${item.id_fornecedor}`)
 
           if (!item.id_fornecedor || item.quantidade_alocada <= 0 || !cot) {
             return (
@@ -729,9 +721,7 @@ export function AlocacaoView({
         header: 'Subtotal',
         size: 120,
         accessorFn: (row) => {
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${row.id_produto}-${row.id_fornecedor}`)
           if (!row.id_fornecedor || row.quantidade_alocada <= 0 || !cot) return 0
           const { subtotal } = calculatePackaging(
             row.quantidade_alocada,
@@ -744,11 +734,7 @@ export function AlocacaoView({
         mantineTableBodyCellProps: { align: 'right' },
         Cell: ({ row }) => {
           const item = row.original
-          const cot = cotacoes.find(
-            (c) =>
-              c.id_produto === item.id_produto &&
-              c.id_fornecedor === item.id_fornecedor,
-          )
+          const cot = cotacoesMap.get(`${item.id_produto}-${item.id_fornecedor}`)
 
           if (!item.id_fornecedor || item.quantidade_alocada <= 0 || !cot) {
             return (
