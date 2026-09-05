@@ -61,6 +61,7 @@ exe = EXE(
     a.datas,
     [],
     name='MapaCotacoes',
+    icon=os.path.join(project_root, 'favicon.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

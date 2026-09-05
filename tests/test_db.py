@@ -235,8 +235,8 @@ class TestDatabaseSchema(unittest.TestCase):
         from backend.db import (
             alternar_status_fornecedor_db,
             alternar_status_produto_db,
-            toggle_supplier_status_db,
             toggle_product_status_db,
+            toggle_supplier_status_db,
         )
 
         cursor = self.conn.cursor()
