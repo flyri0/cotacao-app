@@ -488,6 +488,24 @@ export function AlocacaoView({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedRodadaId, isFechada, executarSalvarSilencioso])
 
+  // Mapa de indexação rápida das cotações
+  const { cotacoesMap, cotacoesPorProdutoMap } = useMemo(() => {
+    const cMap = new Map<string, typeof cotacoes[0]>()
+    const cProdMap = new Map<number, typeof cotacoes>()
+
+    cotacoes.forEach((c) => {
+      cMap.set(`${c.id_produto}-${c.id_fornecedor}`, c)
+
+      const pId = Number(c.id_produto)
+      if (!cProdMap.has(pId)) {
+        cProdMap.set(pId, [])
+      }
+      cProdMap.get(pId)!.push(c)
+    })
+
+    return { cotacoesMap: cMap, cotacoesPorProdutoMap: cProdMap }
+  }, [cotacoes])
+
   // Mapa de menor preço unitário por produto na rodada
   const menoresPrecosPorProduto = useMemo(() => {
     const map = new Map<number, number>()
@@ -518,11 +536,7 @@ export function AlocacaoView({
         produtosSet.add(prodId)
         fornecedoresSet.add(fornId)
 
-        const cot = cotacoes.find(
-          (c) =>
-            Number(c.id_produto) === prodId &&
-            Number(c.id_fornecedor) === fornId,
-        )
+        const cot = cotacoesMap.get(`${prodId}-${fornId}`)
         const { qtdEfetiva, subtotal } = calculatePackaging(
           qtd,
           cot ? Number(cot.qtd_por_embalagem) : 1,
@@ -540,19 +554,15 @@ export function AlocacaoView({
       produtosComAlocacao: produtosSet.size,
       fornecedoresContemplados: fornecedoresSet.size,
     }
-  }, [linhas, cotacoes])
+  }, [linhas, cotacoesMap])
 
   // Helpers para extrair dados associados à linha
   const getCotacaoLinha = useCallback(
     (linha: LinhaAlocacao) => {
       if (!linha.id_fornecedor) return undefined
-      return cotacoes.find(
-        (c) =>
-          Number(c.id_produto) === Number(linha.id_produto) &&
-          Number(c.id_fornecedor) === Number(linha.id_fornecedor),
-      )
+      return cotacoesMap.get(`${linha.id_produto}-${linha.id_fornecedor}`)
     },
-    [cotacoes],
+    [cotacoesMap],
   )
 
   const getFornecedorNomeLinha = useCallback(
@@ -805,9 +815,7 @@ export function AlocacaoView({
         ),
         Cell: ({ row }) => {
           const item = row.original
-          const cotsDoProd = cotacoes.filter(
-            (c) => c.id_produto === item.id_produto,
-          )
+          const cotsDoProd = cotacoesPorProdutoMap.get(item.id_produto) || []
           const menorPreco = menoresPrecosPorProduto.get(item.id_produto)
 
           const options = cotsDoProd.map((c) => {
