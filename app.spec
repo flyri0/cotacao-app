@@ -8,9 +8,10 @@ block_cipher = None
 project_root = os.path.abspath(os.getcwd())
 frontend_dist = os.path.join(project_root, 'frontend', 'dist')
 
-# Inclusão dos arquivos estáticos de produção do frontend (HTML, CSS, JS)
+# Inclusão dos arquivos estáticos de produção do frontend (HTML, CSS, JS) e ícone
 datas = [
     (frontend_dist, os.path.join('frontend', 'dist')),
+    (os.path.join(project_root, 'favicon.ico'), '.'),
 ]
 
 # Módulos adicionais para garantir que pywebview e pythonnet carreguem corretamente no Windows

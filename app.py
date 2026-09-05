@@ -2,9 +2,8 @@ import os
 import sys
 import time
 import webbrowser
-from typing import Optional
+
 from backend.api import Api
-from backend.core.schema import init_db
 from backend.server import DEFAULT_PORT, is_server_already_running, start_http_server
 
 DEV_URL = "http://localhost:5173"
@@ -114,13 +113,16 @@ def main() -> None:
     try:
         import webview
 
+        base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+
         # No pywebview, em modo empacotado podemos carregar diretamente o arquivo local ou a URL local
-        window_url = url if is_dev() else os.path.join(
-            getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))),
-            "frontend", "dist", "index.html"
-        )
+        window_url = url if is_dev() else os.path.join(base_path, "frontend", "dist", "index.html")
         if not os.path.exists(window_url):
             window_url = url
+
+        icon_path = os.path.join(base_path, "favicon.ico")
+        if not os.path.exists(icon_path):
+            icon_path = os.path.join(base_path, "frontend", "dist", "favicon.ico")
 
         window = webview.create_window(
             title="Mapa Comparativo de Cotações",
@@ -132,9 +134,14 @@ def main() -> None:
         )
 
         window.events.closing += confirm_closing
-        webview.start(debug=is_dev())
+        webview.start(
+            debug=is_dev(),
+            icon=icon_path if os.path.exists(icon_path) else None,
+        )
     except Exception as e:
-        print(f"[Aviso] Falha ao iniciar janela nativa ({e}). Executando fallback automático para o navegador padrão...")
+        print(
+            f"[Aviso] Falha ao iniciar janela nativa ({e}). Executando fallback automático para o navegador padrão..."
+        )
         webbrowser.open(url)
         try:
             while True:
