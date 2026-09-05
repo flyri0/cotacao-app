@@ -281,7 +281,7 @@ export function getInvalidationTagsForMutation(method: string, args: any[]): str
     case 'save_allocations':
     case 'remove_allocation': {
       const roundId = args[0]
-      const tags = ['allocations', 'rounds', 'stats']
+      const tags = ['allocations', 'stats']
       if (roundId) tags.push(`allocations:${roundId}`)
       return tags
     }

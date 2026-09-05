@@ -75,6 +75,8 @@ export function AlocacaoView({
   const [statusAutosave, setStatusAutosave] = useState<'salvo' | 'salvando' | 'erro'>('salvo')
 
   const initialLoadDone = useRef(false)
+  const isReloadingRef = useRef(false)
+  const lastSavedJsonRef = useRef<string>('')
   const autosaveTimeoutRef = useRef<number | null>(null)
   const linhasRef = useRef(linhas)
   linhasRef.current = linhas
@@ -85,18 +87,27 @@ export function AlocacaoView({
   // Função interna de salvamento automático silencioso (sem notificações modais invasivas)
   const executarSalvarSilencioso = useCallback(async (linhasParaSalvar: LinhaAlocacao[], rodadaId: number | null) => {
     if (!rodadaId || isFechada) return
+
+    const payload = linhasParaSalvar
+      .filter((l) => Number(l.quantidade_alocada) > 0 && Number(l.id_fornecedor) > 0)
+      .map((l) => ({
+        id_produto: Number(l.id_produto),
+        id_fornecedor: Number(l.id_fornecedor),
+        quantidade: Number(l.quantidade_alocada),
+      }))
+
+    const payloadJson = JSON.stringify(payload)
+    // Se o payload não mudou desde o último salvamento, não re-dispara requisição
+    if (payloadJson === lastSavedJsonRef.current) {
+      setStatusAutosave('salvo')
+      return
+    }
+
     try {
       setStatusAutosave('salvando')
       const api = await getApi()
-      const payload = linhasParaSalvar
-        .filter((l) => Number(l.quantidade_alocada) > 0 && Number(l.id_fornecedor) > 0)
-        .map((l) => ({
-          id_produto: Number(l.id_produto),
-          id_fornecedor: Number(l.id_fornecedor),
-          quantidade: Number(l.quantidade_alocada),
-        }))
-
       await api.save_allocations(rodadaId, payload)
+      lastSavedJsonRef.current = payloadJson
       setStatusAutosave('salvo')
     } catch (err) {
       console.error('Erro no autosave:', err)
@@ -136,7 +147,12 @@ export function AlocacaoView({
           // Constrói as linhas de alocação garantindo que todas as necessidades da rodada estejam presentes
           const linhasCarregadas: LinhaAlocacao[] = []
 
-          listaNec.forEach((n, idx) => {
+          // Preserva quaisquer divisões ativas em memória que o usuário esteja editando no momento
+          const splitRowsInMemoria = linhasRef.current.filter((l) =>
+            l.key.startsWith('split-'),
+          )
+
+          listaNec.forEach((n) => {
             // Verifica se já existem alocações salvas no banco para este produto
             const alocsDoProd = listaAloc.filter(
               (a) => Number(a.id_produto) === Number(n.id_produto),
@@ -153,7 +169,7 @@ export function AlocacaoView({
                     : Number(a.id_fornecedor)
 
                 linhasCarregadas.push({
-                  key: `aloc-${a.id || idx}-${subIdx}-${Math.random().toString(36).substring(2, 6)}`,
+                  key: a.id ? `aloc-${a.id}` : `aloc-${n.id_produto}-${subIdx}`,
                   id: a.id,
                   id_produto: Number(a.id_produto),
                   produto_nome: a.produto_nome || n.produto_nome,
@@ -176,14 +192,32 @@ export function AlocacaoView({
                   : melhorFornId
 
               linhasCarregadas.push({
-                key: `init-${n.id_produto}-${idx}`,
+                key: `init-${n.id_produto}`,
                 id_produto: Number(n.id_produto),
                 produto_nome: n.produto_nome,
                 id_fornecedor: fornEscolhido,
                 quantidade_alocada: 0,
               })
             }
+
+            // Anexa as divisões ativas em memória para este produto
+            const splitsDesteProd = splitRowsInMemoria.filter(
+              (s) => Number(s.id_produto) === Number(n.id_produto),
+            )
+            splitsDesteProd.forEach((s) => {
+              linhasCarregadas.push(s)
+            })
           })
+
+          const payloadDb = linhasCarregadas
+            .filter((l) => Number(l.quantidade_alocada) > 0 && Number(l.id_fornecedor) > 0)
+            .map((l) => ({
+              id_produto: Number(l.id_produto),
+              id_fornecedor: Number(l.id_fornecedor),
+              quantidade: Number(l.quantidade_alocada),
+            }))
+          lastSavedJsonRef.current = JSON.stringify(payloadDb)
+          isReloadingRef.current = true
 
           setLinhas(linhasCarregadas)
         }
@@ -222,6 +256,11 @@ export function AlocacaoView({
       if (!loading && linhas.length > 0) {
         initialLoadDone.current = true
       }
+      return
+    }
+
+    if (isReloadingRef.current) {
+      isReloadingRef.current = false
       return
     }
 
@@ -289,7 +328,7 @@ export function AlocacaoView({
     [selectedRodadaId, isFechada],
   )
 
-  // Ação "Dividir": Duplica a linha do mesmo produto com fornecedor e quantidade zerados
+  // Ação "Dividir": Duplica a linha do mesmo produto
   const handleDividirLinha = useCallback((targetKey: string) => {
     let nomeProd = ''
     setLinhas((prev) => {
@@ -297,6 +336,16 @@ export function AlocacaoView({
       if (index === -1) return prev
       const linhaBase = prev[index]
       nomeProd = linhaBase.produto_nome
+
+      // Se houver outro fornecedor cotado para este produto, sugere ele por padrão
+      const cotsDoProd = cotacoes.filter(
+        (c) => Number(c.id_produto) === Number(linhaBase.id_produto),
+      )
+      const outroForn = cotsDoProd.find(
+        (c) => Number(c.id_fornecedor) !== Number(linhaBase.id_fornecedor),
+      )
+      const fornecedorSugerido = outroForn ? Number(outroForn.id_fornecedor) : 0
+
       const novaLinha: LinhaAlocacao = {
         key: `split-${linhaBase.id_produto}-${Date.now()}-${Math.random()
           .toString(36)
@@ -304,8 +353,8 @@ export function AlocacaoView({
         id: undefined,
         id_produto: Number(linhaBase.id_produto),
         produto_nome: linhaBase.produto_nome,
-        id_fornecedor: 0, // zerado
-        quantidade_alocada: 0, // zerada para digitação
+        id_fornecedor: fornecedorSugerido,
+        quantidade_alocada: 0,
       }
 
       const novas = [...prev]
@@ -321,7 +370,7 @@ export function AlocacaoView({
       color: 'blue',
       icon: <IconArrowsSplit size={16} />,
     })
-  }, [])
+  }, [cotacoes])
 
   // Remove ou zera uma linha de alocação com confirmação Mantine
   const handleRemoverLinha = useCallback((targetKey: string, produtoNome: string) => {
