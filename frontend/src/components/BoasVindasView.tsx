@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import {
   Badge,
+  Box,
   Button,
   Card,
-  Center,
   Container,
   Divider,
   FileInput,
@@ -156,143 +156,173 @@ export function BoasVindasView({
   }
 
   return (
-    <Center style={{ minHeight: '90vh', padding: '24px 16px' }}>
-      <Container size="md" style={{ width: '100%' }}>
-        <Stack gap="xl" align="center">
-          {/* Cabeçalho de Boas-Vindas */}
-          <Stack align="center" gap="xs" style={{ textAlign: 'center' }}>
-            <ThemeIcon size={64} radius="xl" variant="filled" color={themeColor}>
-              <IconScale size={36} />
-            </ThemeIcon>
-            <Title order={1}>{appNome}</Title>
-            <Text size="md" c="dimmed" style={{ maxWidth: 540 }}>
-              {appSubtitulo}
-            </Text>
-            <Badge variant="light" color={themeColor} size="lg" mt="xs">
-              Primeiro Acesso • Configuração Inicial
-            </Badge>
-          </Stack>
-
-          <Text size="sm" c="dimmed" ta="center">
-            Para começar a utilizar o sistema, escolha como deseja inicializar o seu banco de dados local SQLite:
-          </Text>
-
-          {/* Cards de Escolha Principal */}
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" style={{ width: '100%' }}>
-            {/* Opção 1: Criar Banco em Branco */}
-            <Card withBorder shadow="sm" radius="md" p="xl">
-              <Stack justify="space-between" h="100%">
-                <div>
-                  <Group gap="xs" mb="sm">
-                    <ThemeIcon color="blue" variant="light" size="xl" radius="md">
-                      <IconPlus size={24} />
-                    </ThemeIcon>
-                    <div>
-                      <Title order={3}>Banco em Branco</Title>
-                      <Text size="xs" c="dimmed">
-                        Recomendado para produção
-                      </Text>
-                    </div>
-                  </Group>
-                  <Text size="sm" c="dimmed" mt="xs">
-                    Inicie com um catálogo 100% limpo para cadastrar seus próprios produtos, fornecedores e criar suas primeiras rodadas de cotação.
-                  </Text>
-                </div>
-
-                <Button
-                  size="md"
-                  color="blue"
-                  variant="filled"
-                  leftSection={<IconPlus size={18} />}
-                  onClick={handleCriarEmBranco}
-                  loading={loading}
-                  mt="xl"
-                  fullWidth
-                >
-                  Iniciar com Banco Vazio
-                </Button>
-              </Stack>
-            </Card>
-
-            {/* Opção 2: Importar Backup Existente */}
-            <Card withBorder shadow="sm" radius="md" p="xl">
-              <Stack justify="space-between" h="100%">
-                <div>
-                  <Group gap="xs" mb="sm">
-                    <ThemeIcon color="teal" variant="light" size="xl" radius="md">
-                      <IconDatabaseImport size={24} />
-                    </ThemeIcon>
-                    <div>
-                      <Title order={3}>Restaurar Backup</Title>
-                      <Text size="xs" c="dimmed">
-                        Importar arquivo .db existente
-                      </Text>
-                    </div>
-                  </Group>
-                  <Text size="sm" c="dimmed" mt="xs" mb="sm">
-                    Carregue um arquivo de cópia de segurança salvo anteriormente no seu computador com todo o histórico e cadastros.
-                  </Text>
-
-                  <FileInput
-                    placeholder="Selecione o arquivo .db"
-                    accept=".db,.sqlite"
-                    value={arquivoImportar}
-                    onChange={setArquivoImportar}
-                    size="xs"
-                  />
-                </div>
-
-                <Button
-                  size="md"
-                  color="teal"
-                  variant="filled"
-                  leftSection={<IconDatabaseImport size={18} />}
-                  onClick={handleImportarBackup}
-                  disabled={!arquivoImportar}
-                  loading={loading}
-                  mt="xl"
-                  fullWidth
-                >
-                  Restaurar e Abrir
-                </Button>
-              </Stack>
-            </Card>
-          </SimpleGrid>
-
-          <Divider label="Ou use dados fictícios para explorar" labelPosition="center" style={{ width: '100%' }} />
-
-          {/* Opção 3: Dados de Teste & Demonstração (Discreto / Menos Chamativo) */}
-          <Paper withBorder p="md" radius="md" style={{ width: '100%' }}>
-            <Group justify="space-between" align="center">
-              <div>
-                <Group gap="xs">
-                  <ThemeIcon color="gray" variant="light" size="md" radius="sm">
-                    <IconFlask size={16} />
-                  </ThemeIcon>
-                  <Text fw={600} size="sm">
-                    Carregar Banco de Dados de Demonstração & Testes
-                  </Text>
-                </Group>
-                <Text size="xs" c="dimmed" mt={4}>
-                  Popula o sistema com 50 produtos em 6 categorias, 8 fornecedores, 3 rodadas fechadas (histórico de preços) e 1 rodada aberta em andamento com cotações e alocações.
-                </Text>
-              </div>
-
-              <Button
-                variant="subtle"
-                color="gray"
-                size="sm"
-                leftSection={<IconSparkles size={14} />}
-                onClick={handleCarregarDemo}
-                loading={loading}
+    <Box
+      style={{
+        width: '100%',
+        height: '100vh',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+      }}
+    >
+      <Box
+        style={{
+          minHeight: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 'clamp(16px, 3vh, 36px) clamp(12px, 3vw, 24px)',
+        }}
+      >
+        <Container size="md" p={0} style={{ width: '100%', maxWidth: 740 }}>
+          <Stack gap="md" align="center">
+            {/* Cabeçalho de Boas-Vindas */}
+            <Stack align="center" gap={6} style={{ textAlign: 'center' }}>
+              <ThemeIcon
+                size={52}
+                radius="xl"
+                variant="filled"
+                color={themeColor}
+                style={{ boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)' }}
               >
-                Carregar Dados de Teste
-              </Button>
-            </Group>
-          </Paper>
-        </Stack>
-      </Container>
-    </Center>
+                <IconScale size={28} />
+              </ThemeIcon>
+              <Title order={1} fz={{ base: 20, sm: 26 }} fw={700}>
+                {appNome}
+              </Title>
+              <Text size="sm" c="dimmed" style={{ maxWidth: 480 }}>
+                {appSubtitulo}
+              </Text>
+              <Badge variant="light" color={themeColor} size="sm" mt={2}>
+                Primeiro Acesso • Configuração Inicial
+              </Badge>
+            </Stack>
+
+            <Text size="xs" c="dimmed" ta="center" style={{ maxWidth: 520 }}>
+              Para começar a utilizar o sistema, escolha como deseja inicializar o seu banco de dados local SQLite:
+            </Text>
+
+            {/* Cards de Escolha Principal */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={{ base: 'xs', sm: 'md' }} style={{ width: '100%' }}>
+              {/* Opção 1: Criar Banco em Branco */}
+              <Card withBorder shadow="sm" radius="md" p={{ base: 'sm', sm: 'md' }}>
+                <Stack justify="space-between" h="100%" gap="md">
+                  <div>
+                    <Group gap="xs" mb="xs">
+                      <ThemeIcon color="blue" variant="light" size="lg" radius="md">
+                        <IconPlus size={20} />
+                      </ThemeIcon>
+                      <div>
+                        <Title order={3} fz="sm" fw={700}>
+                          Banco em Branco
+                        </Title>
+                        <Text size="11px" c="dimmed">
+                          Recomendado para produção
+                        </Text>
+                      </div>
+                    </Group>
+                    <Text size="xs" c="dimmed" style={{ lineHeight: 1.4 }}>
+                      Inicie com um catálogo 100% limpo para cadastrar seus próprios produtos, fornecedores e criar suas primeiras rodadas de cotação.
+                    </Text>
+                  </div>
+
+                  <Button
+                    size="xs"
+                    color="blue"
+                    variant="filled"
+                    leftSection={<IconPlus size={16} />}
+                    onClick={handleCriarEmBranco}
+                    loading={loading}
+                    fullWidth
+                  >
+                    Iniciar com Banco Vazio
+                  </Button>
+                </Stack>
+              </Card>
+
+              {/* Opção 2: Importar Backup Existente */}
+              <Card withBorder shadow="sm" radius="md" p={{ base: 'sm', sm: 'md' }}>
+                <Stack justify="space-between" h="100%" gap="md">
+                  <div>
+                    <Group gap="xs" mb="xs">
+                      <ThemeIcon color="teal" variant="light" size="lg" radius="md">
+                        <IconDatabaseImport size={20} />
+                      </ThemeIcon>
+                      <div>
+                        <Title order={3} fz="sm" fw={700}>
+                          Restaurar Backup
+                        </Title>
+                        <Text size="11px" c="dimmed">
+                          Importar arquivo .db existente
+                        </Text>
+                      </div>
+                    </Group>
+                    <Text size="xs" c="dimmed" mb="xs" style={{ lineHeight: 1.4 }}>
+                      Carregue uma cópia de segurança salva anteriormente (.db ou .sqlite) com todo o histórico e cadastros.
+                    </Text>
+
+                    <FileInput
+                      placeholder="Selecione o arquivo .db"
+                      accept=".db,.sqlite"
+                      value={arquivoImportar}
+                      onChange={setArquivoImportar}
+                      size="xs"
+                      clearable
+                    />
+                  </div>
+
+                  <Button
+                    size="xs"
+                    color="teal"
+                    variant="filled"
+                    leftSection={<IconDatabaseImport size={16} />}
+                    onClick={handleImportarBackup}
+                    disabled={!arquivoImportar}
+                    loading={loading}
+                    fullWidth
+                  >
+                    Restaurar e Abrir
+                  </Button>
+                </Stack>
+              </Card>
+            </SimpleGrid>
+
+            <Divider label="Ou use dados fictícios para explorar" labelPosition="center" style={{ width: '100%' }} />
+
+            {/* Opção 3: Dados de Teste & Demonstração (Discreto / Menos Chamativo) */}
+            <Paper withBorder p={{ base: 'xs', sm: 'sm' }} radius="md" style={{ width: '100%' }}>
+              <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                <div style={{ flex: 1, minWidth: 260 }}>
+                  <Group gap={6}>
+                    <ThemeIcon color="gray" variant="light" size="sm" radius="xs">
+                      <IconFlask size={14} />
+                    </ThemeIcon>
+                    <Text fw={600} size="xs">
+                      Carregar Banco de Demonstração & Testes
+                    </Text>
+                  </Group>
+                  <Text size="11px" c="dimmed" mt={2} style={{ lineHeight: 1.35 }}>
+                    Popula o sistema com 50 produtos em 6 categorias, 8 fornecedores, 3 rodadas fechadas e 1 rodada aberta com cotações e alocações.
+                  </Text>
+                </div>
+
+                <Button
+                  variant="subtle"
+                  color="gray"
+                  size="xs"
+                  leftSection={<IconSparkles size={14} />}
+                  onClick={handleCarregarDemo}
+                  loading={loading}
+                  style={{ flexShrink: 0 }}
+                >
+                  Carregar Dados de Teste
+                </Button>
+              </Group>
+            </Paper>
+          </Stack>
+        </Container>
+      </Box>
+    </Box>
   )
 }
 
