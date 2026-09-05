@@ -1,0 +1,48 @@
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "frontend",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",  # Comprimento de linha flexível
+    "E402",  # Permite imports condicionais / pós-sys.path
+    "E722",  # Permite except genérico onde há fallbacks seguros de GUI/Win32
+    "W291",  # Espaço em branco em strings multi-linha SQL
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/db.py" = ["F401"]
+"backend/**/__init__.py" = ["F401"]
+"tests/*" = ["F841", "E402", "F811"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v"
+
+[tool.coverage.run]
+source = ["backend", "app.py"]
+omit = [
+    "tests/*",
+    "build.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "def _do_shutdown",
+    "raise NotImplementedError",
+]

@@ -4,10 +4,10 @@ import re
 import sqlite3
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-
 
 # Estilos padrão com identidade visual profissional e consistente
 HEADER_FILL = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")  # Azul institucional elegante
@@ -32,7 +32,7 @@ ROW_ODD_FILL = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="
 def _sanitize_filename(text: str) -> str:
     """Higieniza string para uso seguro como nome de arquivo no Windows/Linux."""
     safe = re.sub(r'[\\/*?:"<>|]', "", text).strip()
-    safe = re.sub(r'\s+', '_', safe)
+    safe = re.sub(r"\s+", "_", safe)
     return safe or "planilha"
 
 
@@ -110,18 +110,20 @@ def generate_quote_template_excel(
             (id_rodada,),
         )
         for r in cursor.fetchall():
-            itens_exportacao.append({
-                "id": "-",
-                "produto_nome": r["produto_nome"],
-                "produto_categoria": r["produto_categoria"] or "-",
-                "fornecedor_nome": fornecedor_nome or "-",
-                "marca": "-",
-                "embalagem": "-",
-                "qtd_por_embalagem": 1.0,
-                "unidade": "UN",
-                "preco_embalagem": None,
-                "preco_unitario": None,
-            })
+            itens_exportacao.append(
+                {
+                    "id": "-",
+                    "produto_nome": r["produto_nome"],
+                    "produto_categoria": r["produto_categoria"] or "-",
+                    "fornecedor_nome": fornecedor_nome or "-",
+                    "marca": "-",
+                    "embalagem": "-",
+                    "qtd_por_embalagem": 1.0,
+                    "unidade": "UN",
+                    "preco_embalagem": None,
+                    "preco_unitario": None,
+                }
+            )
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -418,8 +420,12 @@ def process_quote_excel(
         except (ValueError, TypeError):
             qtd_emb = 1.0
 
-        marca_desc = str(marca_val).strip() if marca_val and str(marca_val).strip() and str(marca_val).strip() != "-" else None
-        embalagem_desc = str(embalagem_val).strip() if embalagem_val and str(embalagem_val).strip() != "-" else "Unidade"
+        marca_desc = (
+            str(marca_val).strip() if marca_val and str(marca_val).strip() and str(marca_val).strip() != "-" else None
+        )
+        embalagem_desc = (
+            str(embalagem_val).strip() if embalagem_val and str(embalagem_val).strip() != "-" else "Unidade"
+        )
         unidade_desc = str(unidade_val).strip().upper() if unidade_val and str(unidade_val).strip() != "-" else "UN"
 
         # Insere ou atualiza na tabela de cotações

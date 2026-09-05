@@ -4,9 +4,10 @@ import socket
 import tempfile
 import unittest
 import urllib.request
+
 from backend.api import Api
 from backend.db import init_db
-from backend.server import start_http_server, is_server_already_running
+from backend.server import is_server_already_running, start_http_server
 
 
 def get_free_port() -> int:
@@ -112,14 +113,12 @@ class TestHttpServer(unittest.TestCase):
             headers={"Content-Type": "application/json"},
         )
         try:
-            with urllib.request.urlopen(req, timeout=2.0) as resp:
+            with urllib.request.urlopen(req, timeout=2.0):
                 self.fail("Deveria ter retornado HTTP 404")
         except urllib.error.HTTPError as e:
             self.assertEqual(e.code, 404)
             data = json.loads(e.read().decode("utf-8"))
             self.assertFalse(data.get("sucesso"))
-
-
 
     def test_options_cors_preflight(self):
         """Valida que requisições OPTIONS retornam 200 com cabeçalhos CORS."""
@@ -190,11 +189,13 @@ class TestHttpServer(unittest.TestCase):
     def test_send_json_serialization_error_and_logging(self):
         """Valida fallback de erro de serialização em _send_json e flag --debug."""
         import sys
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
+
         from backend.server import CotacaoHTTPRequestHandler
 
         class DummyCotacaoHandler(CotacaoHTTPRequestHandler):
-            def __init__(self): pass
+            def __init__(self):
+                pass
 
         dh = DummyCotacaoHandler()
         CotacaoHTTPRequestHandler._send_json(dh, {"objeto": object()})
@@ -209,6 +210,7 @@ class TestHttpServer(unittest.TestCase):
         """Valida inicialização do servidor com api_instance=None e o loop do watchdog."""
         import time
         from unittest.mock import patch
+
         import backend.server as server
         from backend.server import _heartbeat_watchdog_loop, start_http_server
 

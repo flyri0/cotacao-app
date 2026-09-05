@@ -1,7 +1,9 @@
 import os
 import sqlite3
 from typing import Optional
+
 from backend.core.config import get_db_path
+
 
 def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     """Retorna uma conexão com o banco SQLite configurada com suporte a chaves estrangeiras e alta performance."""
@@ -19,7 +21,6 @@ def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     conn.execute("PRAGMA cache_size = -64000;")
     conn.execute("PRAGMA temp_store = MEMORY;")
     return conn
-
 
 
 class DatabaseLock:

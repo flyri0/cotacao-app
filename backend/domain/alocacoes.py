@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
 def list_allocations_db(conn: sqlite3.Connection, id_rodada: int) -> List[Dict[str, Any]]:
@@ -59,9 +59,7 @@ def list_allocations_db(conn: sqlite3.Connection, id_rodada: int) -> List[Dict[s
     return rows
 
 
-def save_allocations_db(
-    conn: sqlite3.Connection, id_rodada: int, alocacoes: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+def save_allocations_db(conn: sqlite3.Connection, id_rodada: int, alocacoes: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Salva todas as alocações da rodada em lote, substituindo as anteriores de forma atômica."""
     from backend.domain.rodadas import verificar_rodada_aberta
 

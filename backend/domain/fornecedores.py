@@ -1,5 +1,6 @@
 import sqlite3
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 
 def get_supplier_statistics_db(conn: sqlite3.Connection, id_fornecedor: int) -> Dict[str, Any]:
     """Calcula indicadores de volume, histórico de ofertas e taxa de competitividade de um fornecedor."""
@@ -109,6 +110,7 @@ def get_supplier_statistics_db(conn: sqlite3.Connection, id_fornecedor: int) -> 
         "alocacoes_historico": alocacoes,
     }
 
+
 def update_supplier_db(
     conn: sqlite3.Connection,
     id_fornecedor: int,
@@ -159,6 +161,7 @@ def update_supplier_db(
     )
     return dict(cursor.fetchone())
 
+
 def verificar_historico_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: int) -> Dict[str, int]:
     """Retorna a contagem de registros vinculados a um fornecedor em cotações e alocações."""
     cursor = conn.cursor()
@@ -172,9 +175,8 @@ def verificar_historico_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: i
         "total": cot + aloc,
     }
 
-def alternar_status_fornecedor_db(
-    conn: sqlite3.Connection, id_fornecedor: int, ativo: Optional[int] = None
-) -> bool:
+
+def alternar_status_fornecedor_db(conn: sqlite3.Connection, id_fornecedor: int, ativo: Optional[int] = None) -> bool:
     """Alterna ou define explicitamente o status ativo (1 ou 0) de um fornecedor."""
     cursor = conn.cursor()
     if ativo is None:
@@ -191,11 +193,12 @@ def alternar_status_fornecedor_db(
     return cursor.rowcount > 0
 
 
-
 def list_suppliers_db(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
     """Lista todos os fornecedores cadastrados ordenados por nome."""
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome, contato, telefone, email, pedido_minimo, ativo FROM fornecedores ORDER BY nome ASC")
+    cursor.execute(
+        "SELECT id, nome, contato, telefone, email, pedido_minimo, ativo FROM fornecedores ORDER BY nome ASC"
+    )
     return [dict(row) for row in cursor.fetchall()]
 
 

@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import unittest
+
 from backend.api import Api
 from backend.db import create_schema, seed_data
 
@@ -10,6 +11,7 @@ class TestApi(unittest.TestCase):
         """Cria um banco de dados em memória para testes isolados da Api."""
         import tempfile
         from unittest.mock import patch
+
         self._temp_cfg_fd, self._temp_cfg_path = tempfile.mkstemp(suffix=".json")
         os.close(self._temp_cfg_fd)
         self._cfg_patch1 = patch("backend.core.config.get_app_config_path", return_value=self._temp_cfg_path)
@@ -64,8 +66,8 @@ class TestApi(unittest.TestCase):
     # Testes de Backup em Caminho
     # -------------------------------------------------------------------------
     def test_salvar_backup_em_caminho_api(self) -> None:
-        import tempfile
         import os
+        import tempfile
 
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             temp_db = f.name
@@ -92,7 +94,7 @@ class TestApi(unittest.TestCase):
                 if os.path.exists(dest_path):
                     os.remove(dest_path)
         finally:
-            if 'api_temp' in locals():
+            if "api_temp" in locals():
                 api_temp._release_lock()
             if os.path.exists(temp_db):
                 os.remove(temp_db)
@@ -168,9 +170,7 @@ class TestApi(unittest.TestCase):
         self.assertIn("ativo", produtos[0])
 
     def test_criar_e_remover_produto(self) -> None:
-        novo = self.api.create_product(
-            nome="Luva Nitrílica Descartável Tam M", categoria="Higiene"
-        )
+        novo = self.api.create_product(nome="Luva Nitrílica Descartável Tam M", categoria="Higiene")
         self.assertIsNotNone(novo.get("id"))
         self.assertEqual(novo["nome"], "Luva Nitrílica Descartável Tam M")
         self.assertEqual(novo["categoria"], "Higiene")
@@ -678,8 +678,8 @@ class TestApi(unittest.TestCase):
     # Testes de Persistência do Último Banco e File Lock
     # -------------------------------------------------------------------------
     def test_banco_inexistente_retorna_nao_inicializado(self) -> None:
-        import tempfile
         import os
+        import tempfile
 
         # Cria um caminho temporário de um arquivo que NÃO existe
         caminho_inexistente = os.path.join(tempfile.gettempdir(), "banco_inexistente_test_9999.db")
@@ -691,10 +691,11 @@ class TestApi(unittest.TestCase):
         self.assertFalse(status["inicializado"])
 
     def test_salvar_e_obter_ultimo_banco_path(self) -> None:
-        import tempfile
         import os
+        import tempfile
         from unittest.mock import patch
-        from backend.db import set_last_db_path, get_last_db_path
+
+        from backend.db import get_last_db_path, set_last_db_path
 
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             temp_db = f.name
@@ -714,8 +715,8 @@ class TestApi(unittest.TestCase):
                 os.remove(temp_cfg)
 
     def test_trava_arquivo_em_uso_impede_delecao(self) -> None:
-        import tempfile
         import os
+        import tempfile
 
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             temp_db = f.name
@@ -758,16 +759,18 @@ class TestApi(unittest.TestCase):
 
     def test_execute_auto_backup_sucesso_e_integridade(self) -> None:
         """Verifica que o backup automático gera arquivo SQLite íntegro e atualiza configs."""
-        import tempfile
         import shutil
+        import tempfile
 
         temp_backup_dir = tempfile.mkdtemp(prefix="cotacao_backup_test_")
         try:
-            self.api.save_settings({
-                "backup_auto_ativo": "1",
-                "backup_auto_diretorio": temp_backup_dir,
-                "backup_auto_max_arquivos": "5",
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ativo": "1",
+                    "backup_auto_diretorio": temp_backup_dir,
+                    "backup_auto_max_arquivos": "5",
+                }
+            )
 
             res = self.api.execute_auto_backup(origem_gatilho="teste")
             self.assertTrue(res["sucesso"])
@@ -792,18 +795,20 @@ class TestApi(unittest.TestCase):
 
     def test_execute_auto_backup_rotacao_arquivos(self) -> None:
         """Verifica que o número de backups mantidos respeita o limite de retenção configurado."""
-        import tempfile
         import shutil
+        import tempfile
         import time
 
         temp_backup_dir = tempfile.mkdtemp(prefix="cotacao_rotacao_test_")
         try:
             limite_max = 3
-            self.api.save_settings({
-                "backup_auto_ativo": "1",
-                "backup_auto_diretorio": temp_backup_dir,
-                "backup_auto_max_arquivos": str(limite_max),
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ativo": "1",
+                    "backup_auto_diretorio": temp_backup_dir,
+                    "backup_auto_max_arquivos": str(limite_max),
+                }
+            )
 
             # Gera 5 backups sequenciais simulados
             for i in range(5):
@@ -820,8 +825,7 @@ class TestApi(unittest.TestCase):
 
             # Lista arquivos de backup no diretório
             arquivos = [
-                f for f in os.listdir(temp_backup_dir)
-                if f.startswith("backup_auto_cotacao_") and f.endswith(".db")
+                f for f in os.listdir(temp_backup_dir) if f.startswith("backup_auto_cotacao_") and f.endswith(".db")
             ]
             self.assertLessEqual(len(arquivos), limite_max)
         finally:
@@ -829,26 +833,30 @@ class TestApi(unittest.TestCase):
 
     def test_check_auto_backup_trigger(self) -> None:
         """Testa acionamento por gatilho condicional (abertura, fechamento, etc.)."""
-        import tempfile
         import shutil
+        import tempfile
 
         temp_backup_dir = tempfile.mkdtemp(prefix="cotacao_trigger_test_")
         try:
             # 1. Com backup desativado -> não deve executar
-            self.api.save_settings({
-                "backup_auto_ativo": "0",
-                "backup_auto_diretorio": temp_backup_dir,
-                "backup_auto_gatilho": "abertura",
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ativo": "0",
+                    "backup_auto_diretorio": temp_backup_dir,
+                    "backup_auto_gatilho": "abertura",
+                }
+            )
             res_desativado = self.api.check_auto_backup_trigger("abertura")
             self.assertIsNone(res_desativado)
 
             # 2. Com backup ativo para 'abertura' -> acionamento por 'fechamento' não deve rodar
-            self.api.save_settings({
-                "backup_auto_ativo": "1",
-                "backup_auto_diretorio": temp_backup_dir,
-                "backup_auto_gatilho": "abertura",
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ativo": "1",
+                    "backup_auto_diretorio": temp_backup_dir,
+                    "backup_auto_gatilho": "abertura",
+                }
+            )
             res_outro_gatilho = self.api.check_auto_backup_trigger("fechamento")
             self.assertIsNone(res_outro_gatilho)
 
@@ -863,10 +871,12 @@ class TestApi(unittest.TestCase):
         """Verifica que diretório sem permissão de escrita gera erro e registra status de falha."""
         from unittest.mock import patch
 
-        self.api.save_settings({
-            "backup_auto_ativo": "1",
-            "backup_auto_diretorio": "C:\\diretorio_sem_permissao_test_999",
-        })
+        self.api.save_settings(
+            {
+                "backup_auto_ativo": "1",
+                "backup_auto_diretorio": "C:\\diretorio_sem_permissao_test_999",
+            }
+        )
 
         with patch("os.makedirs", side_effect=PermissionError("Acesso negado")):
             with self.assertRaises(PermissionError):
@@ -875,18 +885,19 @@ class TestApi(unittest.TestCase):
         configs = self.api.get_settings()
         self.assertTrue(configs.get("backup_auto_ultimo_status", "").startswith("Falha"))
 
-
-
     # -------------------------------------------------------------------------
     # Testes Abrangentes de Cobertura da API (Fase 2)
     # -------------------------------------------------------------------------
     def test_db_path_and_lock_handling(self) -> None:
         """Testa caminhos do banco, aquisição e liberação de locks de arquivo."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
+
         from backend.api import Api
 
         # Api sem caminho explícito
-        with patch("backend.api.get_last_db_path", return_value=None), patch("backend.api.get_default_db_path", return_value="dummy_default.db"):
+        with patch("backend.api.get_last_db_path", return_value=None), patch(
+            "backend.api.get_default_db_path", return_value="dummy_default.db"
+        ):
             api_temp = Api()
             self.assertEqual(api_temp.db_path, "dummy_default.db")
 
@@ -908,6 +919,7 @@ class TestApi(unittest.TestCase):
         """Testa check_db_status quando o último banco existe no disco."""
         import tempfile
         from unittest.mock import patch
+
         from backend.api import Api
         from backend.db import init_db, seed_data
 
@@ -934,9 +946,11 @@ class TestApi(unittest.TestCase):
 
     def test_export_database_and_salvar_backup_em_caminho_errors(self) -> None:
         """Testa exportação e salvamento de backup com validações de erro."""
-        import uuid
         import tempfile
+        import uuid
+
         from backend.api import Api
+
         path_inexistente = os.path.join(tempfile.gettempdir(), f"non_existent_{uuid.uuid4().hex}.db")
         api_inexistente = Api(path_inexistente)
 
@@ -954,7 +968,9 @@ class TestApi(unittest.TestCase):
 
         # _salvar_backup_em_caminho com criação de pasta pai e arquivo existente
         import shutil
+
         from backend.db import init_db
+
         temp_dir = tempfile.mkdtemp()
         db_file = os.path.join(temp_dir, "origem.db")
         conn = init_db(db_file)
@@ -971,13 +987,13 @@ class TestApi(unittest.TestCase):
 
     def test_select_location_and_save_backup_dialogs(self) -> None:
         """Testa diálogos nativos e webview para salvar backup."""
-        import sys
-        import uuid
-        from unittest.mock import patch, MagicMock
-        from backend.api import Api
-
-        import tempfile
         import shutil
+        import sys
+        import tempfile
+        import uuid
+        from unittest.mock import MagicMock, patch
+
+        from backend.api import Api
         from backend.db import init_db
 
         path_inexistente = os.path.join(tempfile.gettempdir(), f"non_existent_{uuid.uuid4().hex}.db")
@@ -1012,7 +1028,11 @@ class TestApi(unittest.TestCase):
             # Mock sem webview windows -> fallback export_database
             mock_webview.windows = []
             with patch.dict(sys.modules, {"webview": mock_webview}):
-                with patch.object(api_dialog, "export_database", return_value={"sucesso": True, "nome_arquivo": "b.db", "conteudo_base64": "abc"}):
+                with patch.object(
+                    api_dialog,
+                    "export_database",
+                    return_value={"sucesso": True, "nome_arquivo": "b.db", "conteudo_base64": "abc"},
+                ):
                     res_fallback = api_dialog.select_location_and_save_backup()
                     self.assertTrue(res_fallback["sucesso"])
 
@@ -1030,7 +1050,7 @@ class TestApi(unittest.TestCase):
         """Testa select_backup_directory com webview, tkinter e permissões."""
         import sys
         import tempfile
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
 
         temp_dir = tempfile.mkdtemp()
         try:
@@ -1068,22 +1088,25 @@ class TestApi(unittest.TestCase):
                         self.assertIn("Sem permissão", res_perm["mensagem"])
         finally:
             import shutil
+
             shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_execute_auto_backup_rotation_and_errors(self) -> None:
         """Testa rotação de backups excedentes, configurações inválidas e tratamento de erros."""
-        import tempfile
         import shutil
-        from unittest.mock import patch, MagicMock
+        import tempfile
+        from unittest.mock import patch
 
         temp_dir = tempfile.mkdtemp()
         try:
             # max_arquivos inválido ou menor que 1 (fallback para 10)
-            self.api.save_settings({
-                "backup_auto_ativo": "1",
-                "backup_auto_diretorio": temp_dir,
-                "backup_auto_max_arquivos": "-5",
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ativo": "1",
+                    "backup_auto_diretorio": temp_dir,
+                    "backup_auto_max_arquivos": "-5",
+                }
+            )
             res = self.api.execute_auto_backup()
             self.assertTrue(res["sucesso"])
 
@@ -1100,59 +1123,71 @@ class TestApi(unittest.TestCase):
 
     def test_check_auto_backup_trigger_conditions(self) -> None:
         """Testa condições do gatilho periódico e gatilho 'sempre'."""
-        import tempfile
         import shutil
+        import tempfile
         from datetime import datetime, timedelta
 
         temp_dir = tempfile.mkdtemp()
         try:
             # Sem diretório configurado -> None
-            self.api.save_settings({
-                "backup_auto_ativo": "1",
-                "backup_auto_diretorio": "   ",
-                "backup_auto_gatilho": "abertura",
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ativo": "1",
+                    "backup_auto_diretorio": "   ",
+                    "backup_auto_gatilho": "abertura",
+                }
+            )
             self.assertIsNone(self.api.check_auto_backup_trigger("abertura"))
 
             # Gatilho 'sempre'
-            self.api.save_settings({
-                "backup_auto_ativo": "1",
-                "backup_auto_diretorio": temp_dir,
-                "backup_auto_gatilho": "sempre",
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ativo": "1",
+                    "backup_auto_diretorio": temp_dir,
+                    "backup_auto_gatilho": "sempre",
+                }
+            )
             res_sempre = self.api.check_auto_backup_trigger("qualquer")
             self.assertIsNotNone(res_sempre)
 
             # Gatilho periódico com tempo decorrido
             tempo_antigo = (datetime.now() - timedelta(hours=6)).strftime("%d/%m/%Y %H:%M:%S")
-            self.api.save_settings({
-                "backup_auto_ativo": "1",
-                "backup_auto_diretorio": temp_dir,
-                "backup_auto_gatilho": "periodico",
-                "backup_auto_intervalo_horas": "4",
-                "backup_auto_ultimo_sucesso": tempo_antigo,
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ativo": "1",
+                    "backup_auto_diretorio": temp_dir,
+                    "backup_auto_gatilho": "periodico",
+                    "backup_auto_intervalo_horas": "4",
+                    "backup_auto_ultimo_sucesso": tempo_antigo,
+                }
+            )
             res_per = self.api.check_auto_backup_trigger("periodico")
             self.assertIsNotNone(res_per)
 
             # Gatilho periódico sem tempo suficiente decorrido -> None
             tempo_recente = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            self.api.save_settings({
-                "backup_auto_gatilho": "periodico",
-                "backup_auto_ultimo_sucesso": tempo_recente,
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_gatilho": "periodico",
+                    "backup_auto_ultimo_sucesso": tempo_recente,
+                }
+            )
             self.assertIsNone(self.api.check_auto_backup_trigger("periodico"))
 
             # Gatilho periódico com data corrompida -> deve executar
-            self.api.save_settings({
-                "backup_auto_ultimo_sucesso": "data_invalida",
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_ultimo_sucesso": "data_invalida",
+                }
+            )
             self.assertIsNotNone(self.api.check_auto_backup_trigger("periodico"))
 
             # _on_app_exit executando fechamento
-            self.api.save_settings({
-                "backup_auto_gatilho": "fechamento",
-            })
+            self.api.save_settings(
+                {
+                    "backup_auto_gatilho": "fechamento",
+                }
+            )
             self.api._on_app_exit()
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -1161,6 +1196,7 @@ class TestApi(unittest.TestCase):
         """Testa importação e restauração de banco SQLite com verificação de integridade."""
         import base64
         import tempfile
+
         from backend.api import Api
         from backend.db import init_db
 
@@ -1338,7 +1374,7 @@ class TestApi(unittest.TestCase):
         """Testa exportação de planilhas com diálogo e encerramento do sistema."""
         import sys
         import tempfile
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
 
         temp_dir = tempfile.mkdtemp()
         try:
@@ -1373,16 +1409,16 @@ class TestApi(unittest.TestCase):
                 self.assertTrue(res_exit["sucesso"])
         finally:
             import shutil
+
             shutil.rmtree(temp_dir, ignore_errors=True)
-
-
 
     def test_api_edge_cases_and_cleanups(self) -> None:
         """Testa casos de borda restantes para atingir cobertura máxima em api.py."""
-        import tempfile
         import os
         import sys
-        from unittest.mock import patch, MagicMock
+        import tempfile
+        from unittest.mock import MagicMock, patch
+
         from backend.api import Api
         from backend.db import init_db
 
@@ -1471,11 +1507,13 @@ class TestApi(unittest.TestCase):
             # execute_auto_backup com max_arquivos inválido e falha de escrita teste (linhas 339-340, 356-359)
             temp_b_dir = tempfile.mkdtemp()
             try:
-                api_real.save_settings({
-                    "backup_auto_ativo": "1",
-                    "backup_auto_diretorio": temp_b_dir,
-                    "backup_auto_max_arquivos": "invalido",
-                })
+                api_real.save_settings(
+                    {
+                        "backup_auto_ativo": "1",
+                        "backup_auto_diretorio": temp_b_dir,
+                        "backup_auto_max_arquivos": "invalido",
+                    }
+                )
                 with patch("builtins.open", side_effect=PermissionError("Sem permissao")):
                     with self.assertRaises(PermissionError):
                         api_real.execute_auto_backup()
@@ -1487,6 +1525,7 @@ class TestApi(unittest.TestCase):
                         f.write(b"rot")
 
                 orig_remove = os.remove
+
                 def selective_rm(p):
                     if "backup_auto_cotacao_20260101_" in p:
                         raise PermissionError("Erro remove")
@@ -1496,11 +1535,13 @@ class TestApi(unittest.TestCase):
                     api_real.execute_auto_backup()
 
                 # check_auto_backup_trigger com intervalo inválido e último sucesso vazio (linhas 454-455, 459, 472-476)
-                api_real.save_settings({
-                    "backup_auto_gatilho": "periodico",
-                    "backup_auto_intervalo_horas": "nao_numero",
-                    "backup_auto_ultimo_sucesso": "",
-                })
+                api_real.save_settings(
+                    {
+                        "backup_auto_gatilho": "periodico",
+                        "backup_auto_intervalo_horas": "nao_numero",
+                        "backup_auto_ultimo_sucesso": "",
+                    }
+                )
                 self.assertIsNotNone(api_real.check_auto_backup_trigger("periodico"))
 
                 with patch.object(api_real, "_get_connection", side_effect=sqlite3.OperationalError("db locked")):
@@ -1547,6 +1588,7 @@ class TestApi(unittest.TestCase):
                     mock_exit.assert_called_once_with(0)
             finally:
                 import shutil
+
                 shutil.rmtree(temp_b_dir, ignore_errors=True)
 
         finally:
@@ -1659,8 +1701,8 @@ class TestApi(unittest.TestCase):
 
         q_list = {q["id"]: q for q in self.api.list_quotes(id_rodada=4)}
         self.assertEqual(q_list[c1["id"]]["marca"], "Marca Unificada")
-        self.assertEqual(q_list[c1["id"]]["preco_embalagem"], 110.0) # 100 + 10%
-        self.assertEqual(q_list[c2["id"]]["preco_embalagem"], 220.0) # 200 + 10%
+        self.assertEqual(q_list[c1["id"]]["preco_embalagem"], 110.0)  # 100 + 10%
+        self.assertEqual(q_list[c2["id"]]["preco_embalagem"], 220.0)  # 200 + 10%
 
         # Teste batch_update_quotes caso vazio
         self.assertEqual(self.api.batch_update_quotes([], {})["atualizados"], 0)
@@ -1702,7 +1744,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(up_to_date["tags"], [])
 
         # Criar produto deve incrementar revisão e incluir tag 'products'
-        prod = self.api.create_product("Produto Teste Sync")
+        _ = self.api.create_product("Produto Teste Sync")
         after_prod = self.api.get_sync_status(rev0)
         self.assertEqual(after_prod["current_revision"], rev0 + 1)
         self.assertIn("products", after_prod["tags"])
@@ -1723,6 +1765,3 @@ class TestApi(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-

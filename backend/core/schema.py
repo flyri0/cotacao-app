@@ -1,11 +1,12 @@
 import os
 import sqlite3
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from backend.core.config import get_db_path, DEFAULT_DB_NAME
+from backend.core.config import get_db_path
 from backend.core.database import get_connection
 
 DB_PATH = get_db_path()
+
 
 def create_schema(conn: sqlite3.Connection) -> None:
     """Cria as tabelas do sistema se não existirem e aplica migrações automáticas."""
@@ -20,7 +21,7 @@ def create_schema(conn: sqlite3.Connection) -> None:
             conn.execute("PRAGMA foreign_keys = OFF;")
             cursor.execute("ALTER TABLE produtos ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1")
             cursor.execute("ALTER TABLE fornecedores ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1")
-            
+
             # Renomeia tabelas com CASCADE para recriá-las com o novo schema
             for table in ["necessidades", "cotacoes", "alocacoes"]:
                 cursor.execute(f"ALTER TABLE {table} RENAME TO {table}_old")
@@ -32,7 +33,9 @@ def create_schema(conn: sqlite3.Connection) -> None:
         cursor.execute("PRAGMA table_info(necessidades)")
         nec_cols = [row["name"] for row in cursor.fetchall()]
         if "id_fornecedor_selecionado" not in nec_cols:
-            cursor.execute("ALTER TABLE necessidades ADD COLUMN id_fornecedor_selecionado INTEGER REFERENCES fornecedores(id) ON DELETE SET NULL")
+            cursor.execute(
+                "ALTER TABLE necessidades ADD COLUMN id_fornecedor_selecionado INTEGER REFERENCES fornecedores(id) ON DELETE SET NULL"
+            )
             conn.commit()
 
     # 2. Criação das tabelas atualizadas (Cria do zero ou usa as que já existem)
@@ -123,6 +126,7 @@ def create_schema(conn: sqlite3.Connection) -> None:
     )
     conn.commit()
 
+
 def check_db_status_db(conn: sqlite3.Connection, db_path: Optional[str] = None) -> Dict[str, Any]:
     """Verifica se o banco de dados já foi inicializado pelo usuário."""
     if db_path and db_path != ":memory:" and not os.path.exists(db_path):
@@ -159,11 +163,14 @@ def check_db_status_db(conn: sqlite3.Connection, db_path: Optional[str] = None) 
         "caminho_banco": db_path or get_db_path(),
     }
 
+
 def initialize_empty_db_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     """Marca o banco como inicializado em branco pronto para produção."""
     from backend.domain.configuracoes import save_db_setting
+
     save_db_setting(conn, "sistema_inicializado", "1")
     return {"sucesso": True, "tipo": "em_branco"}
+
 
 def format_database_db(conn: sqlite3.Connection, com_seed: bool = False) -> bool:
     """
@@ -171,6 +178,7 @@ def format_database_db(conn: sqlite3.Connection, com_seed: bool = False) -> bool
     Se com_seed=True, popula com o modelo demo completo de teste.
     """
     import sys
+
     db_mod = sys.modules.get("db")
     from backend.domain.configuracoes import seed_settings
     from backend.services.demo_service import populate_demo_db_db
@@ -202,14 +210,17 @@ def format_database_db(conn: sqlite3.Connection, com_seed: bool = False) -> bool
 
     return True
 
+
 def reset_db(db_path: Optional[str] = None) -> sqlite3.Connection:
     """Apaga o banco existente e recria o schema com o seed atualizado."""
     import sys
+
     if db_path is None:
         db_path = get_db_path()
 
     db_mod = sys.modules.get("db")
     from backend.services.demo_service import seed_data
+
     get_conn_fn = getattr(db_mod, "get_connection", get_connection)
     create_schema_fn = getattr(db_mod, "create_schema", create_schema)
     seed_data_fn = getattr(db_mod, "seed_data", seed_data)
@@ -225,14 +236,17 @@ def reset_db(db_path: Optional[str] = None) -> sqlite3.Connection:
     seed_data_fn(conn)
     return conn
 
+
 def init_db(db_path: Optional[str] = None) -> sqlite3.Connection:
     """Inicializa o banco de dados: cria o schema e configurações básicas sem injetar dados fictícios automaticamente."""
     import sys
+
     if db_path is None:
         db_path = get_db_path()
 
     db_mod = sys.modules.get("db")
     from backend.domain.configuracoes import seed_settings
+
     get_conn_fn = getattr(db_mod, "get_connection", get_connection)
     create_schema_fn = getattr(db_mod, "create_schema", create_schema)
     seed_settings_fn = getattr(db_mod, "seed_settings", seed_settings)
@@ -241,4 +255,3 @@ def init_db(db_path: Optional[str] = None) -> sqlite3.Connection:
     create_schema_fn(conn)
     seed_settings_fn(conn)
     return conn
-

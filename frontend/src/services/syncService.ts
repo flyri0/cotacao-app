@@ -149,6 +149,7 @@ class SyncManager {
       this.channel = null
     }
     this.initialized = false
+    this.localRevision = 0
   }
 }
 

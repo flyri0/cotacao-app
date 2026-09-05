@@ -1,15 +1,15 @@
 import os
 import sqlite3
 import unittest
+
 from backend.db import (
     create_schema,
+    format_database_db,
+    get_db_settings,
+    get_product_statistics_db,
+    save_db_setting,
     seed_data,
     seed_settings,
-    get_db_settings,
-    save_db_setting,
-    save_all_db_settings,
-    format_database_db,
-    get_product_statistics_db,
 )
 
 
@@ -100,9 +100,7 @@ class TestDatabaseSchema(unittest.TestCase):
         id_prod = cursor.lastrowid
         cursor.execute("INSERT INTO fornecedores (nome) VALUES ('Forn A');")
         id_forn = cursor.lastrowid
-        cursor.execute(
-            "INSERT INTO rodadas (descricao, data_criacao) VALUES ('R1', '2026-08-30');"
-        )
+        cursor.execute("INSERT INTO rodadas (descricao, data_criacao) VALUES ('R1', '2026-08-30');")
         id_rod = cursor.lastrowid
 
         # Inserir cotação de caixa com 24 unidades a R$ 48.00
@@ -134,9 +132,7 @@ class TestDatabaseSchema(unittest.TestCase):
         id_forn1 = cursor.lastrowid
         cursor.execute("INSERT INTO fornecedores (nome) VALUES ('Forn 2');")
         id_forn2 = cursor.lastrowid
-        cursor.execute(
-            "INSERT INTO rodadas (descricao, data_criacao) VALUES ('R1', '2026-08-30');"
-        )
+        cursor.execute("INSERT INTO rodadas (descricao, data_criacao) VALUES ('R1', '2026-08-30');")
         id_rod = cursor.lastrowid
 
         # Linha 1: 70 unidades no Forn 1
@@ -195,8 +191,6 @@ class TestDatabaseSchema(unittest.TestCase):
         cursor.execute("SELECT COUNT(*) FROM alocacoes")
         self.assertGreater(cursor.fetchone()[0], 10)
 
-
-
     def test_schema_legacy_migration(self) -> None:
         """Testa migração de schema legado onde a coluna 'ativo' não existia."""
         mem_conn = sqlite3.connect(":memory:")
@@ -231,6 +225,7 @@ class TestDatabaseSchema(unittest.TestCase):
     def test_check_db_status_non_existent_path(self) -> None:
         """Testa check_db_status_db apontando para caminho inexistente."""
         from backend.db import check_db_status_db
+
         res = check_db_status_db(self.conn, db_path="non_existent_test_12345.db")
         self.assertFalse(res["inicializado"])
         self.assertEqual(res["total_produtos"], 0)
@@ -238,9 +233,10 @@ class TestDatabaseSchema(unittest.TestCase):
     def test_alternar_status_produto_e_fornecedor(self) -> None:
         """Testa alternância de status ativo para produtos e fornecedores."""
         from backend.db import (
-            alternar_status_produto_db,
             alternar_status_fornecedor_db,
+            alternar_status_produto_db,
         )
+
         cursor = self.conn.cursor()
         cursor.execute("INSERT INTO produtos (nome, ativo) VALUES ('Prod Teste', 1)")
         p_id = cursor.lastrowid
@@ -279,6 +275,7 @@ class TestDatabaseSchema(unittest.TestCase):
             get_product_statistics_db,
             get_supplier_statistics_db,
         )
+
         # Produto inexistente
         with self.assertRaises(ValueError):
             get_product_statistics_db(self.conn, 99999)
@@ -307,6 +304,7 @@ class TestDatabaseSchema(unittest.TestCase):
     def test_editar_rodada_validations(self) -> None:
         """Testa validações de negócio ao editar rodadas."""
         from backend.db import update_round_db
+
         cursor = self.conn.cursor()
         cursor.execute("INSERT INTO rodadas (descricao, status, data_criacao) VALUES ('R1', 'aberta', '2026-09-03')")
         r_id = cursor.lastrowid
@@ -332,8 +330,8 @@ class TestDatabaseSchema(unittest.TestCase):
     def test_reset_db_and_init_db(self) -> None:
         """Testa as funções de inicialização e reset de banco em arquivo."""
         import tempfile
-        import os
-        from backend.db import reset_db, init_db
+
+        from backend.db import init_db, reset_db
 
         fd, temp_path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
@@ -354,16 +352,16 @@ class TestDatabaseSchema(unittest.TestCase):
 
     def test_config_paths_and_sys_frozen(self) -> None:
         """Testa caminhos de configuração e simula sys.frozen."""
-        import os
         import sys
         import tempfile
         from unittest.mock import patch
+
         from backend.db import (
             get_app_config_path,
+            get_db_path,
             get_default_db_path,
             get_last_db_path,
             set_last_db_path,
-            get_db_path,
         )
 
         with patch.object(sys, "frozen", True, create=True), patch.object(sys, "executable", r"C:\app\cotacao.exe"):
@@ -378,7 +376,9 @@ class TestDatabaseSchema(unittest.TestCase):
             tmp_cfg = f.name
 
         try:
-            with patch("backend.db.get_app_config_path", return_value=tmp_cfg), patch("backend.core.config.get_app_config_path", return_value=tmp_cfg):
+            with patch("backend.db.get_app_config_path", return_value=tmp_cfg), patch(
+                "backend.core.config.get_app_config_path", return_value=tmp_cfg
+            ):
                 self.assertIsNone(get_last_db_path())
                 # Testar set_last_db_path sobrepondo JSON corrompido
                 set_last_db_path(r"C:\test\cotacao.db")
@@ -390,13 +390,20 @@ class TestDatabaseSchema(unittest.TestCase):
                 self.assertEqual(get_db_path(), tmp_cfg)
 
             # Testar erro ao salvar app_config.json (linhas 60-61)
-            with patch("builtins.open", side_effect=PermissionError("Acesso negado")), patch("backend.core.config.get_app_config_path", return_value=tmp_cfg):
+            with patch("builtins.open", side_effect=PermissionError("Acesso negado")), patch(
+                "backend.core.config.get_app_config_path", return_value=tmp_cfg
+            ):
                 set_last_db_path(r"C:\test\cotacao.db")
 
             # Testar exceção ao remover banco anterior em reset_db (linhas 1110-1111)
-            with patch("os.path.exists", return_value=True), patch("os.remove", side_effect=PermissionError("Bloqueado")):
-                with patch("backend.db.get_connection", return_value=self.conn), patch("backend.db.create_schema"), patch("backend.db.seed_data"):
+            with patch("os.path.exists", return_value=True), patch(
+                "os.remove", side_effect=PermissionError("Bloqueado")
+            ):
+                with patch("backend.db.get_connection", return_value=self.conn), patch(
+                    "backend.db.create_schema"
+                ), patch("backend.db.seed_data"):
                     from backend.db import reset_db
+
                     reset_db(tmp_cfg + ".db")
         finally:
             if os.path.exists(tmp_cfg):

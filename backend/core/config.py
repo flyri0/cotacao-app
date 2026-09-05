@@ -6,6 +6,7 @@ from typing import Optional
 CONFIG_FILE_NAME = "app_config.json"
 DEFAULT_DB_NAME = "cotacao.db"
 
+
 def get_project_root() -> str:
     """Retorna o diretório raiz do projeto ou o diretório do executável congelado."""
     if getattr(sys, "frozen", False):
@@ -13,13 +14,16 @@ def get_project_root() -> str:
     # backend/core/config.py -> backend/core -> backend -> root
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
 def get_app_config_path() -> str:
     """Retorna o caminho absoluto do arquivo app_config.json que armazena o local do último banco usado."""
     return os.path.join(get_project_root(), "app_config.json")
 
+
 def get_default_db_path() -> str:
     """Retorna o caminho padrão para o arquivo cotacao.db no diretório da aplicação."""
     return os.path.join(get_project_root(), "cotacao.db")
+
 
 def get_last_db_path() -> Optional[str]:
     """
@@ -39,6 +43,7 @@ def get_last_db_path() -> Optional[str]:
         except Exception as e:
             print(f"Aviso ao ler app_config.json: {e}")
     return None
+
 
 def set_last_db_path(db_path: str) -> None:
     """Registra o caminho do banco ativo no arquivo app_config.json."""
@@ -64,6 +69,7 @@ def set_last_db_path(db_path: str) -> None:
     except Exception as e:
         print(f"Aviso ao salvar app_config.json: {e}")
 
+
 def get_db_path() -> str:
     """Retorna o caminho do banco SQLite ativo (último salvo se existir no disco, ou padrão)."""
     db_mod = sys.modules.get("backend.db") or sys.modules.get("db") or sys.modules.get("backend.core.config")
@@ -77,4 +83,3 @@ def get_db_path() -> str:
 
 
 DB_PATH = get_db_path()
-

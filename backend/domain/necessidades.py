@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 def list_needs_db(conn: sqlite3.Connection, id_rodada: int) -> List[Dict[str, Any]]:
@@ -179,9 +179,7 @@ def remove_need_db(conn: sqlite3.Connection, id_necessidade: int) -> Dict[str, A
     return {"sucesso": True, "id": id_necessidade}
 
 
-def duplicate_round_needs_db(
-    conn: sqlite3.Connection, id_origem: int, id_destino: int
-) -> int:
+def duplicate_round_needs_db(conn: sqlite3.Connection, id_origem: int, id_destino: int) -> int:
     """Copia os itens de necessidade de uma rodada para outra."""
     from backend.domain.rodadas import verificar_rodada_aberta
 
@@ -200,9 +198,7 @@ def duplicate_round_needs_db(
     return cursor.rowcount
 
 
-def batch_remove_needs_db(
-    conn: sqlite3.Connection, ids_necessidades: List[int]
-) -> Dict[str, Any]:
+def batch_remove_needs_db(conn: sqlite3.Connection, ids_necessidades: List[int]) -> Dict[str, Any]:
     """Remove múltiplos itens da lista de necessidades em lote, verificando rodada aberta."""
     from backend.domain.rodadas import verificar_rodada_aberta
 
@@ -228,4 +224,3 @@ def batch_remove_needs_db(
     removidos = cursor.rowcount
     conn.commit()
     return {"sucesso": True, "removidos": removidos}
-

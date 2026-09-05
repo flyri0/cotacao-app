@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 def list_quotes_db(
@@ -484,9 +484,7 @@ def get_global_quotes_history_db(conn: sqlite3.Connection) -> List[Dict[str, Any
     return [dict(r) for r in cursor.fetchall()]
 
 
-def batch_remove_quotes_db(
-    conn: sqlite3.Connection, ids_cotacoes: List[int]
-) -> Dict[str, Any]:
+def batch_remove_quotes_db(conn: sqlite3.Connection, ids_cotacoes: List[int]) -> Dict[str, Any]:
     """Remove múltiplas cotações em lote, garantindo que as rodadas estejam abertas."""
     from backend.domain.rodadas import verificar_rodada_aberta
 
@@ -636,6 +634,3 @@ def batch_update_quotes_db(
         "ignorados": ignorados,
         "erros": erros,
     }
-
-
-

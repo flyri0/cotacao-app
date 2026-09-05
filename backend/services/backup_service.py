@@ -5,7 +5,7 @@ import sqlite3
 import threading
 import time
 from datetime import datetime
-from typing import Dict, Any, Optional, Callable
+from typing import Any, Dict, Optional
 
 
 class BackupManager:
@@ -219,8 +219,9 @@ class BackupManager:
             pass
 
     def import_database(self, conteudo_base64: str) -> Dict[str, Any]:
-        from backend.core.config import set_last_db_path
         import tempfile
+
+        from backend.core.config import set_last_db_path
 
         try:
             dados = base64.b64decode(conteudo_base64)

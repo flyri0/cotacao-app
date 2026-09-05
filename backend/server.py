@@ -6,6 +6,7 @@ import threading
 import time
 import urllib.request
 from typing import Any, Optional
+
 from backend.api import Api
 
 DEFAULT_PORT = 54321
@@ -71,12 +72,14 @@ class CotacaoHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         global LAST_HEARTBEAT
         if self.path == "/api/ping" or self.path.startswith("/api/ping?"):
             LAST_HEARTBEAT = time.time()
-            self._send_json({
-                "sucesso": True,
-                "status": "online",
-                "modo": self.modo_execucao,
-                "timestamp": time.time(),
-            })
+            self._send_json(
+                {
+                    "sucesso": True,
+                    "status": "online",
+                    "modo": self.modo_execucao,
+                    "timestamp": time.time(),
+                }
+            )
             return
 
         # Roteamento SPA: se o arquivo não existir fisicamente, serve o index.html

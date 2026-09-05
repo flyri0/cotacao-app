@@ -1,6 +1,5 @@
 import os
-import sys
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 
 def select_save_file_dialog(
@@ -9,6 +8,7 @@ def select_save_file_dialog(
     """Abre diálogo para salvar arquivo via pywebview se disponível."""
     try:
         import webview
+
         windows = getattr(webview, "windows", [])
         if windows and len(windows) > 0:
             window = windows[0]
@@ -32,6 +32,7 @@ def select_directory_dialog(title: str = "Selecione uma Pasta") -> Dict[str, Any
     # 1. Tenta via pywebview
     try:
         import webview
+
         windows = getattr(webview, "windows", [])
         if windows and len(windows) > 0:
             window = windows[0]

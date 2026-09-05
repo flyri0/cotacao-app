@@ -1,10 +1,9 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-import app
-from app import is_dev, get_entry_url, confirm_closing, parse_port, main, DEV_URL, DEFAULT_PORT
+from app import DEFAULT_PORT, DEV_URL, confirm_closing, get_entry_url, is_dev, main, parse_port
 
 
 class TestApp(unittest.TestCase):
@@ -29,7 +28,9 @@ class TestApp(unittest.TestCase):
             self.assertTrue(is_dev())
 
         # 5. Ausência de dist/index.html
-        with patch.object(sys, "frozen", False, create=True), patch.object(sys, "argv", ["app.py"]), patch("os.path.exists", return_value=False):
+        with patch.object(sys, "frozen", False, create=True), patch.object(sys, "argv", ["app.py"]), patch(
+            "os.path.exists", return_value=False
+        ):
             self.assertTrue(is_dev())
 
     def test_get_entry_url(self) -> None:

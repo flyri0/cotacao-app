@@ -1,17 +1,17 @@
-import sqlite3
-import unittest
 import base64
 import io
+import sqlite3
+import unittest
+
 import openpyxl
 
 from backend.api import Api
 from backend.db import create_schema, seed_data
 from backend.services.excel_service import (
     generate_quote_template_excel,
-    process_quote_excel,
-    export_products_excel_db,
     import_products_excel_db,
     import_suppliers_excel_db,
+    process_quote_excel,
 )
 
 
@@ -42,11 +42,11 @@ class TestExcelService(unittest.TestCase):
         ws = wb.active
 
         # Preenche preços na linha 5 e 6
-        ws.cell(row=5, column=5, value="Marca Alpha") # Marca
+        ws.cell(row=5, column=5, value="Marca Alpha")  # Marca
         ws.cell(row=5, column=6, value="Caixa c/ 10")  # Embalagem
-        ws.cell(row=5, column=7, value=10)             # Qtd
-        ws.cell(row=5, column=8, value="CX")           # Unidade
-        ws.cell(row=5, column=9, value=50.0)           # Preço da embalagem (R$ 5.00 unitário)
+        ws.cell(row=5, column=7, value=10)  # Qtd
+        ws.cell(row=5, column=8, value="CX")  # Unidade
+        ws.cell(row=5, column=9, value=50.0)  # Preço da embalagem (R$ 5.00 unitário)
 
         ws.cell(row=6, column=5, value="Marca Beta")
         ws.cell(row=6, column=6, value="Fardo c/ 20")
@@ -69,9 +69,7 @@ class TestExcelService(unittest.TestCase):
         filled_b64 = base64.b64encode(out_buf.read()).decode("utf-8")
 
         # Importa de volta via API
-        import_res = self.api.import_quote_spreadsheet(
-            id_rodada=4, id_fornecedor=1, conteudo_base64=filled_b64
-        )
+        import_res = self.api.import_quote_spreadsheet(id_rodada=4, id_fornecedor=1, conteudo_base64=filled_b64)
         self.assertTrue(import_res["sucesso"])
         self.assertGreaterEqual(import_res["importados"], 3)
         self.assertEqual(import_res.get("produtos_criados"), 1)
@@ -149,7 +147,7 @@ class TestExcelService(unittest.TestCase):
         ws.cell(row=5, column=1, value="abc_invalido")
         ws.cell(row=5, column=2, value="Detergente Líquido Neutro 500ml")
         ws.cell(row=5, column=6, value="Caixa c/ 10")
-        ws.cell(row=5, column=7, value=-2) # qtd <= 0 -> fallback para 1.0
+        ws.cell(row=5, column=7, value=-2)  # qtd <= 0 -> fallback para 1.0
         ws.cell(row=5, column=8, value=30.0)
 
         # Linha 6: Preço vazio -> ignorado
@@ -213,8 +211,8 @@ class TestExcelService(unittest.TestCase):
         ws = wb.active
         ws.append(["ID", "Nome do Produto", "Categoria"])
         ws.append(["", "Detergente Líquido Neutro 500ml", "Limpeza"])
-        ws.append(["Produto Teste Fallback Col1", "", "Geral"]) # Coluna 2 vazia -> pega col 1
-        ws.append(["", "   ", "Sem Nome"]) # Linha com nome vazio (linha 445)
+        ws.append(["Produto Teste Fallback Col1", "", "Geral"])  # Coluna 2 vazia -> pega col 1
+        ws.append(["", "   ", "Sem Nome"])  # Linha com nome vazio (linha 445)
 
         buf2 = io.BytesIO()
         wb.save(buf2)
@@ -251,10 +249,10 @@ class TestExcelService(unittest.TestCase):
         ws = wb.active
         ws.append(["ID", "Fornecedor", "Contato", "Telefone", "E-mail", "Pedido Mínimo"])
         ws.append(["", "Distribuidora São Paulo", "João", "", "", "500"])
-        ws.append(["Fornecedor Fallback Col1", "", "", "", "", ""]) # Coluna 2 vazia -> pega col 1
-        ws.append(["", "   ", "", "", "", ""]) # Nome vazio (linha 550)
-        ws.append(["", "Novo Fornecedor Pedido BRL", "Maria", "", "", "R$ 1.500,50"]) # BRL float
-        ws.append(["", "Novo Fornecedor Pedido Invalido", "José", "", "", "invalido_texto"]) # Inv -> 0.0
+        ws.append(["Fornecedor Fallback Col1", "", "", "", "", ""])  # Coluna 2 vazia -> pega col 1
+        ws.append(["", "   ", "", "", "", ""])  # Nome vazio (linha 550)
+        ws.append(["", "Novo Fornecedor Pedido BRL", "Maria", "", "", "R$ 1.500,50"])  # BRL float
+        ws.append(["", "Novo Fornecedor Pedido Invalido", "José", "", "", "invalido_texto"])  # Inv -> 0.0
 
         buf2 = io.BytesIO()
         wb.save(buf2)

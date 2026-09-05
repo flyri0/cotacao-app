@@ -1,6 +1,7 @@
 import sqlite3
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 
 def list_rounds_with_metrics_db(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
     """Retorna todas as rodadas com contagens de necessidades, cotações, alocações e total financeiro alocado."""
@@ -34,9 +35,8 @@ def list_rounds_with_metrics_db(conn: sqlite3.Connection) -> List[Dict[str, Any]
     )
     return [dict(row) for row in cursor.fetchall()]
 
-def update_round_db(
-    conn: sqlite3.Connection, id_rodada: int, descricao: str, status: str
-) -> Dict[str, Any]:
+
+def update_round_db(conn: sqlite3.Connection, id_rodada: int, descricao: str, status: str) -> Dict[str, Any]:
     """Atualiza a descrição e o status ('aberta', 'fechada' ou 'cancelada') de uma rodada."""
     descricao = descricao.strip()
     if not descricao:
@@ -60,6 +60,7 @@ def update_round_db(
         raise ValueError(f"Rodada #{id_rodada} não encontrada.")
     return dict(row)
 
+
 def verificar_historico_rodada_db(conn: sqlite3.Connection, id_rodada: int) -> Dict[str, int]:
     """Retorna a contagem de cotações, alocações e necessidades vinculadas a uma rodada."""
     cursor = conn.cursor()
@@ -77,6 +78,7 @@ def verificar_historico_rodada_db(conn: sqlite3.Connection, id_rodada: int) -> D
         "total_historico": cot + aloc,
     }
 
+
 def remove_round_db(conn: sqlite3.Connection, id_rodada: int) -> bool:
     """Remove uma rodada e seus vínculos de necessidades, cotações e alocações."""
     cursor = conn.cursor()
@@ -87,9 +89,8 @@ def remove_round_db(conn: sqlite3.Connection, id_rodada: int) -> bool:
     conn.commit()
     return True
 
-def duplicate_round_needs_db(
-    conn: sqlite3.Connection, id_origem: int, id_destino: int
-) -> int:
+
+def duplicate_round_needs_db(conn: sqlite3.Connection, id_origem: int, id_destino: int) -> int:
     """Copia todas as necessidades de uma rodada de origem para uma rodada de destino que ainda não as possua."""
     cursor = conn.cursor()
     cursor.execute(
@@ -113,7 +114,6 @@ def duplicate_round_needs_db(
     return inseridos
 
 
-
 def verificar_rodada_aberta(conn: sqlite3.Connection, id_rodada: int) -> None:
     """Verifica se a rodada está aberta; se estiver fechada ou cancelada, lança ValueError."""
     cursor = conn.cursor()
@@ -131,9 +131,7 @@ def list_rounds_db(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
     return list_rounds_with_metrics_db(conn)
 
 
-def create_round_db(
-    conn: sqlite3.Connection, descricao: str, duplicar_de_rodada_id: Any = None
-) -> Dict[str, Any]:
+def create_round_db(conn: sqlite3.Connection, descricao: str, duplicar_de_rodada_id: Any = None) -> Dict[str, Any]:
     descricao = descricao.strip()
     if not descricao:
         raise ValueError("A descrição da rodada não pode ser vazia.")

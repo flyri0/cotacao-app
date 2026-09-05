@@ -1,5 +1,6 @@
 import sqlite3
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 
 def get_product_statistics_db(conn: sqlite3.Connection, id_produto: int) -> Dict[str, Any]:
     """Calcula estatísticas agregadas e histórico completo de cotações de um produto."""
@@ -66,11 +67,7 @@ def get_product_statistics_db(conn: sqlite3.Connection, id_produto: int) -> Dict
     cotacoes_cronologicas = sorted(cotacoes, key=lambda c: c["rodada_data"])
     primeiro_preco = cotacoes_cronologicas[0]["preco_unitario"]
     ultimo_preco = cotacoes_cronologicas[-1]["preco_unitario"]
-    variacao_pct = (
-        ((ultimo_preco - primeiro_preco) / primeiro_preco) * 100
-        if primeiro_preco > 0
-        else 0.0
-    )
+    variacao_pct = ((ultimo_preco - primeiro_preco) / primeiro_preco) * 100 if primeiro_preco > 0 else 0.0
 
     # Ranking de Fornecedores mais frequentes/competitivos para este produto
     fornecedores_map: Dict[int, dict] = {}
@@ -113,6 +110,7 @@ def get_product_statistics_db(conn: sqlite3.Connection, id_produto: int) -> Dict
         "cotacoes_historico": cotacoes,
         "ranking_fornecedores": ranking_fornecedores,
     }
+
 
 def update_product_db(
     conn: sqlite3.Connection,
@@ -158,6 +156,7 @@ def update_product_db(
     )
     return dict(cursor.fetchone())
 
+
 def verificar_historico_produto_db(conn: sqlite3.Connection, id_produto: int) -> Dict[str, int]:
     """Retorna a contagem de registros vinculados a um produto em necessidades, cotações e alocações."""
     cursor = conn.cursor()
@@ -174,9 +173,8 @@ def verificar_historico_produto_db(conn: sqlite3.Connection, id_produto: int) ->
         "total": nec + cot + aloc,
     }
 
-def alternar_status_produto_db(
-    conn: sqlite3.Connection, id_produto: int, ativo: Optional[int] = None
-) -> bool:
+
+def alternar_status_produto_db(conn: sqlite3.Connection, id_produto: int, ativo: Optional[int] = None) -> bool:
     """Alterna ou define explicitamente o status ativo (1 ou 0) de um produto."""
     cursor = conn.cursor()
     if ativo is None:
@@ -193,7 +191,6 @@ def alternar_status_produto_db(
     return cursor.rowcount > 0
 
 
-
 def list_products_db(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
     """Lista todos os produtos cadastrados ordenados por nome."""
     cursor = conn.cursor()
@@ -201,9 +198,7 @@ def list_products_db(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
     return [dict(row) for row in cursor.fetchall()]
 
 
-def create_product_db(
-    conn: sqlite3.Connection, nome: str, categoria: Optional[str] = None
-) -> Dict[str, Any]:
+def create_product_db(conn: sqlite3.Connection, nome: str, categoria: Optional[str] = None) -> Dict[str, Any]:
     """Cadastra um novo produto."""
     nome = nome.strip()
     if not nome:
@@ -288,16 +283,20 @@ def batch_toggle_products_active_db(
     return {"sucesso": True, "atualizados": cursor.rowcount}
 
 
-def batch_delete_products_db(
-    conn: sqlite3.Connection, product_ids: List[int]
-) -> Dict[str, Any]:
+def batch_delete_products_db(conn: sqlite3.Connection, product_ids: List[int]) -> Dict[str, Any]:
     """
     Exclui múltiplos produtos em lote, respeitando a integridade referencial.
     Produtos com histórico (cotações, necessidades ou alocações) são mantidos
     e informados no relatório de retorno.
     """
     if not product_ids:
-        return {"sucesso": True, "excluidos": 0, "bloqueados": 0, "detalhes_bloqueados": [], "mensagem": "Nenhum produto selecionado."}
+        return {
+            "sucesso": True,
+            "excluidos": 0,
+            "bloqueados": 0,
+            "detalhes_bloqueados": [],
+            "mensagem": "Nenhum produto selecionado.",
+        }
 
     cursor = conn.cursor()
     excluidos: List[int] = []
@@ -318,11 +317,13 @@ def batch_delete_products_db(
                 detalhes.append(f"{hist['alocacoes']} alocação(ões)")
             if hist["necessidades"] > 0:
                 detalhes.append(f"{hist['necessidades']} lista(s) de necessidades")
-            bloqueados.append({
-                "id": pid,
-                "nome": nome,
-                "motivo": "Possui " + ", ".join(detalhes) + " vinculadas.",
-            })
+            bloqueados.append(
+                {
+                    "id": pid,
+                    "nome": nome,
+                    "motivo": "Possui " + ", ".join(detalhes) + " vinculadas.",
+                }
+            )
         else:
             cursor.execute("DELETE FROM produtos WHERE id = ?", (pid,))
             excluidos.append(pid)
@@ -339,4 +340,3 @@ def batch_delete_products_db(
         "detalhes_bloqueados": bloqueados,
         "mensagem": msg,
     }
-

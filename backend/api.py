@@ -4,87 +4,81 @@ import contextlib
 import functools
 import os
 import sqlite3
-import sys
 import threading
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from backend.core.config import get_default_db_path, get_last_db_path, set_last_db_path
-from backend.core.database import get_connection, DatabaseLock
+from backend.core.database import get_connection
 from backend.core.schema import (
     check_db_status_db,
-    initialize_empty_db_db,
-    format_database_db,
     create_schema,
-)
-from backend.domain.configuracoes import (
-    get_db_settings,
-    save_db_setting,
-    save_all_db_settings,
-    seed_settings,
-)
-from backend.domain.produtos import (
-    list_products_db,
-    create_product_db,
-    update_product_db,
-    alternar_status_produto_db,
-    get_product_statistics_db,
-    verificar_historico_produto_db,
-    batch_update_products_category_db,
-    batch_delete_products_db,
-    batch_toggle_products_active_db,
-)
-from backend.domain.fornecedores import (
-    list_suppliers_db,
-    create_supplier_db,
-    update_supplier_db,
-    alternar_status_fornecedor_db,
-    get_supplier_statistics_db,
-    verificar_historico_fornecedor_db,
-)
-from backend.domain.rodadas import (
-    list_rounds_with_metrics_db,
-    create_round_db,
-    update_round_db,
-    remove_round_db,
-    check_round_dependencies_db,
-    duplicate_round_needs_db,
-    verificar_rodada_aberta,
-    verificar_historico_rodada_db,
-)
-from backend.domain.necessidades import (
-    list_needs_db,
-    create_need_db,
-    remove_need_db,
-    set_selected_supplier_db,
-    reset_selected_suppliers_db,
-    batch_remove_needs_db,
-)
-from backend.domain.cotacoes import (
-    list_quotes_db,
-    save_quote_db,
-    update_quote_db,
-    remove_quote_db,
-    get_quote_matrix_db,
-    get_global_quotes_history_db,
-    batch_remove_quotes_db,
-    batch_update_quotes_db,
+    format_database_db,
+    initialize_empty_db_db,
 )
 from backend.domain.alocacoes import (
     list_allocations_db,
-    save_allocations_db,
     remove_allocation_db,
+    save_allocations_db,
 )
+from backend.domain.configuracoes import (
+    get_db_settings,
+    save_all_db_settings,
+    seed_settings,
+)
+from backend.domain.cotacoes import (
+    batch_remove_quotes_db,
+    batch_update_quotes_db,
+    get_global_quotes_history_db,
+    get_quote_matrix_db,
+    list_quotes_db,
+    remove_quote_db,
+    save_quote_db,
+    update_quote_db,
+)
+from backend.domain.fornecedores import (
+    alternar_status_fornecedor_db,
+    create_supplier_db,
+    get_supplier_statistics_db,
+    update_supplier_db,
+    verificar_historico_fornecedor_db,
+)
+from backend.domain.necessidades import (
+    batch_remove_needs_db,
+    create_need_db,
+    list_needs_db,
+    remove_need_db,
+    reset_selected_suppliers_db,
+    set_selected_supplier_db,
+)
+from backend.domain.produtos import (
+    alternar_status_produto_db,
+    batch_delete_products_db,
+    batch_toggle_products_active_db,
+    batch_update_products_category_db,
+    create_product_db,
+    get_product_statistics_db,
+    update_product_db,
+    verificar_historico_produto_db,
+)
+from backend.domain.rodadas import (
+    check_round_dependencies_db,
+    duplicate_round_needs_db,
+    list_rounds_with_metrics_db,
+    remove_round_db,
+    update_round_db,
+    verificar_historico_rodada_db,
+)
+from backend.services.backup_service import BackupManager
 from backend.services.demo_service import populate_demo_db_db
 from backend.services.dialog_service import select_directory_dialog
-from backend.services.backup_service import BackupManager
 from backend.services.excel_service import (
-    generate_quote_template_excel,
-    process_quote_excel,
     export_products_excel_db,
+    generate_quote_template_excel,
     import_products_excel_db,
     import_suppliers_excel_db,
+    process_quote_excel,
 )
 
 
@@ -93,13 +87,16 @@ def track_mutation(tags: Any):
     Decorador para registrar mutações no contador de revisão da API.
     Dispara atualização de tags para sincronização em tempo real entre instâncias.
     """
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             result = func(self, *args, **kwargs)
             self._record_mutation(tags)
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -165,11 +162,13 @@ class Api:
         with self._revision_lock:
             self._data_revision += 1
             tag_list = [tags] if isinstance(tags, str) else list(tags)
-            self._mutation_events.append({
-                "revision": self._data_revision,
-                "tags": tag_list,
-                "timestamp": time.time(),
-            })
+            self._mutation_events.append(
+                {
+                    "revision": self._data_revision,
+                    "tags": tag_list,
+                    "timestamp": time.time(),
+                }
+            )
             if len(self._mutation_events) > 100:
                 self._mutation_events = self._mutation_events[-100:]
             return self._data_revision
@@ -294,6 +293,7 @@ class Api:
 
         try:
             import webview
+
             if webview.windows and len(webview.windows) > 0:
                 win = webview.windows[0]
                 dialog_type = getattr(webview.FileDialog, "SAVE", getattr(webview, "SAVE_DIALOG", 30))
@@ -494,7 +494,10 @@ class Api:
             val = 1 if ativo is True else (0 if ativo is False else None)
             sucesso = alternar_status_fornecedor_db(conn, id_fornecedor, val)
             cursor = conn.cursor()
-            cursor.execute("SELECT id, nome, contato, telefone, email, pedido_minimo, ativo FROM fornecedores WHERE id = ?", (id_fornecedor,))
+            cursor.execute(
+                "SELECT id, nome, contato, telefone, email, pedido_minimo, ativo FROM fornecedores WHERE id = ?",
+                (id_fornecedor,),
+            )
             row = cursor.fetchone()
             return {"sucesso": sucesso, "fornecedor": dict(row) if row else None}
 
@@ -817,9 +820,7 @@ class Api:
 
             if getattr(webview, "windows", None) and len(webview.windows) > 0:
                 win = webview.windows[0]
-                dialog_type = getattr(
-                    webview.FileDialog, "SAVE", getattr(webview, "SAVE_DIALOG", 30)
-                )
+                dialog_type = getattr(webview.FileDialog, "SAVE", getattr(webview, "SAVE_DIALOG", 30))
                 caminhos = win.create_file_dialog(
                     dialog_type=dialog_type,
                     save_filename=nome_sugerido,
@@ -897,6 +898,7 @@ class Api:
             time.sleep(0.5)
             try:
                 import webview
+
                 for window in getattr(webview, "windows", []):
                     window.destroy()
             except Exception:

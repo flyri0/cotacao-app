@@ -1,6 +1,7 @@
 import sqlite3
 from typing import Dict
 
+
 def seed_settings(conn: sqlite3.Connection) -> None:
     """Garante que as chaves de configuração básicas existam."""
     cursor = conn.cursor()
@@ -30,6 +31,7 @@ def seed_settings(conn: sqlite3.Connection) -> None:
         )
     conn.commit()
 
+
 def get_db_settings(conn: sqlite3.Connection) -> Dict[str, str]:
     """Retorna todas as configurações como um dicionário chave-valor."""
     cursor = conn.cursor()
@@ -38,6 +40,7 @@ def get_db_settings(conn: sqlite3.Connection) -> Dict[str, str]:
     for row in cursor.fetchall():
         resultado[row["chave"]] = row["valor"]
     return resultado
+
 
 def save_db_setting(conn: sqlite3.Connection, chave: str, valor: str) -> None:
     """Insere ou atualiza uma chave de configuração."""
@@ -48,9 +51,9 @@ def save_db_setting(conn: sqlite3.Connection, chave: str, valor: str) -> None:
     )
     conn.commit()
 
+
 def save_all_db_settings(conn: sqlite3.Connection, configs: Dict[str, str]) -> Dict[str, str]:
     """Salva múltiplas configurações de uma vez e retorna o estado atualizado."""
     for chave, valor in configs.items():
         save_db_setting(conn, chave, str(valor))
     return get_db_settings(conn)
-
