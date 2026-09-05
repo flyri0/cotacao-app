@@ -8,7 +8,7 @@ import {
   useMantineColorScheme,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { Notifications, notifications } from '@mantine/notifications'
+import { Notifications } from '@mantine/notifications'
 import { BoasVindasView } from './components/BoasVindasView'
 import { ProdutosView } from './components/ProdutosView'
 import { FornecedoresView } from './components/FornecedoresView'
@@ -87,15 +87,6 @@ export default function App() {
       document.documentElement.removeAttribute('data-font-size')
 
       setConfiguracoes(novasConfigs)
-
-      // Feedback visual rápido sem empilhar notificações
-      notifications.show({
-        id: 'font-size-zoom-toast',
-        title: 'Tamanho da Fonte',
-        message: `${novo}px ${novo === 13.5 ? '(Padrão)' : ''}`,
-        autoClose: 1200,
-        withCloseButton: false,
-      })
 
       try {
         const api = await getApi()
