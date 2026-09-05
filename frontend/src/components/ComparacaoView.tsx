@@ -701,7 +701,7 @@ export function ComparacaoView({
                     radius="xs"
                     style={{ textTransform: 'none', fontWeight: 600 }}
                   >
-                    Verde: Selecionado para Compra (🏆 Menor Preço)
+                    Verde: Selecionado (🏆 Menor Preço)
                   </Badge>
                   <Badge
                     size="xs"
@@ -714,6 +714,24 @@ export function ComparacaoView({
                   </Badge>
                   <Badge
                     size="xs"
+                    variant="light"
+                    color="yellow"
+                    radius="xs"
+                    style={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Amarelo: 2º Lugar
+                  </Badge>
+                  <Badge
+                    size="xs"
+                    variant="light"
+                    color="red"
+                    radius="xs"
+                    style={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Vermelho: 3º Lugar
+                  </Badge>
+                  <Badge
+                    size="xs"
                     variant="default"
                     radius="xs"
                     style={{ textTransform: 'none', fontWeight: 600 }}
@@ -721,7 +739,7 @@ export function ComparacaoView({
                     Neutro: Demais Cotações
                   </Badge>
                   <Text size="11px" c="dimmed" fs="italic">
-                    • Clique na célula para direcionar a compra
+                    • Borda verde indica fornecedor selecionado para compra
                   </Text>
                 </Group>
 
@@ -1176,6 +1194,16 @@ export function ComparacaoView({
                               isTransferido && isMenorPreco
                             const { economiaPct } = linha
 
+                            // Determinar posição numérica do ranking (1º, 2º, 3º, 4º+)
+                            const indexNoRanking = ranking.findIndex(
+                              (c) => c.id === cot.id,
+                            )
+                            const posicao = isMenorPreco
+                              ? 1
+                              : indexNoRanking >= 0
+                              ? indexNoRanking + 1
+                              : 99
+
                             let bgCell = isDark
                               ? 'transparent'
                               : 'var(--mantine-color-body)'
@@ -1190,6 +1218,7 @@ export function ComparacaoView({
                               textPrecoColor = isDark
                                 ? 'var(--mantine-color-teal-2)'
                                 : 'var(--mantine-color-teal-9)'
+                              // Borda de seleção ativa exclusiva
                               borderCell = '2px solid var(--mantine-color-teal-6)'
                             } else if (isMenorPrecoPreterido) {
                               bgCell = isDark
@@ -1198,7 +1227,23 @@ export function ComparacaoView({
                               textPrecoColor = isDark
                                 ? 'var(--mantine-color-blue-3)'
                                 : 'var(--mantine-color-blue-8)'
-                              borderCell = '1px solid var(--mantine-color-blue-4)'
+                              borderCell = '1px solid var(--mantine-color-default-border)'
+                            } else if (posicao === 2) {
+                              bgCell = isDark
+                                ? 'rgba(245, 159, 0, 0.16)'
+                                : 'var(--mantine-color-yellow-0)'
+                              textPrecoColor = isDark
+                                ? 'var(--mantine-color-yellow-3)'
+                                : 'var(--mantine-color-yellow-9)'
+                              borderCell = '1px solid var(--mantine-color-default-border)'
+                            } else if (posicao === 3) {
+                              bgCell = isDark
+                                ? 'rgba(224, 49, 49, 0.14)'
+                                : 'var(--mantine-color-red-0)'
+                              textPrecoColor = isDark
+                                ? 'var(--mantine-color-red-3)'
+                                : 'var(--mantine-color-red-9)'
+                              borderCell = '1px solid var(--mantine-color-default-border)'
                             }
 
                             const isClickable = !isFechada
@@ -1264,7 +1309,22 @@ export function ComparacaoView({
                                       </Text>
                                       {isMenorPreco && (
                                         <Text size="10px" c="teal" fw={700}>
-                                          🏆 Menor Preço da Rodada
+                                          🏆 1º Lugar — Menor Preço da Rodada
+                                        </Text>
+                                      )}
+                                      {!isMenorPreco && posicao === 2 && (
+                                        <Text size="10px" c="yellow.8" fw={700}>
+                                          🥈 2º Menor Preço da Rodada
+                                        </Text>
+                                      )}
+                                      {!isMenorPreco && posicao === 3 && (
+                                        <Text size="10px" c="red.8" fw={700}>
+                                          🥉 3º Menor Preço da Rodada
+                                        </Text>
+                                      )}
+                                      {!isMenorPreco && posicao > 3 && (
+                                        <Text size="10px" c="dimmed">
+                                          {posicao}º Lugar na Rodada
                                         </Text>
                                       )}
                                       {isSelecionado && !isMenorPreco && (

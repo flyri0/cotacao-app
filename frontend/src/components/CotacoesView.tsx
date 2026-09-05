@@ -758,6 +758,31 @@ export function CotacoesView({
     [fornecedores],
   )
 
+  // Mapa com o ranking de preços unitários de cada cotação por produto na rodada ativa
+  const rankingCotacoesMap = useMemo(() => {
+    const map = new Map<number, number>()
+    const porProduto: Record<number, Cotacao[]> = {}
+    cotacoes.forEach((c) => {
+      if (!porProduto[c.id_produto]) {
+        porProduto[c.id_produto] = []
+      }
+      porProduto[c.id_produto].push(c)
+    })
+
+    Object.values(porProduto).forEach((cots) => {
+      const ordenadas = [...cots].sort(
+        (a, b) => a.preco_unitario - b.preco_unitario,
+      )
+      const menorPreco = ordenadas[0]?.preco_unitario
+      ordenadas.forEach((c, idx) => {
+        const pos = c.preco_unitario === menorPreco ? 1 : idx + 1
+        map.set(c.id, pos)
+      })
+    })
+
+    return map
+  }, [cotacoes])
+
   const columns = useMemo<MRT_ColumnDef<Cotacao>[]>(
     () => [
       {
@@ -830,14 +855,54 @@ export function CotacoesView({
       {
         accessorKey: 'preco_unitario',
         header: 'Preço Unitário',
-        size: 150,
+        size: 165,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
-        Cell: ({ row }) => (
-          <Text fw={700} size="xs" c="teal">
-            {formatMoney(row.original.preco_unitario)} / {row.original.unidade || 'UN'}
-          </Text>
-        ),
+        Cell: ({ row }) => {
+          const cot = row.original
+          const pos = rankingCotacoesMap.get(cot.id) || 1
+          let badgeColor = 'teal'
+          let badgeLabel = '1º'
+          let textColor: string | undefined = 'teal'
+
+          if (pos === 2) {
+            badgeColor = 'yellow'
+            badgeLabel = '2º'
+            textColor = isDark ? 'var(--mantine-color-yellow-3)' : 'var(--mantine-color-yellow-9)'
+          } else if (pos === 3) {
+            badgeColor = 'red'
+            badgeLabel = '3º'
+            textColor = isDark ? 'var(--mantine-color-red-3)' : 'var(--mantine-color-red-9)'
+          } else if (pos > 3) {
+            badgeColor = 'gray'
+            badgeLabel = `${pos}º`
+            textColor = undefined
+          }
+
+          return (
+            <Group gap={6} justify="flex-end" wrap="nowrap" align="center">
+              <Badge
+                size="xs"
+                variant={pos === 1 ? 'filled' : 'light'}
+                color={badgeColor}
+                radius="xs"
+                style={{
+                  fontSize: '9.5px',
+                  height: 16,
+                  padding: '0 4px',
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+                title={`${pos}º menor preço unitário para este produto na rodada`}
+              >
+                {badgeLabel}
+              </Badge>
+              <Text fw={700} size="xs" c={textColor} style={{ whiteSpace: 'nowrap' }}>
+                {formatMoney(cot.preco_unitario)} / {cot.unidade || 'UN'}
+              </Text>
+            </Group>
+          )
+        },
       },
       {
         id: 'acoes',
@@ -884,7 +949,7 @@ export function CotacoesView({
         },
       },
     ],
-    [deletingId, produtos, isFechada, themeColor],
+    [deletingId, produtos, isFechada, themeColor, rankingCotacoesMap, isDark],
   )
 
   const table = useMantineReactTable({
