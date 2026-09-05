@@ -87,6 +87,7 @@ export interface ConfiguracoesApp {
   backup_auto_max_arquivos?: string | number
   backup_auto_ultimo_sucesso?: string
   backup_auto_ultimo_status?: string
+  app_notificacao_posicao?: 'bottom-right' | 'bottom-center' | 'top-right' | 'top-center' | 'bottom-left'
   [key: string]: any
 }
 

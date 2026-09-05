@@ -424,3 +424,59 @@ body,
   border-radius: 4px;
 }
 
+/* ==========================================================================
+   Notificações Compactas Desktop (High-Density)
+   ========================================================================== */
+.mantine-Notifications-root {
+  max-width: 320px !important;
+  z-index: 1000 !important;
+}
+
+.mantine-Notification-root {
+  padding: 8px 12px !important;
+  min-height: auto !important;
+  border-radius: var(--mantine-radius-sm, 6px) !important;
+  border: 1px solid var(--mantine-color-default-border) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14) !important;
+}
+
+.mantine-Notification-icon {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  margin-right: 8px !important;
+}
+
+.mantine-Notification-icon svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.mantine-Notification-body {
+  margin-right: 6px !important;
+}
+
+.mantine-Notification-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+  margin-bottom: 2px !important;
+}
+
+.mantine-Notification-description {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  color: var(--mantine-color-dimmed) !important;
+}
+
+.mantine-Notification-closeButton {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+}
+
+.mantine-Notification-closeButton svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+

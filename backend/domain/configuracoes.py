@@ -21,6 +21,7 @@ def seed_settings(conn: sqlite3.Connection) -> None:
         ("backup_auto_max_arquivos", "10"),
         ("backup_auto_ultimo_sucesso", ""),
         ("backup_auto_ultimo_status", ""),
+        ("app_notificacao_posicao", "bottom-right"),
     ]
     for chave, valor in configs_padrao:
         cursor.execute(

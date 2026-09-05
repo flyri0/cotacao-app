@@ -8,6 +8,7 @@ import {
   useMantineColorScheme,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
+import { Notifications } from '@mantine/notifications'
 import { BoasVindasView } from './components/BoasVindasView'
 import { ProdutosView } from './components/ProdutosView'
 import { FornecedoresView } from './components/FornecedoresView'
@@ -133,26 +134,45 @@ export default function App() {
     return <ShutdownCompleteScreen />
   }
 
+  const posicaoNotificacao = configuracoes.app_notificacao_posicao || 'bottom-right'
+
   // Se o banco ainda não foi inicializado, exibe a tela de Boas-Vindas
   if (!bancoInicializado) {
     return (
-      <BoasVindasView
-        appNome={configuracoes.app_nome}
-        appSubtitulo={configuracoes.app_subtitulo}
-        themeColor={themeColor}
-        onInicializado={async () => {
-          setBancoInicializado(true)
-          await inicializarAplicativo()
-        }}
-      />
+      <>
+        <Notifications
+          position={posicaoNotificacao as any}
+          containerWidth={320}
+          notificationMaxHeight={120}
+          limit={3}
+          autoClose={3000}
+        />
+        <BoasVindasView
+          appNome={configuracoes.app_nome}
+          appSubtitulo={configuracoes.app_subtitulo}
+          themeColor={themeColor}
+          onInicializado={async () => {
+            setBancoInicializado(true)
+            await inicializarAplicativo()
+          }}
+        />
+      </>
     )
   }
 
   const isScrollableTab = activeTab === 'configuracoes' || activeTab === 'pedido'
 
   return (
-    <AppShell
-      header={{ height: 48 }}
+    <>
+      <Notifications
+        position={posicaoNotificacao as any}
+        containerWidth={320}
+        notificationMaxHeight={120}
+        limit={3}
+        autoClose={3000}
+      />
+      <AppShell
+        header={{ height: 48 }}
       navbar={{ width: navbarCollapsed ? 54 : 215, breakpoint: 'sm' }}
       padding="xs"
     >
@@ -292,5 +312,6 @@ export default function App() {
         }}
       />
     </AppShell>
-  )
+  </>
+)
 }

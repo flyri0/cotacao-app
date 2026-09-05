@@ -29,6 +29,7 @@ import { notifications } from '@mantine/notifications'
 import {
   IconAlertCircle,
   IconAlertTriangle,
+  IconBell,
   IconBriefcase,
   IconBrowser,
   IconBuildingStore,
@@ -144,6 +145,12 @@ export function ConfiguracoesView({
       app_densidade: (configuracoes?.app_densidade || 'compacto') as 'compacto' | 'confortavel',
       app_tamanho_fonte: configuracoes?.app_tamanho_fonte || '13.5',
       app_modo_execucao: (configuracoes?.app_modo_execucao || 'janela') as 'janela' | 'navegador',
+      app_notificacao_posicao: (configuracoes?.app_notificacao_posicao || 'bottom-right') as
+        | 'bottom-right'
+        | 'bottom-center'
+        | 'top-right'
+        | 'top-center'
+        | 'bottom-left',
       backup_auto_ativo: configuracoes?.backup_auto_ativo === '1',
       backup_auto_diretorio: configuracoes?.backup_auto_diretorio || '',
       backup_auto_gatilho: (configuracoes?.backup_auto_gatilho || 'abertura') as string,
@@ -166,6 +173,12 @@ export function ConfiguracoesView({
         app_densidade: (configuracoes.app_densidade || 'compacto') as 'compacto' | 'confortavel',
         app_tamanho_fonte: configuracoes.app_tamanho_fonte || '13.5',
         app_modo_execucao: (configuracoes.app_modo_execucao || 'janela') as 'janela' | 'navegador',
+        app_notificacao_posicao: (configuracoes.app_notificacao_posicao || 'bottom-right') as
+          | 'bottom-right'
+          | 'bottom-center'
+          | 'top-right'
+          | 'top-center'
+          | 'bottom-left',
         backup_auto_ativo: configuracoes.backup_auto_ativo === '1',
         backup_auto_diretorio: configuracoes.backup_auto_diretorio || '',
         backup_auto_gatilho: configuracoes.backup_auto_gatilho || 'abertura',
@@ -300,6 +313,29 @@ export function ConfiguracoesView({
       })
     } catch (err) {
       console.error('Erro ao salvar modo de execução:', err)
+    }
+  }
+
+  // Alteração imediata de posição das notificações
+  const handleMudarPosicaoNotificacao = async (val: string | null) => {
+    if (!val) return
+    form.setFieldValue('app_notificacao_posicao', val as any)
+    const atualizadas: ConfiguracoesApp = {
+      ...form.values,
+      app_notificacao_posicao: val as any,
+    }
+    onConfiguracoesAlteradas?.(atualizadas)
+    try {
+      const api = await getApi()
+      await api.save_settings(atualizadas)
+      notifications.show({
+        title: 'Posição Atualizada',
+        message: 'Esta notificação já está sendo exibida no novo local configurado.',
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      })
+    } catch (err) {
+      console.error('Erro ao salvar posição da notificação:', err)
     }
   }
 
@@ -635,7 +671,7 @@ export function ConfiguracoesView({
           Ajuste a densidade de linhas e o tamanho da fonte para o seu estilo de uso. A aplicação atualiza instantaneamente.
         </Text>
 
-        <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
           {/* Opção 1: Densidade */}
           <Paper withBorder p="xs" radius="sm">
             <Group gap={6} mb={4} align="center">
@@ -714,6 +750,53 @@ export function ConfiguracoesView({
                 { label: 'Navegador Padrão', value: 'navegador' },
               ]}
             />
+          </Paper>
+
+          {/* Opção 4: Posição das Notificações */}
+          <Paper withBorder p="xs" radius="sm" style={{ display: 'flex', flexDirection: 'column' }}>
+            <Group gap={6} mb={4} align="center">
+              <ThemeIcon size={22} radius="xs" variant="light" color="orange">
+                <IconBell size={14} />
+              </ThemeIcon>
+              <Text fw={700} size="xs">
+                Posição das Notificações
+              </Text>
+            </Group>
+            <Text size="11px" c="dimmed" mb="xs">
+              Local onde os avisos aparecem na tela sem cobrir botões do cabeçalho.
+            </Text>
+            <AppSelect
+              size="xs"
+              value={form.values.app_notificacao_posicao}
+              onChange={handleMudarPosicaoNotificacao}
+              allowDeselect={false}
+              data={[
+                { label: 'Canto Inferior Direito (Padrão)', value: 'bottom-right' },
+                { label: 'Centro Inferior', value: 'bottom-center' },
+                { label: 'Centro Superior', value: 'top-center' },
+                { label: 'Canto Superior Direito', value: 'top-right' },
+                { label: 'Canto Inferior Esquerdo', value: 'bottom-left' },
+              ]}
+              style={{ width: '100%' }}
+            />
+            <Button
+              size="xs"
+              variant="light"
+              color={themeColor}
+              mt="xs"
+              fullWidth
+              style={{ marginTop: 'auto' }}
+              onClick={() => {
+                notifications.show({
+                  title: 'Notificação Compacta',
+                  message: 'Aviso demonstrativo exibido na posição selecionada.',
+                  color: 'teal',
+                  icon: <IconCheck size={16} />,
+                })
+              }}
+            >
+              Testar Notificação
+            </Button>
           </Paper>
         </SimpleGrid>
 

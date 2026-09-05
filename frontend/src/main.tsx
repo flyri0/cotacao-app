@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createTheme, MantineProvider, Autocomplete, Select, Modal } from '@mantine/core'
-import { Notifications } from '@mantine/notifications'
+import { createTheme, MantineProvider, Autocomplete, Select, Modal, Notification } from '@mantine/core'
 import { ModalsProvider } from '@mantine/modals'
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
@@ -12,6 +11,11 @@ import App from './App.tsx'
 
 const theme = createTheme({
   components: {
+    Notification: Notification.extend({
+      defaultProps: {
+        radius: 'sm',
+      },
+    }),
     Modal: Modal.extend({
       defaultProps: {
         lockScroll: false,
@@ -33,7 +37,6 @@ const theme = createTheme({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto">
-      <Notifications position="top-right" />
       <ModalsProvider>
         <App />
       </ModalsProvider>
