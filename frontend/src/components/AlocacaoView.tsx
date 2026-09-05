@@ -29,6 +29,8 @@ import {
   MantineReactTable,
   useMantineReactTable,
   type MRT_ColumnDef,
+  type MRT_SortingState,
+  type MRT_ColumnFiltersState,
 } from 'mantine-react-table'
 import {
   AppSelect,
@@ -73,6 +75,10 @@ export function AlocacaoView({
   const [linhas, setLinhas] = useState<LinhaAlocacao[]>([])
   const [loading, setLoading] = useState(true)
   const [statusAutosave, setStatusAutosave] = useState<'salvo' | 'salvando' | 'erro'>('salvo')
+  const [sorting, setSorting] = useState<MRT_SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<MRT_ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState<string>('')
+  const [recemDivididaKey, setRecemDivididaKey] = useState<string | null>(null)
 
   const initialLoadDone = useRef(false)
   const isReloadingRef = useRef(false)
@@ -329,13 +335,12 @@ export function AlocacaoView({
   )
 
   // Ação "Dividir": Duplica a linha do mesmo produto
-  const handleDividirLinha = useCallback((targetKey: string) => {
-    let nomeProd = ''
-    setLinhas((prev) => {
-      const index = prev.findIndex((l) => l.key === targetKey)
-      if (index === -1) return prev
-      const linhaBase = prev[index]
-      nomeProd = linhaBase.produto_nome
+  const handleDividirLinha = useCallback(
+    (targetKey: string) => {
+      const index = linhasRef.current.findIndex((l) => l.key === targetKey)
+      if (index === -1) return
+      const linhaBase = linhasRef.current[index]
+      const nomeProd = linhaBase.produto_nome
 
       // Se houver outro fornecedor cotado para este produto, sugere ele por padrão
       const cotsDoProd = cotacoes.filter(
@@ -346,10 +351,12 @@ export function AlocacaoView({
       )
       const fornecedorSugerido = outroForn ? Number(outroForn.id_fornecedor) : 0
 
+      const novaChave = `split-${linhaBase.id_produto}-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 7)}`
+
       const novaLinha: LinhaAlocacao = {
-        key: `split-${linhaBase.id_produto}-${Date.now()}-${Math.random()
-          .toString(36)
-          .substring(2, 7)}`,
+        key: novaChave,
         id: undefined,
         id_produto: Number(linhaBase.id_produto),
         produto_nome: linhaBase.produto_nome,
@@ -357,20 +364,30 @@ export function AlocacaoView({
         quantidade_alocada: 0,
       }
 
-      const novas = [...prev]
-      novas.splice(index + 1, 0, novaLinha)
-      return novas
-    })
+      setLinhas((prev) => {
+        const idx = prev.findIndex((l) => l.key === targetKey)
+        if (idx === -1) return prev
+        const novas = [...prev]
+        novas.splice(idx + 1, 0, novaLinha)
+        return novas
+      })
 
-    notifications.show({
-      title: 'Linha Dividida',
-      message: nomeProd
-        ? `Nova divisão criada para "${nomeProd}". Selecione o fornecedor e informe a quantidade.`
-        : 'Nova divisão criada para o produto. Selecione o fornecedor e informe a quantidade.',
-      color: 'blue',
-      icon: <IconArrowsSplit size={16} />,
-    })
-  }, [cotacoes])
+      setRecemDivididaKey(novaChave)
+      window.setTimeout(() => {
+        setRecemDivididaKey((curr) => (curr === novaChave ? null : curr))
+      }, 2000)
+
+      notifications.show({
+        title: 'Linha Dividida',
+        message: nomeProd
+          ? `Nova divisão criada para "${nomeProd}". Selecione o fornecedor e informe a quantidade.`
+          : 'Nova divisão criada para o produto. Selecione o fornecedor e informe a quantidade.',
+        color: 'blue',
+        icon: <IconArrowsSplit size={16} />,
+      })
+    },
+    [cotacoes],
+  )
 
   // Remove ou zera uma linha de alocação com confirmação Mantine
   const handleRemoverLinha = useCallback((targetKey: string, produtoNome: string) => {
@@ -525,6 +542,195 @@ export function AlocacaoView({
     }
   }, [linhas, cotacoes])
 
+  // Helpers para extrair dados associados à linha
+  const getCotacaoLinha = useCallback(
+    (linha: LinhaAlocacao) => {
+      if (!linha.id_fornecedor) return undefined
+      return cotacoes.find(
+        (c) =>
+          Number(c.id_produto) === Number(linha.id_produto) &&
+          Number(c.id_fornecedor) === Number(linha.id_fornecedor),
+      )
+    },
+    [cotacoes],
+  )
+
+  const getFornecedorNomeLinha = useCallback(
+    (linha: LinhaAlocacao) => {
+      if (!linha.id_fornecedor) return 'Sem Fornecedor'
+      const cot = getCotacaoLinha(linha)
+      if (cot) return cot.fornecedor_nome
+      const f = fornecedores.find((forn) => forn.id === linha.id_fornecedor)
+      return f ? f.nome : 'Sem Fornecedor'
+    },
+    [getCotacaoLinha, fornecedores],
+  )
+
+  const getSubtotalLinha = useCallback(
+    (linha: LinhaAlocacao) => {
+      const cot = getCotacaoLinha(linha)
+      if (!linha.id_fornecedor || Number(linha.quantidade_alocada) <= 0 || !cot) return 0
+      const { subtotal } = calculatePackaging(
+        Number(linha.quantidade_alocada),
+        Number(cot.qtd_por_embalagem),
+        Number(cot.preco_embalagem),
+      )
+      return subtotal
+    },
+    [getCotacaoLinha],
+  )
+
+  const getEmbalagensComprarLinha = useCallback(
+    (linha: LinhaAlocacao) => {
+      const cot = getCotacaoLinha(linha)
+      if (!linha.id_fornecedor || Number(linha.quantidade_alocada) <= 0 || !cot) return 0
+      const { embComprar } = calculatePackaging(
+        Number(linha.quantidade_alocada),
+        Number(cot.qtd_por_embalagem),
+        Number(cot.preco_embalagem),
+      )
+      return embComprar
+    },
+    [getCotacaoLinha],
+  )
+
+  // Mapeamento de índice original em linhas para manter contiguidade estável
+  const rowIndexMap = useMemo(() => {
+    const map = new Map<string, number>()
+    linhas.forEach((l, idx) => map.set(l.key, idx))
+    return map
+  }, [linhas])
+
+  // Linhas agrupadas por id_produto
+  const linhasPorProduto = useMemo(() => {
+    const map = new Map<number, LinhaAlocacao[]>()
+    linhas.forEach((l) => {
+      const list = map.get(l.id_produto) || []
+      list.push(l)
+      map.set(l.id_produto, list)
+    })
+    return map
+  }, [linhas])
+
+  // Valores consolidados por família de produto para ordenação inter-produtos
+  const prodSortValues = useMemo(() => {
+    const mapNome = new Map<number, string>()
+    const mapQtdTotal = new Map<number, number>()
+    const mapFornPrincipal = new Map<number, string>()
+    const mapMenorPreco = new Map<number, number>()
+    const mapEmbTotal = new Map<number, number>()
+    const mapSubtotalTotal = new Map<number, number>()
+
+    linhasPorProduto.forEach((items, pId) => {
+      mapNome.set(pId, items[0]?.produto_nome || '')
+      mapFornPrincipal.set(pId, getFornecedorNomeLinha(items[0]))
+
+      let totalQtd = 0
+      let totalEmb = 0
+      let totalSub = 0
+      let menorPreco = Infinity
+
+      items.forEach((item) => {
+        totalQtd += Number(item.quantidade_alocada) || 0
+        totalEmb += getEmbalagensComprarLinha(item)
+        totalSub += getSubtotalLinha(item)
+
+        const cot = getCotacaoLinha(item)
+        if (cot && Number(cot.preco_unitario) < menorPreco) {
+          menorPreco = Number(cot.preco_unitario)
+        }
+      })
+
+      mapQtdTotal.set(pId, totalQtd)
+      mapEmbTotal.set(pId, totalEmb)
+      mapSubtotalTotal.set(pId, totalSub)
+      mapMenorPreco.set(pId, menorPreco === Infinity ? 0 : menorPreco)
+    })
+
+    return {
+      mapNome,
+      mapQtdTotal,
+      mapFornPrincipal,
+      mapMenorPreco,
+      mapEmbTotal,
+      mapSubtotalTotal,
+    }
+  }, [linhasPorProduto, getFornecedorNomeLinha, getEmbalagensComprarLinha, getSubtotalLinha, getCotacaoLinha])
+
+  // Helper de ordenação que preserva afinidade de produto (divisões contíguas sempre coladas)
+  const createProductAffinitySort = useCallback(
+    (columnId: string, getProdValue: (pId: number) => string | number) => {
+      return (rowA: any, rowB: any): number => {
+        const itemA: LinhaAlocacao = rowA.original
+        const itemB: LinhaAlocacao = rowB.original
+
+        // 1. Linhas do mesmo produto NUNCA se separam; mantêm a ordem relativa de inserção (Parte 1, Parte 2...)
+        if (itemA.id_produto === itemB.id_produto) {
+          const idxA = rowIndexMap.get(itemA.key) ?? 0
+          const idxB = rowIndexMap.get(itemB.key) ?? 0
+          const isDesc = sorting.find((s) => s.id === columnId)?.desc ?? false
+          return isDesc ? idxB - idxA : idxA - idxB
+        }
+
+        // 2. Entre produtos diferentes, compara o valor consolidado da família do produto
+        const valA = getProdValue(itemA.id_produto)
+        const valB = getProdValue(itemB.id_produto)
+
+        if (valA === valB) {
+          const nomeA = itemA.produto_nome || ''
+          const nomeB = itemB.produto_nome || ''
+          return nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' })
+        }
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          return valA.localeCompare(valB, 'pt-BR', { sensitivity: 'base' })
+        }
+
+        return (Number(valA) || 0) < (Number(valB) || 0) ? -1 : 1
+      }
+    },
+    [rowIndexMap, sorting],
+  )
+
+  // Helper de filtro com afinidade: se a linha OU qualquer divisão irmã der match, a linha permanece visível
+  const createProductAffinityFilter = useCallback(
+    (baseMatchFn: (item: LinhaAlocacao, filterValue: any) => boolean) => {
+      return (row: any, _columnId: string, filterValue: any): boolean => {
+        if (filterValue === undefined || filterValue === null || filterValue === '') return true
+        const item: LinhaAlocacao = row.original
+        if (baseMatchFn(item, filterValue)) return true
+
+        const irmas = linhasPorProduto.get(item.id_produto) || []
+        return irmas.some((irma) => baseMatchFn(irma, filterValue))
+      }
+    },
+    [linhasPorProduto],
+  )
+
+  // Filtro global customizado com afinidade de produto
+  const customGlobalFilterFn = useCallback(
+    (row: any, _columnId: string, filterValue: any): boolean => {
+      if (!filterValue) return true
+      const query = String(filterValue).toLowerCase().trim()
+      if (!query) return true
+
+      const item: LinhaAlocacao = row.original
+      const irmas = linhasPorProduto.get(item.id_produto) || [item]
+
+      return irmas.some((linha) => {
+        if ((linha.produto_nome || '').toLowerCase().includes(query)) return true
+        if (getFornecedorNomeLinha(linha).toLowerCase().includes(query)) return true
+        const cot = getCotacaoLinha(linha)
+        if (cot) {
+          if ((cot.marca || '').toLowerCase().includes(query)) return true
+          if ((cot.embalagem || '').toLowerCase().includes(query)) return true
+        }
+        return false
+      })
+    },
+    [linhasPorProduto, getFornecedorNomeLinha, getCotacaoLinha],
+  )
+
   // Definição das Colunas da Mantine React Table reformulada
   const columns = useMemo<MRT_ColumnDef<LinhaAlocacao>[]>(
     () => [
@@ -532,6 +738,10 @@ export function AlocacaoView({
         accessorKey: 'produto_nome',
         header: 'Produto',
         size: 260,
+        sortingFn: createProductAffinitySort('produto_nome', (pId) => prodSortValues.mapNome.get(pId) || ''),
+        filterFn: createProductAffinityFilter((item, val) =>
+          (item.produto_nome || '').toLowerCase().includes(String(val).toLowerCase().trim()),
+        ),
         Cell: ({ row, table }) => {
           const item = row.original
           const allRows = (table.options.data as LinhaAlocacao[]) || []
@@ -566,14 +776,20 @@ export function AlocacaoView({
         size: 105,
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
+        sortingFn: createProductAffinitySort('quantidade_alocada', (pId) => prodSortValues.mapQtdTotal.get(pId) || 0),
+        filterFn: createProductAffinityFilter((item, val) =>
+          String(item.quantidade_alocada).includes(String(val).trim()),
+        ),
         Cell: ({ row }) => {
           const item = row.original
+          const isRecemCriada = item.key === recemDivididaKey
           return (
             <QuantityInput
               initialValue={item.quantidade_alocada}
               onChangeLive={(val) => handleUpdateQtd(item.key, val)}
               disabled={isFechada}
               width={75}
+              autoFocus={isRecemCriada}
             />
           )
         },
@@ -582,15 +798,11 @@ export function AlocacaoView({
         id: 'fornecedor',
         header: 'Fornecedor',
         size: 220,
-        accessorFn: (row) => {
-          if (!row.id_fornecedor) return 'Sem Fornecedor'
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
-          if (cot) return cot.fornecedor_nome
-          const f = fornecedores.find((forn) => forn.id === row.id_fornecedor)
-          return f ? f.nome : 'Sem Fornecedor'
-        },
+        accessorFn: (row) => getFornecedorNomeLinha(row),
+        sortingFn: createProductAffinitySort('fornecedor', (pId) => prodSortValues.mapFornPrincipal.get(pId) || ''),
+        filterFn: createProductAffinityFilter((item, val) =>
+          getFornecedorNomeLinha(item).toLowerCase().includes(String(val).toLowerCase().trim()),
+        ),
         Cell: ({ row }) => {
           const item = row.original
           const cotsDoProd = cotacoes.filter(
@@ -635,20 +847,21 @@ export function AlocacaoView({
         header: 'Preço Unitário',
         size: 150,
         accessorFn: (row) => {
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
+          const cot = getCotacaoLinha(row)
           return cot ? cot.preco_unitario : 0
         },
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
+        sortingFn: createProductAffinitySort('preco_unitario', (pId) => prodSortValues.mapMenorPreco.get(pId) || 0),
+        filterFn: createProductAffinityFilter((item, val) => {
+          const cot = getCotacaoLinha(item)
+          if (!cot) return false
+          const q = String(val).toLowerCase().trim()
+          return formatMoney(cot.preco_unitario).toLowerCase().includes(q) || String(cot.preco_unitario).includes(q)
+        }),
         Cell: ({ row }) => {
           const item = row.original
-          const cot = cotacoes.find(
-            (c) =>
-              c.id_produto === item.id_produto &&
-              c.id_fornecedor === item.id_fornecedor,
-          )
+          const cot = getCotacaoLinha(item)
 
           if (!item.id_fornecedor || !cot) {
             return (
@@ -684,18 +897,23 @@ export function AlocacaoView({
         header: 'Embalagem',
         size: 180,
         accessorFn: (row) => {
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
+          const cot = getCotacaoLinha(row)
           return cot ? `${cot.marca ? `[${cot.marca}] ` : ''}${cot.embalagem}` : ''
         },
+        sortingFn: createProductAffinitySort('embalagem_cotada', (pId) => {
+          const items = linhasPorProduto.get(pId)
+          const firstCot = items?.[0] ? getCotacaoLinha(items[0]) : undefined
+          return firstCot?.embalagem || ''
+        }),
+        filterFn: createProductAffinityFilter((item, val) => {
+          const cot = getCotacaoLinha(item)
+          if (!cot) return false
+          const q = String(val).toLowerCase().trim()
+          return (cot.embalagem || '').toLowerCase().includes(q) || (cot.marca || '').toLowerCase().includes(q)
+        }),
         Cell: ({ row }) => {
           const item = row.original
-          const cot = cotacoes.find(
-            (c) =>
-              c.id_produto === item.id_produto &&
-              c.id_fornecedor === item.id_fornecedor,
-          )
+          const cot = getCotacaoLinha(item)
 
           if (!item.id_fornecedor || !cot) {
             return (
@@ -721,25 +939,14 @@ export function AlocacaoView({
         id: 'embalagens_comprar',
         header: 'Compra Efetiva',
         size: 170,
-        accessorFn: (row) => {
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
-          if (!row.id_fornecedor || row.quantidade_alocada <= 0 || !cot) return 0
-          const { embComprar } = calculatePackaging(
-            row.quantidade_alocada,
-            cot.qtd_por_embalagem,
-            cot.preco_embalagem,
-          )
-          return embComprar
-        },
+        accessorFn: (row) => getEmbalagensComprarLinha(row),
+        sortingFn: createProductAffinitySort('embalagens_comprar', (pId) => prodSortValues.mapEmbTotal.get(pId) || 0),
+        filterFn: createProductAffinityFilter((item, val) =>
+          String(getEmbalagensComprarLinha(item)).includes(String(val).trim()),
+        ),
         Cell: ({ row }) => {
           const item = row.original
-          const cot = cotacoes.find(
-            (c) =>
-              c.id_produto === item.id_produto &&
-              c.id_fornecedor === item.id_fornecedor,
-          )
+          const cot = getCotacaoLinha(item)
 
           if (!item.id_fornecedor || item.quantidade_alocada <= 0 || !cot) {
             return (
@@ -777,27 +984,18 @@ export function AlocacaoView({
         id: 'subtotal',
         header: 'Subtotal',
         size: 120,
-        accessorFn: (row) => {
-          const cot = cotacoes.find(
-            (c) => c.id_produto === row.id_produto && c.id_fornecedor === row.id_fornecedor,
-          )
-          if (!row.id_fornecedor || row.quantidade_alocada <= 0 || !cot) return 0
-          const { subtotal } = calculatePackaging(
-            row.quantidade_alocada,
-            cot.qtd_por_embalagem,
-            cot.preco_embalagem,
-          )
-          return subtotal
-        },
+        accessorFn: (row) => getSubtotalLinha(row),
         mantineTableHeadCellProps: { align: 'right' },
         mantineTableBodyCellProps: { align: 'right' },
+        sortingFn: createProductAffinitySort('subtotal', (pId) => prodSortValues.mapSubtotalTotal.get(pId) || 0),
+        filterFn: createProductAffinityFilter((item, val) => {
+          const sub = getSubtotalLinha(item)
+          const q = String(val).toLowerCase().trim()
+          return formatMoney(sub).toLowerCase().includes(q) || String(sub).includes(q)
+        }),
         Cell: ({ row }) => {
           const item = row.original
-          const cot = cotacoes.find(
-            (c) =>
-              c.id_produto === item.id_produto &&
-              c.id_fornecedor === item.id_fornecedor,
-          )
+          const cot = getCotacaoLinha(item)
 
           if (!item.id_fornecedor || item.quantidade_alocada <= 0 || !cot) {
             return (
@@ -867,10 +1065,19 @@ export function AlocacaoView({
       menoresPrecosPorProduto,
       isFechada,
       themeColor,
+      recemDivididaKey,
       handleDividirLinha,
       handleRemoverLinha,
       handleUpdateQtd,
       handleUpdateFornecedor,
+      getCotacaoLinha,
+      getFornecedorNomeLinha,
+      getSubtotalLinha,
+      getEmbalagensComprarLinha,
+      prodSortValues,
+      linhasPorProduto,
+      createProductAffinitySort,
+      createProductAffinityFilter,
     ],
   )
 
@@ -885,6 +1092,31 @@ export function AlocacaoView({
     data: linhas,
     getRowId: (row) => row.key,
     enableRowActions: false,
+    autoResetAll: false,
+    autoResetPageIndex: false,
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    filterFns: {
+      affinityGlobalFilter: customGlobalFilterFn,
+    },
+    globalFilterFn: 'affinityGlobalFilter' as any,
+    mantineTableBodyRowProps: ({ row }) => {
+      const isRecemCriada = row.original.key === recemDivididaKey
+      return {
+        style: {
+          backgroundColor: isRecemCriada
+            ? 'var(--mantine-color-blue-light)'
+            : undefined,
+          transition: 'background-color 0.4s ease',
+        },
+      }
+    },
   })
 
   return (

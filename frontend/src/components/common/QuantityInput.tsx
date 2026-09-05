@@ -8,6 +8,7 @@ interface QuantityInputProps {
   disabled?: boolean
   unit?: string
   width?: number | string
+  autoFocus?: boolean
 }
 
 export function QuantityInput({
@@ -17,6 +18,7 @@ export function QuantityInput({
   disabled,
   unit,
   width,
+  autoFocus,
 }: QuantityInputProps) {
   const [value, setValue] = useState<number | string>(initialValue)
 
@@ -43,6 +45,7 @@ export function QuantityInput({
 
   return (
     <NumberInput
+      autoFocus={autoFocus}
       value={value}
       onChange={handleChange}
       onBlur={handleBlur}
