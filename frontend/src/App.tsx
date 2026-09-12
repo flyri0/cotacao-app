@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import {
   AppShell,
   Center,
@@ -10,17 +10,6 @@ import {
 import { useDisclosure } from '@mantine/hooks'
 import { Notifications } from '@mantine/notifications'
 import { BoasVindasView } from './components/BoasVindasView'
-import { ProdutosView } from './components/ProdutosView'
-import { FornecedoresView } from './components/FornecedoresView'
-import { RodadasView } from './components/RodadasView'
-import { NecessidadesView } from './components/NecessidadesView'
-import { CotacoesView } from './components/CotacoesView'
-import { ComparacaoView } from './components/ComparacaoView'
-import { AlocacaoView } from './components/AlocacaoView'
-import { ResumoView } from './components/ResumoView'
-import { PedidoView } from './components/PedidoView'
-import { EstatisticasView } from './components/EstatisticasView'
-import { ConfiguracoesView } from './components/ConfiguracoesView'
 import {
   AppHeader,
   AppNavbar,
@@ -32,11 +21,43 @@ import { useGlobalKeyboardShortcuts, type TabType, useDataCacheSubscription } fr
 import { getApi } from './services/api'
 import type { ConfiguracoesApp } from './types'
 
+// Code-split cada tela: o bundle de uma view só é baixado/parseado na primeira vez
+// que o usuário navega até ela, em vez de tudo de uma vez no carregamento inicial.
+const ProdutosView = lazy(() => import('./components/ProdutosView'))
+const FornecedoresView = lazy(() => import('./components/FornecedoresView'))
+const RodadasView = lazy(() => import('./components/RodadasView'))
+const NecessidadesView = lazy(() => import('./components/NecessidadesView'))
+const CotacoesView = lazy(() => import('./components/CotacoesView'))
+const ComparacaoView = lazy(() => import('./components/ComparacaoView'))
+const AlocacaoView = lazy(() => import('./components/AlocacaoView'))
+const ResumoView = lazy(() => import('./components/ResumoView'))
+const PedidoView = lazy(() => import('./components/PedidoView'))
+const EstatisticasView = lazy(() => import('./components/EstatisticasView'))
+const ConfiguracoesView = lazy(() => import('./components/ConfiguracoesView'))
+
+// Máximo de telas mantidas montadas (porém ocultas via `hidden`) além da ativa.
+// Cobre o padrão de alternar entre 2-3 telas (ex: Comparação <-> Alocação) sem pagar
+// o custo de desmontar/remontar tudo a cada troca, mas sem manter as 9 telas vivas
+// ao mesmo tempo (o que voltaria a degradar a memória como antes da Fase 1).
+const MAX_TELAS_MONTADAS = 3
+
+function TabLoadingFallback() {
+  return (
+    <Center p="xl" style={{ height: '100%' }}>
+      <Loader size="lg" />
+    </Center>
+  )
+}
+
 export default function App() {
   const { setColorScheme } = useMantineColorScheme()
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
 
   const [activeTab, setActiveTab] = useState<TabType>('produtos')
+  // LRU de telas mantidas montadas (a última é sempre a `activeTab` atual).
+  // As demais ficam ocultas via `hidden` em vez de desmontadas, então voltar
+  // para uma delas não paga o custo de remontar do zero.
+  const [mountedTabs, setMountedTabs] = useState<TabType[]>(['produtos'])
   const [navbarCollapsed, setNavbarCollapsed] = useState<boolean>(false)
   const [bancoInicializado, setBancoInicializado] = useState<boolean | null>(null)
   const [rodadaAtivaId, setRodadaAtivaId] = useState<number | undefined>(undefined)
@@ -105,6 +126,24 @@ export default function App() {
     onIncreaseFontSize: () => handleAjustarTamanhoFonte(0.5),
     onDecreaseFontSize: () => handleAjustarTamanhoFonte(-0.5),
   })
+
+  // Atualiza o LRU de telas montadas sempre que a aba ativa mudar, não importa
+  // a origem (atalho de teclado, clique na navbar ou navegação vinda de Rodadas).
+  // Ajustado durante o render (em vez de um useEffect) seguindo o padrão do React
+  // para "adjusting state when a prop changes": evita um re-render extra depois do
+  // commit e o flash de um frame em que a nova aba ainda não estaria em mountedTabs.
+  const ultimaAbaProcessadaRef = useRef(activeTab)
+  if (ultimaAbaProcessadaRef.current !== activeTab) {
+    ultimaAbaProcessadaRef.current = activeTab
+    setMountedTabs((prev) => {
+      const semAtual = prev.filter((t) => t !== activeTab)
+      const proximo = [...semAtual, activeTab]
+      if (proximo.length > MAX_TELAS_MONTADAS) {
+        return proximo.slice(proximo.length - MAX_TELAS_MONTADAS)
+      }
+      return proximo
+    })
+  }
 
   // Sincroniza densidade e escala tipográfica dinâmica com o documento raiz
   useEffect(() => {
@@ -210,6 +249,97 @@ export default function App() {
 
   const isScrollableTab = activeTab === 'configuracoes' || activeTab === 'pedido'
 
+  // Conteúdo de cada aba, isolado numa função para poder ser instanciado uma vez
+  // por entrada do LRU (`mountedTabs`) em vez de só para a aba ativa.
+  const renderTabContent = (tab: TabType) => {
+    switch (tab) {
+      case 'produtos':
+        return <ProdutosView themeColor={themeColor} />
+      case 'fornecedores':
+        return <FornecedoresView themeColor={themeColor} />
+      case 'rodadas':
+        return (
+          <RodadasView
+            rodadaAtivaId={rodadaAtivaId}
+            themeColor={themeColor}
+            onSelecionarRodada={(id, aba) => {
+              setRodadaAtivaId(id)
+              if (
+                aba === 'necessidades' ||
+                aba === 'cotacoes' ||
+                aba === 'comparacao' ||
+                aba === 'alocacao' ||
+                aba === 'resumo' ||
+                aba === 'pedido'
+              ) {
+                setActiveTab(aba)
+              }
+            }}
+          />
+        )
+      case 'necessidades':
+        return (
+          <NecessidadesView
+            rodadaAtivaId={rodadaAtivaId}
+            themeColor={themeColor}
+            onRodadaChange={setRodadaAtivaId}
+          />
+        )
+      case 'cotacoes':
+        return (
+          <CotacoesView
+            rodadaAtivaId={rodadaAtivaId}
+            themeColor={themeColor}
+            onRodadaChange={setRodadaAtivaId}
+          />
+        )
+      case 'comparacao':
+        return (
+          <ComparacaoView
+            rodadaAtivaId={rodadaAtivaId}
+            themeColor={themeColor}
+            onRodadaChange={setRodadaAtivaId}
+          />
+        )
+      case 'alocacao':
+        return (
+          <AlocacaoView
+            rodadaAtivaId={rodadaAtivaId}
+            themeColor={themeColor}
+            onRodadaChange={setRodadaAtivaId}
+          />
+        )
+      case 'resumo':
+        return (
+          <ResumoView
+            rodadaAtivaId={rodadaAtivaId}
+            themeColor={themeColor}
+            onRodadaChange={setRodadaAtivaId}
+          />
+        )
+      case 'pedido':
+        return (
+          <PedidoView
+            rodadaAtivaId={rodadaAtivaId}
+            themeColor={themeColor}
+            onRodadaChange={setRodadaAtivaId}
+          />
+        )
+      case 'estatisticas':
+        return <EstatisticasView themeColor={themeColor} />
+      case 'configuracoes':
+        return (
+          <ConfiguracoesView
+            configuracoes={configuracoes}
+            themeColor={themeColor}
+            onConfiguracoesAlteradas={(novas) => setConfiguracoes(novas)}
+          />
+        )
+      default:
+        return null
+    }
+  }
+
   return (
     <>
       <Notifications
@@ -269,77 +399,17 @@ export default function App() {
             minHeight: 0,
           }}
         >
-          {activeTab === 'produtos' && <ProdutosView themeColor={themeColor} />}
-          {activeTab === 'fornecedores' && <FornecedoresView themeColor={themeColor} />}
-          {activeTab === 'rodadas' && (
-            <RodadasView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onSelecionarRodada={(id, aba) => {
-                setRodadaAtivaId(id)
-                if (
-                  aba === 'necessidades' ||
-                  aba === 'cotacoes' ||
-                  aba === 'comparacao' ||
-                  aba === 'alocacao' ||
-                  aba === 'resumo' ||
-                  aba === 'pedido'
-                ) {
-                  setActiveTab(aba)
-                }
-              }}
-            />
-          )}
-          {activeTab === 'necessidades' && (
-            <NecessidadesView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'cotacoes' && (
-            <CotacoesView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'comparacao' && (
-            <ComparacaoView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'alocacao' && (
-            <AlocacaoView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'resumo' && (
-            <ResumoView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'pedido' && (
-            <PedidoView
-              rodadaAtivaId={rodadaAtivaId}
-              themeColor={themeColor}
-              onRodadaChange={setRodadaAtivaId}
-            />
-          )}
-          {activeTab === 'estatisticas' && <EstatisticasView themeColor={themeColor} />}
-          {activeTab === 'configuracoes' && (
-            <ConfiguracoesView
-              configuracoes={configuracoes}
-              themeColor={themeColor}
-              onConfiguracoesAlteradas={(novas) => setConfiguracoes(novas)}
-            />
-          )}
+          {mountedTabs.map((tab) => (
+            <div
+              key={tab}
+              hidden={tab !== activeTab}
+              style={{ height: '100%', minHeight: 0 }}
+            >
+              <Suspense fallback={<TabLoadingFallback />}>
+                {renderTabContent(tab)}
+              </Suspense>
+            </div>
+          ))}
         </Container>
       </AppShell.Main>
 
