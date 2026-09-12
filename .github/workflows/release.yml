@@ -1,0 +1,42 @@
+name: Release (Changelog Semântico e Tag)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 🏷️ Gerar Changelog Semântico, Criar Tag e Publicar Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clonar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📝 Gerar Changelog Semântico e Criar Tag (Conventional Commits)
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          output-file: 'CHANGELOG.md'
+          skip-version-file: true
+          git-push: true
+          release-count: 0
+
+      - name: 🚀 Criar GitHub Release com as notas do Changelog
+        if: steps.changelog.outputs.skipped == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          name: ${{ steps.changelog.outputs.tag }}
+          body: ${{ steps.changelog.outputs.clean_changelog }}
+          draft: false
+          prerelease: false
+
+      - name: ℹ️ Nenhuma mudança relevante desde a última release
+        if: steps.changelog.outputs.skipped == 'true'
+        run: echo "Nenhum commit relevante (feat/fix/BREAKING CHANGE) encontrado desde a última tag. Nenhuma release foi criada."

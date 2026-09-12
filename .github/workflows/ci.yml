@@ -1,4 +1,4 @@
-name: Build e Empacotamento Multi-Alvo (Windows 10/11 & Windows 7)
+name: CI - Build e Empacotamento Multi-Alvo (Windows 10/11 & Windows 7)
 
 on:
   push:
