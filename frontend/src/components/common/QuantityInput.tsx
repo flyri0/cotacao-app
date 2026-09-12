@@ -1,17 +1,26 @@
-import { useState, useEffect } from 'react'
+import { memo, useState, useEffect } from 'react'
 import { NumberInput, Text } from '@mantine/core'
 
 interface QuantityInputProps {
+  /** Identificador estável da linha (ex: chave da linha na tabela), repassado às callbacks. */
+  rowKey: string
   initialValue: number
-  onBlur?: (value: number) => void
-  onChangeLive?: (value: number) => void
+  onBlur?: (rowKey: string, value: number) => void
+  onChangeLive?: (rowKey: string, value: number) => void
   disabled?: boolean
   unit?: string
   width?: number | string
   autoFocus?: boolean
 }
 
-export function QuantityInput({
+/**
+ * Memoizado porque é instanciado uma vez por linha em grids editáveis (ex: Alocação).
+ * Para o memo funcionar de verdade, as callbacks devem ser referências estáveis
+ * (useCallback) — por isso `rowKey` é repassado como argumento em vez de o chamador
+ * precisar criar uma arrow function nova por linha a cada render.
+ */
+export const QuantityInput = memo(function QuantityInput({
+  rowKey,
   initialValue,
   onBlur,
   onChangeLive,
@@ -32,13 +41,13 @@ export function QuantityInput({
     setValue(val)
     if (onChangeLive) {
       const num = typeof val === 'number' ? val : parseFloat(val) || 0
-      onChangeLive(num)
+      onChangeLive(rowKey, num)
     }
   }
 
   const handleBlur = () => {
     const num = typeof value === 'number' ? value : parseFloat(value) || 0
-    if (onBlur) onBlur(num)
+    if (onBlur) onBlur(rowKey, num)
   }
 
   const hasUnit = Boolean(unit && unit.trim().length > 0)
@@ -80,4 +89,4 @@ export function QuantityInput({
       }}
     />
   )
-}
+})

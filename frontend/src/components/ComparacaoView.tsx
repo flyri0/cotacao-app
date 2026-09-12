@@ -39,7 +39,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { EmptyState, PageHeader, RoundHeaderSelector, StatCard } from './common'
-import { formatMoney } from '../utils'
+import { formatMoney, memoizeByRef } from '../utils'
 import { getApi } from '../services/api'
 import { useDataCacheSubscription } from '../hooks'
 import type { Cotacao, Fornecedor, Necessidade, Rodada } from '../types'
@@ -56,6 +56,62 @@ export interface LinhaComparacao {
   segundaMelhor: Cotacao | null
   economiaPct: number | null
 }
+
+/**
+ * Junção pesada (agrupa cotações por produto e monta o ranking por necessidade).
+ * Memoizada por identidade de (necessidades, cotacoes) em escopo de módulo, para que
+ * remontar a tela ao voltar da troca de aba não refaça o trabalho quando o cache de
+ * API (`apiCache`) ainda tem os mesmos arrays em memória.
+ */
+const calcularDadosLinhas = memoizeByRef(
+  (necessidades: Necessidade[], cotacoes: Cotacao[]): LinhaComparacao[] => {
+    // Agrupa cotações por produto para evitar iterações repetidas (O(N*M) -> O(N+M))
+    const cotacoesPorProduto = new Map<number, Cotacao[]>()
+    cotacoes.forEach((c) => {
+      if (!cotacoesPorProduto.has(c.id_produto)) {
+        cotacoesPorProduto.set(c.id_produto, [])
+      }
+      cotacoesPorProduto.get(c.id_produto)!.push(c)
+    })
+
+    return necessidades.map((nec) => {
+      const cotsDoProd = (cotacoesPorProduto.get(nec.id_produto) || [])
+        .sort((a, b) => a.preco_unitario - b.preco_unitario)
+
+      const cotacoesPorFornecedor: Record<number, Cotacao> = {}
+      cotsDoProd.forEach((c) => {
+        cotacoesPorFornecedor[c.id_fornecedor] = c
+      })
+
+      const melhorCotacao = cotsDoProd.length > 0 ? cotsDoProd[0] : null
+      const segundaMelhor = cotsDoProd.length > 1 ? cotsDoProd[1] : null
+      let economiaPct: number | null = null
+      if (
+        melhorCotacao &&
+        segundaMelhor &&
+        segundaMelhor.preco_unitario > melhorCotacao.preco_unitario
+      ) {
+        economiaPct =
+          ((segundaMelhor.preco_unitario - melhorCotacao.preco_unitario) /
+            segundaMelhor.preco_unitario) *
+          100
+      }
+
+      return {
+        id: nec.id,
+        id_produto: nec.id_produto,
+        id_fornecedor_selecionado: nec.id_fornecedor_selecionado,
+        produto_nome: nec.produto_nome,
+        produto_categoria: nec.produto_categoria || null,
+        cotacoesPorFornecedor,
+        ranking: cotsDoProd,
+        melhorCotacao,
+        segundaMelhor,
+        economiaPct,
+      }
+    })
+  },
+)
 
 type SortField = 'produto' | 'categoria' | null
 type SortDirection = 'asc' | 'desc'
@@ -241,53 +297,10 @@ export function ComparacaoView({
   }, [necessidades])
 
   // Linhas estruturadas com cotações indexadas e ranking pré-calculado
-  const dadosLinhas = useMemo<LinhaComparacao[]>(() => {
-    // Agrupa cotações por produto para evitar iterações repetidas (O(N*M) -> O(N+M))
-    const cotacoesPorProduto = new Map<number, Cotacao[]>()
-    cotacoes.forEach((c) => {
-      if (!cotacoesPorProduto.has(c.id_produto)) {
-        cotacoesPorProduto.set(c.id_produto, [])
-      }
-      cotacoesPorProduto.get(c.id_produto)!.push(c)
-    })
-
-    return necessidades.map((nec) => {
-      const cotsDoProd = (cotacoesPorProduto.get(nec.id_produto) || [])
-        .sort((a, b) => a.preco_unitario - b.preco_unitario)
-
-      const cotacoesPorFornecedor: Record<number, Cotacao> = {}
-      cotsDoProd.forEach((c) => {
-        cotacoesPorFornecedor[c.id_fornecedor] = c
-      })
-
-      const melhorCotacao = cotsDoProd.length > 0 ? cotsDoProd[0] : null
-      const segundaMelhor = cotsDoProd.length > 1 ? cotsDoProd[1] : null
-      let economiaPct: number | null = null
-      if (
-        melhorCotacao &&
-        segundaMelhor &&
-        segundaMelhor.preco_unitario > melhorCotacao.preco_unitario
-      ) {
-        economiaPct =
-          ((segundaMelhor.preco_unitario - melhorCotacao.preco_unitario) /
-            segundaMelhor.preco_unitario) *
-          100
-      }
-
-      return {
-        id: nec.id,
-        id_produto: nec.id_produto,
-        id_fornecedor_selecionado: nec.id_fornecedor_selecionado,
-        produto_nome: nec.produto_nome,
-        produto_categoria: nec.produto_categoria || null,
-        cotacoesPorFornecedor,
-        ranking: cotsDoProd,
-        melhorCotacao,
-        segundaMelhor,
-        economiaPct,
-      }
-    })
-  }, [necessidades, cotacoes])
+  const dadosLinhas = useMemo<LinhaComparacao[]>(
+    () => calcularDadosLinhas(necessidades, cotacoes),
+    [necessidades, cotacoes],
+  )
 
   // Linhas filtradas e ordenadas (alfabeticamente estilo Excel)
   const dadosFiltrados = useMemo(() => {

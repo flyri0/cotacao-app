@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import {
   Accordion,
   Badge,
@@ -30,7 +31,7 @@ interface PedidoAccordionItemProps {
   onCopiarPedido: (pedido: PedidoPorFornecedor) => void
 }
 
-export function PedidoAccordionItem({
+export const PedidoAccordionItem = memo(function PedidoAccordionItem({
   pedido,
   estaOculto,
   totalEmbalagensFechadas,
@@ -217,6 +218,6 @@ export function PedidoAccordionItem({
       </Accordion.Panel>
     </Accordion.Item>
   )
-}
+})
 
 export default PedidoAccordionItem

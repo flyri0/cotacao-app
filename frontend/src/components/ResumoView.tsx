@@ -28,7 +28,7 @@ import {
   type MRT_ColumnDef,
 } from 'mantine-react-table'
 import { PageHeader, RoundHeaderSelector, StatCard } from './common'
-import { calculatePackaging, formatMoney, getVirtualizedTableProps } from '../utils'
+import { calculatePackaging, formatMoney, getVirtualizedTableProps, memoizeByRef } from '../utils'
 import { getApi } from '../services/api'
 import { useDataCacheSubscription } from '../hooks'
 import type { Alocacao, Cotacao, Fornecedor, Rodada } from '../types'
@@ -57,6 +57,77 @@ interface ResumoFornecedorRow {
     subtotal: number
   }[]
 }
+
+/**
+ * Junção pesada (aloc x cotação por fornecedor). Memoizada por identidade de
+ * (fornecedores, alocacoes, cotacoes) em escopo de módulo — ver memoizeByRef.
+ */
+const calcularDadosFornecedores = memoizeByRef(
+  (
+    fornecedores: Fornecedor[],
+    alocacoes: Alocacao[],
+    cotacoes: Cotacao[],
+  ): ResumoFornecedorRow[] => {
+    return fornecedores.map((forn) => {
+      const alocsDoForn = alocacoes.filter(
+        (a) => a.id_fornecedor === forn.id && a.quantidade > 0,
+      )
+
+      let totalAlocado = 0
+      const itensDetalhes: ResumoFornecedorRow['itens_detalhes'] = []
+
+      alocsDoForn.forEach((aloc) => {
+        const cot = cotacoes.find(
+          (c) =>
+            c.id_produto === aloc.id_produto &&
+            c.id_fornecedor === forn.id,
+        )
+        const { embComprar, subtotal } = calculatePackaging(
+          aloc.quantidade,
+          cot?.qtd_por_embalagem,
+          cot?.preco_embalagem,
+        )
+
+        totalAlocado += subtotal
+
+        itensDetalhes.push({
+          produto_nome: aloc.produto_nome,
+          quantidade: aloc.quantidade,
+          unidade: cot ? cot.unidade : (aloc.unidade || 'UN'),
+          embalagens: embComprar,
+          embalagem_desc: cot ? `${cot.marca ? `[${cot.marca}] ` : ''}${cot.embalagem}` : 'Unidade',
+          subtotal,
+        })
+      })
+
+      const pedidoMin = forn.pedido_minimo || 0
+      const diferenca = totalAlocado - pedidoMin
+      const percentual =
+        pedidoMin > 0
+          ? Math.min(100, (totalAlocado / pedidoMin) * 100)
+          : totalAlocado > 0
+          ? 100
+          : 0
+
+      let status: ResumoFornecedorRow['status'] = 'sem_compras'
+      if (totalAlocado > 0) {
+        status = pedidoMin === 0 || totalAlocado >= pedidoMin ? 'ok' : 'abaixo'
+      }
+
+      return {
+        id_fornecedor: forn.id,
+        fornecedor_nome: forn.nome,
+        pedido_minimo: pedidoMin,
+        total_alocado: totalAlocado,
+        diferenca,
+        percentual_atingido: percentual,
+        status,
+        itens_comprados_count: alocsDoForn.length,
+        itens_detalhes: itensDetalhes,
+      }
+    })
+  },
+)
 
 export function ResumoView({
   rodadaAtivaId,
@@ -128,66 +199,10 @@ export function ResumoView({
   )
 
   // Resumo Financeiro por Fornecedor
-  const dadosFornecedores = useMemo<ResumoFornecedorRow[]>(() => {
-    return fornecedores.map((forn) => {
-      const alocsDoForn = alocacoes.filter(
-        (a) => a.id_fornecedor === forn.id && a.quantidade > 0,
-      )
-
-      let totalAlocado = 0
-      const itensDetalhes: ResumoFornecedorRow['itens_detalhes'] = []
-
-      alocsDoForn.forEach((aloc) => {
-        const cot = cotacoes.find(
-          (c) =>
-            c.id_produto === aloc.id_produto &&
-            c.id_fornecedor === forn.id,
-        )
-        const { embComprar, subtotal } = calculatePackaging(
-          aloc.quantidade,
-          cot?.qtd_por_embalagem,
-          cot?.preco_embalagem,
-        )
-
-        totalAlocado += subtotal
-
-        itensDetalhes.push({
-          produto_nome: aloc.produto_nome,
-          quantidade: aloc.quantidade,
-          unidade: cot ? cot.unidade : (aloc.unidade || 'UN'),
-          embalagens: embComprar,
-          embalagem_desc: cot ? `${cot.marca ? `[${cot.marca}] ` : ''}${cot.embalagem}` : 'Unidade',
-          subtotal,
-        })
-      })
-
-      const pedidoMin = forn.pedido_minimo || 0
-      const diferenca = totalAlocado - pedidoMin
-      const percentual =
-        pedidoMin > 0
-          ? Math.min(100, (totalAlocado / pedidoMin) * 100)
-          : totalAlocado > 0
-          ? 100
-          : 0
-
-      let status: ResumoFornecedorRow['status'] = 'sem_compras'
-      if (totalAlocado > 0) {
-        status = pedidoMin === 0 || totalAlocado >= pedidoMin ? 'ok' : 'abaixo'
-      }
-
-      return {
-        id_fornecedor: forn.id,
-        fornecedor_nome: forn.nome,
-        pedido_minimo: pedidoMin,
-        total_alocado: totalAlocado,
-        diferenca,
-        percentual_atingido: percentual,
-        status,
-        itens_comprados_count: alocsDoForn.length,
-        itens_detalhes: itensDetalhes,
-      }
-    })
-  }, [fornecedores, alocacoes, cotacoes])
+  const dadosFornecedores = useMemo<ResumoFornecedorRow[]>(
+    () => calcularDadosFornecedores(fornecedores, alocacoes, cotacoes),
+    [fornecedores, alocacoes, cotacoes],
+  )
 
   // Indicadores Gerais (KPIs)
   const metricas = useMemo(() => {

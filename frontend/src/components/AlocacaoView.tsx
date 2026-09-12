@@ -794,8 +794,9 @@ export function AlocacaoView({
           const isRecemCriada = item.key === recemDivididaKey
           return (
             <QuantityInput
+              rowKey={item.key}
               initialValue={item.quantidade_alocada}
-              onChangeLive={(val) => handleUpdateQtd(item.key, val)}
+              onChangeLive={handleUpdateQtd}
               disabled={isFechada}
               width={75}
               autoFocus={isRecemCriada}

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { Badge, Group, Paper, Text, ThemeIcon, Title } from '@mantine/core'
 
 interface StatCardProps {
@@ -14,7 +14,7 @@ interface StatCardProps {
   }
 }
 
-export function StatCard({
+export const StatCard = memo(function StatCard({
   label,
   value,
   subtitle,
@@ -55,6 +55,6 @@ export function StatCard({
       </Group>
     </Paper>
   )
-}
+})
 
 export default StatCard

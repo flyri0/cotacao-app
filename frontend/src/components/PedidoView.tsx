@@ -324,21 +324,21 @@ export function PedidoView({
   }, [pedidosAgrupados, rodadaAtual, selectedRodadaId])
 
   // Imprimir Todos os Pedidos
-  const handleImprimirTodos = () => {
+  const handleImprimirTodos = useCallback(() => {
     setFornecedorIdImprimir(null)
     setTimeout(() => {
       window.print()
     }, 100)
-  }
+  }, [])
 
   // Imprimir Pedido de um Fornecedor Específico
-  const handleImprimirIndividual = (idFornecedor: number) => {
+  const handleImprimirIndividual = useCallback((idFornecedor: number) => {
     setFornecedorIdImprimir(idFornecedor)
     setTimeout(() => {
       window.print()
       setFornecedorIdImprimir(null)
     }, 100)
-  }
+  }, [])
 
   // Inicializa abas abertas
   useEffect(() => {
