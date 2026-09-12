@@ -1,3 +1,4 @@
+import random
 import sqlite3
 from datetime import datetime
 from typing import Any, Dict
@@ -5,14 +6,32 @@ from typing import Any, Dict
 from backend.core.schema import create_schema
 from backend.domain.configuracoes import save_db_setting, seed_settings
 
+# Volume sintético extra, gerado deterministicamente (seed fixa) e somado ao catálogo
+# de 50 produtos / 8 fornecedores feito à mão. Existe só para dar massa suficiente pra
+# estressar telas em escala real (ex: a matriz produto x fornecedor da Comparação, que
+# não é virtualizada) ao rodar o React Profiler — os 50/8 originais continuam intactos
+# porque vários testes unitários dependem deles nome a nome (ex: estatísticas do
+# produto/fornecedor de id 1).
+QTD_PRODUTOS_SINTETICOS = 575  # total de produtos = 50 + 575 = 625
+QTD_FORNECEDORES_SINTETICOS = 17  # total de fornecedores = 8 + 17 = 25
+_CATEGORIAS_SINTETICAS = [
+    "Limpeza",
+    "Descartáveis",
+    "Alimentos & Copa",
+    "Higiene",
+    "Escritório & Informática",
+    "Manutenção & EPIs",
+]
+
 
 def populate_demo_db_db(conn: sqlite3.Connection) -> Dict[str, Any]:
     """
     Popula o banco com um conjunto rico e amplo de demonstração e testes de alta escala:
     - 50 produtos em 6 categorias (Limpeza, Descartáveis, Alimentos & Copa, Higiene, Escritório & Informática, Manutenção & EPIs)
-    - 8 fornecedores com pedidos mínimos variados
+      + 575 produtos sintéticos nas mesmas categorias (total 625) só para dar volume de teste
+    - 8 fornecedores com pedidos mínimos variados + 17 fornecedores sintéticos (total 25)
     - 3 rodadas concluídas (históricas) com cotações e compras
-    - 1 rodada aberta (em andamento) com todos os 50 produtos cotados e alocações ativas
+    - 1 rodada aberta (em andamento) com todos os 625 produtos cotados e alocações ativas
     """
     cursor = conn.cursor()
 
@@ -99,6 +118,21 @@ def populate_demo_db_db(conn: sqlite3.Connection) -> Dict[str, Any]:
         produtos,
     )
 
+    # 1b. PRODUTOS SINTÉTICOS EXTRAS (IDs continuam a partir de len(produtos) + 1)
+    rng = random.Random(42)
+    primeiro_id_produto_sintetico = len(produtos) + 1
+    produtos_sinteticos = [
+        (
+            f"Item Sintético {i:04d} ({_CATEGORIAS_SINTETICAS[i % len(_CATEGORIAS_SINTETICAS)]})",
+            _CATEGORIAS_SINTETICAS[i % len(_CATEGORIAS_SINTETICAS)],
+        )
+        for i in range(QTD_PRODUTOS_SINTETICOS)
+    ]
+    cursor.executemany(
+        "INSERT INTO produtos (nome, categoria) VALUES (?, ?)",
+        produtos_sinteticos,
+    )
+
     # 2. 8 FORNECEDORES
     fornecedores = [
         ("Distribuidora Alvorada", "Carlos Silva", "(11) 98765-4321", "vendas@alvorada.com.br", 600.0),
@@ -134,6 +168,26 @@ def populate_demo_db_db(conn: sqlite3.Connection) -> Dict[str, Any]:
         VALUES (?, ?, ?, ?, ?)
         """,
         fornecedores,
+    )
+
+    # 2b. FORNECEDORES SINTÉTICOS EXTRAS (IDs continuam a partir de len(fornecedores) + 1)
+    total_fornecedores = len(fornecedores) + QTD_FORNECEDORES_SINTETICOS
+    fornecedores_sinteticos = [
+        (
+            f"Fornecedor Sintético {i:02d}",
+            f"Contato Sintético {i:02d}",
+            f"(11) 90000-{i:04d}",
+            f"contato{i:02d}@fornecedorsintetico.com.br",
+            float(rng.choice([200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0])),
+        )
+        for i in range(1, QTD_FORNECEDORES_SINTETICOS + 1)
+    ]
+    cursor.executemany(
+        """
+        INSERT INTO fornecedores (nome, contato, telefone, email, pedido_minimo)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        fornecedores_sinteticos,
     )
 
     # 3. RODADAS: 3 HISTÓRICAS FECHADAS + 1 ATIVA ABERTA
@@ -202,8 +256,10 @@ def populate_demo_db_db(conn: sqlite3.Connection) -> Dict[str, Any]:
         (r3, 36),
         (r3, 42),
     ]
-    # Rodada 4 (Atual - Abril) - Todos os 50 produtos necessários para testar matriz completa
-    nec_r4 = [(r4, i) for i in range(1, 51)]
+    # Rodada 4 (Atual - Abril) - Todos os produtos (originais + sintéticos) necessários
+    # para testar a matriz completa em escala (produto x fornecedor)
+    total_produtos = len(produtos) + QTD_PRODUTOS_SINTETICOS
+    nec_r4 = [(r4, i) for i in range(1, total_produtos + 1)]
 
     cursor.executemany(
         "INSERT INTO necessidades (id_rodada, id_produto) VALUES (?, ?)", nec_r1 + nec_r2 + nec_r3 + nec_r4
@@ -522,6 +578,64 @@ def populate_demo_db_db(conn: sqlite3.Connection) -> Dict[str, Any]:
         ) VALUES (?, ?, ?, ?)
         """,
         alocacoes_seed,
+    )
+
+    # COTAÇÕES E ALOCAÇÕES SINTÉTICAS PARA OS PRODUTOS EXTRAS (só na rodada 4/atual)
+    # Cada produto sintético recebe 2-4 cotações de fornecedores sorteados (mistura de
+    # originais e sintéticos), e ~metade deles ganha uma alocação pro menor preço —
+    # mesma densidade usada nos dados originais da rodada 4.
+    cotacoes_sinteticas = []
+    alocacoes_sinteticas = []
+    for idx in range(QTD_PRODUTOS_SINTETICOS):
+        id_produto = primeiro_id_produto_sintetico + idx
+        n_cotacoes = rng.randint(2, 4)
+        fornecedores_sorteados = rng.sample(range(1, total_fornecedores + 1), n_cotacoes)
+        preco_unit_base = round(rng.uniform(1.5, 60.0), 2)
+
+        melhor_preco = None
+        melhor_fornecedor = None
+        for id_fornecedor in fornecedores_sorteados:
+            variacao = rng.uniform(0.85, 1.20)
+            preco_unitario = round(preco_unit_base * variacao, 4)
+            qtd_por_embalagem = float(rng.choice([1, 6, 10, 12, 20, 24, 50, 100]))
+            preco_embalagem = round(preco_unitario * qtd_por_embalagem, 2)
+            cotacoes_sinteticas.append(
+                (
+                    r4,
+                    id_fornecedor,
+                    id_produto,
+                    None,
+                    f"Caixa c/ {int(qtd_por_embalagem)} un",
+                    qtd_por_embalagem,
+                    "UN",
+                    preco_embalagem,
+                )
+            )
+            if melhor_preco is None or preco_unitario < melhor_preco:
+                melhor_preco = preco_unitario
+                melhor_fornecedor = id_fornecedor
+
+        if idx % 2 == 0 and melhor_fornecedor is not None:
+            alocacoes_sinteticas.append(
+                (r4, id_produto, melhor_fornecedor, float(rng.randint(5, 200)))
+            )
+
+    cursor.executemany(
+        """
+        INSERT INTO cotacoes (
+            id_rodada, id_fornecedor, id_produto,
+            marca, embalagem, qtd_por_embalagem, unidade, preco_embalagem
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        cotacoes_sinteticas,
+    )
+    cursor.executemany(
+        """
+        INSERT INTO alocacoes (
+            id_rodada, id_produto, id_fornecedor, quantidade
+        ) VALUES (?, ?, ?, ?)
+        """,
+        alocacoes_sinteticas,
     )
 
     save_db_setting(conn, "sistema_inicializado", "1")

@@ -109,8 +109,8 @@ class TestApi(unittest.TestCase):
     def test_verificar_status_banco_api(self) -> None:
         status = self.api.check_db_status()
         self.assertTrue(status["inicializado"])
-        self.assertEqual(status["total_produtos"], 50)
-        self.assertEqual(status["total_fornecedores"], 8)
+        self.assertEqual(status["total_produtos"], 625)
+        self.assertEqual(status["total_fornecedores"], 25)
         self.assertEqual(status["total_rodadas"], 4)
 
     def test_inicializar_banco_em_branco_api(self) -> None:
@@ -122,8 +122,8 @@ class TestApi(unittest.TestCase):
     def test_popular_banco_demo_completo_api(self) -> None:
         res = self.api.populate_demo_db()
         self.assertTrue(res["sucesso"])
-        self.assertEqual(len(self.api.list_products()), 50)
-        self.assertEqual(len(self.api.list_suppliers()), 8)
+        self.assertEqual(len(self.api.list_products()), 625)
+        self.assertEqual(len(self.api.list_suppliers()), 25)
         self.assertEqual(len(self.api.list_rounds()), 4)
 
     # -------------------------------------------------------------------------
@@ -161,14 +161,14 @@ class TestApi(unittest.TestCase):
 
         res_seed = self.api.format_database(com_seed=True)
         self.assertTrue(res_seed["sucesso"])
-        self.assertEqual(len(self.api.list_products()), 50)
+        self.assertEqual(len(self.api.list_products()), 625)
 
     # -------------------------------------------------------------------------
     # Testes de Produtos
     # -------------------------------------------------------------------------
     def test_listar_produtos(self) -> None:
         produtos = self.api.list_products()
-        self.assertEqual(len(produtos), 50)
+        self.assertEqual(len(produtos), 625)
         self.assertTrue(all(isinstance(p, dict) for p in produtos))
         self.assertIn("nome", produtos[0])
         self.assertIn("ativo", produtos[0])
@@ -181,12 +181,12 @@ class TestApi(unittest.TestCase):
 
         # Verifica se aparece na listagem
         produtos = self.api.list_products()
-        self.assertEqual(len(produtos), 51)
+        self.assertEqual(len(produtos), 626)
 
         # Remove o produto
         res = self.api.remove_product(novo["id"])
         self.assertTrue(res["sucesso"])
-        self.assertEqual(len(self.api.list_products()), 50)
+        self.assertEqual(len(self.api.list_products()), 625)
 
     def test_criar_produto_invalido(self) -> None:
         with self.assertRaises(ValueError):
@@ -236,23 +236,23 @@ class TestApi(unittest.TestCase):
         self.assertTrue(res["sucesso"])
         self.assertEqual(res["produto"]["ativo"], 0)
 
-        # Filtro de apenas ativos deve retornar 49
-        self.assertEqual(len(self.api.list_products(apenas_ativos=True)), 49)
-        # Listagem total deve retornar 50
-        self.assertEqual(len(self.api.list_products(apenas_ativos=False)), 50)
+        # Filtro de apenas ativos deve retornar 624
+        self.assertEqual(len(self.api.list_products(apenas_ativos=True)), 624)
+        # Listagem total deve retornar 625
+        self.assertEqual(len(self.api.list_products(apenas_ativos=False)), 625)
 
         # Reativa produto 1 via alias de compatibilidade
         res_ativar = self.api.alternar_status_produto(1, True)
         self.assertTrue(res_ativar["sucesso"])
         self.assertEqual(res_ativar["produto"]["ativo"], 1)
-        self.assertEqual(len(self.api.list_products(apenas_ativos=True)), 50)
+        self.assertEqual(len(self.api.list_products(apenas_ativos=True)), 625)
 
     # -------------------------------------------------------------------------
     # Testes de Fornecedores
     # -------------------------------------------------------------------------
     def test_listar_fornecedores(self) -> None:
         fornecedores = self.api.list_suppliers()
-        self.assertEqual(len(fornecedores), 8)
+        self.assertEqual(len(fornecedores), 25)
         self.assertTrue(all("pedido_minimo" in f for f in fornecedores))
 
     def test_bloqueio_exclusao_fornecedor_com_historico(self) -> None:
@@ -268,16 +268,16 @@ class TestApi(unittest.TestCase):
         self.assertTrue(res["sucesso"])
         self.assertEqual(res["fornecedor"]["ativo"], 0)
 
-        # Filtro de apenas ativos deve retornar 7
-        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=True)), 7)
-        # Listagem total deve retornar 8
-        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=False)), 8)
+        # Filtro de apenas ativos deve retornar 24
+        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=True)), 24)
+        # Listagem total deve retornar 25
+        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=False)), 25)
 
         # Reativa fornecedor 1 via alias de compatibilidade
         res_ativar = self.api.alternar_status_fornecedor(1, True)
         self.assertTrue(res_ativar["sucesso"])
         self.assertEqual(res_ativar["fornecedor"]["ativo"], 1)
-        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=True)), 8)
+        self.assertEqual(len(self.api.list_suppliers(apenas_ativos=True)), 25)
 
     def test_criar_e_remover_fornecedor(self) -> None:
         novo = self.api.create_supplier(
@@ -292,11 +292,11 @@ class TestApi(unittest.TestCase):
         self.assertEqual(novo["pedido_minimo"], 350.0)
 
         fornecedores = self.api.list_suppliers()
-        self.assertEqual(len(fornecedores), 9)
+        self.assertEqual(len(fornecedores), 26)
 
         res = self.api.remove_supplier(novo["id"])
         self.assertTrue(res["sucesso"])
-        self.assertEqual(len(self.api.list_suppliers()), 8)
+        self.assertEqual(len(self.api.list_suppliers()), 25)
 
     def test_atualizar_fornecedor_api(self) -> None:
         fornecedores = self.api.list_suppliers()
