@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, cloneElement, type ReactElement, type ReactNode } from 'react'
 import {
   ActionIcon,
   Badge,
@@ -59,6 +59,41 @@ export interface LinhaComparacao {
 
 type SortField = 'produto' | 'categoria' | null
 type SortDirection = 'asc' | 'desc'
+
+/**
+ * Só monta o Tooltip (e sua instância de Floating UI) na primeira vez que a célula
+ * é de fato hovereada. Numa planilha com centenas de células, instanciar um Tooltip
+ * por célula incondicionalmente custava dezenas de ms de render mesmo sem nenhum
+ * hover — ver commits do React Profiler dominados por @mantine/core/Tooltip.
+ */
+function LazyCellTooltip({
+  label,
+  children,
+}: {
+  label: ReactNode
+  children: ReactElement<{ onMouseEnter?: () => void; onMouseLeave?: () => void }>
+}) {
+  const [everHovered, setEverHovered] = useState(false)
+  const [hovering, setHovering] = useState(false)
+
+  const content = cloneElement(children, {
+    onMouseEnter: () => {
+      setEverHovered(true)
+      setHovering(true)
+    },
+    onMouseLeave: () => setHovering(false),
+  })
+
+  if (!everHovered) {
+    return content
+  }
+
+  return (
+    <Tooltip withinPortal withArrow position="top" multiline w={230} label={label} opened={hovering}>
+      {content}
+    </Tooltip>
+  )
+}
 
 interface ComparacaoViewProps {
   rodadaAtivaId?: number
@@ -1283,12 +1318,7 @@ export function ComparacaoView({
                                     'background-color 150ms ease, border-color 150ms ease',
                                 }}
                               >
-                                <Tooltip
-                                  withinPortal
-                                  withArrow
-                                  position="top"
-                                  multiline
-                                  w={230}
+                                <LazyCellTooltip
                                   label={
                                     <Stack gap={2} p={2}>
                                       <Text fw={700} size="xs">
@@ -1416,7 +1446,7 @@ export function ComparacaoView({
                                       {cot.embalagem}
                                     </Text>
                                   </div>
-                                </Tooltip>
+                                </LazyCellTooltip>
                               </Table.Td>
                             )
                           })}

@@ -953,7 +953,7 @@ export function CotacoesView({
   )
 
   const table = useMantineReactTable({
-    ...getVirtualizedTableProps<Cotacao>({ enableTopToolbar: true }),
+    ...getVirtualizedTableProps<Cotacao>({ enableTopToolbar: true, enableRowVirtualization: true }),
     columns,
     data: cotacoes,
     enableRowSelection: true,

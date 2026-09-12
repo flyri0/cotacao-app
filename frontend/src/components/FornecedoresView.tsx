@@ -492,6 +492,7 @@ export function FornecedoresView({ themeColor = 'blue' }: { themeColor?: string 
   const table = useMantineReactTable({
     ...getVirtualizedTableProps<Fornecedor>({
       enableTopToolbar: true,
+      enableRowVirtualization: true,
     }),
     columns,
     data: fornecedores,

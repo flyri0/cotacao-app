@@ -628,6 +628,7 @@ export function ProdutosView({ themeColor = 'blue' }: { themeColor?: string }) {
   const table = useMantineReactTable({
     ...getVirtualizedTableProps<Produto>({
       enableTopToolbar: true,
+      enableRowVirtualization: true,
     }),
     columns,
     data: produtos,

@@ -397,6 +397,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
   const tableHistoricoProd = useMantineReactTable({
     ...getVirtualizedTableProps<CotacaoHistoricoItem>({
       enableTopToolbar: true,
+      enableRowVirtualization: true,
     }),
     columns: columnsHistoricoProd,
     data: estatisticasProduto?.cotacoes_historico || [],
@@ -411,10 +412,10 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
   const tableRankingProd = useMantineReactTable({
     ...getVirtualizedTableProps<RankingFornecedorItem>({
       enableTopToolbar: false,
+      enableRowVirtualization: true,
     }),
     columns: columnsRankingProd,
     data: estatisticasProduto?.ranking_fornecedores || [],
-    enableRowVirtualization: false,
     mantineTableContainerProps: {
       style: {
         maxHeight: 260,
@@ -496,6 +497,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
   const tableHistoricoForn = useMantineReactTable({
     ...getVirtualizedTableProps<CotacaoHistoricoItem>({
       enableTopToolbar: true,
+      enableRowVirtualization: true,
     }),
     columns: columnsHistoricoForn,
     data: estatisticasFornecedor?.cotacoes_historico || [],
@@ -632,6 +634,7 @@ export function EstatisticasView({ themeColor = 'blue' }: { themeColor?: string 
   const tableGlobal = useMantineReactTable({
     ...getVirtualizedTableProps<HistoricoGlobalCotacaoItem>({
       enableTopToolbar: false,
+      enableRowVirtualization: true,
     }),
     columns: columnsGlobal,
     data: dadosFiltradosGlobal,

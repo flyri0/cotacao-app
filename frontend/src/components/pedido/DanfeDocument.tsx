@@ -23,7 +23,6 @@ export interface PedidoPorFornecedor {
   total_pedido: number
   status_minimo: 'ok' | 'abaixo' | 'sem_minimo'
   diferenca_minimo: number
-  texto_formatado: string
 }
 
 interface DanfeDocumentProps {

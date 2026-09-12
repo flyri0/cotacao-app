@@ -27,7 +27,7 @@ interface PedidoAccordionItemProps {
   rodadaAtual?: Rodada
   selectedRodadaId?: number | null
   onImprimirIndividual: (idFornecedor: number) => void
-  onCopiarPedido: (texto: string, nomeForn: string) => void
+  onCopiarPedido: (pedido: PedidoPorFornecedor) => void
 }
 
 export function PedidoAccordionItem({
@@ -128,12 +128,7 @@ export function PedidoAccordionItem({
                 color={themeColor}
                 size="xs"
                 leftSection={<IconCopy size={14} />}
-                onClick={() =>
-                  onCopiarPedido(
-                    pedido.texto_formatado,
-                    pedido.fornecedor.nome,
-                  )
-                }
+                onClick={() => onCopiarPedido(pedido)}
               >
                 Copiar
               </Button>

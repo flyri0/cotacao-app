@@ -752,10 +752,9 @@ export function AlocacaoView({
         filterFn: createProductAffinityFilter((item, val) =>
           (item.produto_nome || '').toLowerCase().includes(String(val).toLowerCase().trim()),
         ),
-        Cell: ({ row, table }) => {
+        Cell: ({ row }) => {
           const item = row.original
-          const allRows = (table.options.data as LinhaAlocacao[]) || []
-          const linhasDoProd = allRows.filter((l) => l.id_produto === item.id_produto)
+          const linhasDoProd = linhasPorProduto.get(item.id_produto) || [item]
           const isDividido = linhasDoProd.length > 1
           const subIndex = isDividido
             ? linhasDoProd.findIndex((l) => l.key === item.key) + 1
@@ -1092,7 +1091,7 @@ export function AlocacaoView({
   const table = useMantineReactTable({
     ...getVirtualizedTableProps<LinhaAlocacao>({
       enableTopToolbar: true,
-      enableRowVirtualization: false,
+      enableRowVirtualization: true,
       enableColumnFilters: true,
       enableGlobalFilter: true,
     }),

@@ -360,7 +360,7 @@ export function ResumoView({
   const tableFornecedores = useMantineReactTable({
     ...getVirtualizedTableProps<ResumoFornecedorRow>({
       enableTopToolbar: false,
-      enableRowVirtualization: false,
+      enableRowVirtualization: true,
     }),
     getRowId: (row) => String(row.id_fornecedor),
     columns: columnsFornecedores,

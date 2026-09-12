@@ -513,7 +513,7 @@ export function RodadasView({
   const table = useMantineReactTable({
     ...getVirtualizedTableProps<RodadaComMetricas>({
       enableTopToolbar: true,
-      enableRowVirtualization: false,
+      enableRowVirtualization: true,
       enableColumnFilters: true,
       enableGlobalFilter: true,
     }),

@@ -30,7 +30,58 @@ import type { ItemPedidoLinha, PedidoPorFornecedor } from './pedido/DanfeDocumen
 import { useActiveRound, useDataCacheSubscription } from '../hooks'
 import { formatMoney, calculatePackaging } from '../utils'
 import { getApi } from '../services/api'
-import type { Alocacao, Cotacao, Fornecedor } from '../types'
+import type { Alocacao, Cotacao, Fornecedor, Rodada } from '../types'
+
+/**
+ * Monta o texto comercial (WhatsApp/E-mail) do pedido sob demanda — só é chamada
+ * no clique de copiar, em vez de ser recalculada para todos os fornecedores a
+ * cada recomputo de `pedidosAgrupados` mesmo quando ninguém for copiar nada.
+ */
+function formatarTextoPedido(
+  pedido: PedidoPorFornecedor,
+  rodadaAtual: Rodada | undefined,
+  selectedRodadaId: number | null,
+): string {
+  const { fornecedor, itens, total_pedido: totalPedido, status_minimo: statusMin, diferenca_minimo: difMin } = pedido
+  const pedidoMin = fornecedor.pedido_minimo || 0
+  const dataFormatada = new Date().toLocaleDateString('pt-BR')
+  let statusMinTexto = 'Sem exigência de mínimo'
+  if (pedidoMin > 0) {
+    statusMinTexto =
+      statusMin === 'ok'
+        ? `✓ Atingiu o pedido mínimo (+${formatMoney(difMin)})`
+        : `⚠️ Abaixo do pedido mínimo em ${formatMoney(difMin)}`
+  }
+
+  let texto = `==================================================\n`
+  texto += `PEDIDO DE COMPRA - ${fornecedor.nome}\n`
+  texto += `Rodada: #${rodadaAtual?.id || selectedRodadaId} - ${rodadaAtual?.descricao || 'Cotação'}\n`
+  texto += `Data: ${dataFormatada}\n`
+  if (fornecedor.contato || fornecedor.telefone || fornecedor.email) {
+    texto += `Contato: ${fornecedor.contato || 'N/A'}`
+    if (fornecedor.telefone) texto += ` | Tel: ${fornecedor.telefone}`
+    if (fornecedor.email) texto += ` | Email: ${fornecedor.email}`
+    texto += `\n`
+  }
+  texto += `==================================================\n\n`
+  texto += `ITENS DO PEDIDO:\n`
+
+  itens.forEach((item, idx) => {
+    texto += `${idx + 1}. ${item.produto_nome}${item.marca ? ` [Marca: ${item.marca}]` : ''}\n`
+    texto += `   - Quantidade: ${item.embalagens_comprar} ${item.embalagem} (${item.quantidade_efetiva} ${item.unidade})\n`
+    texto += `   - Preço por Embalagem: ${formatMoney(item.preco_embalagem, 2)} | Preço Unitário: ${formatMoney(item.preco_unitario)}\n`
+    texto += `   - Subtotal: ${formatMoney(item.subtotal)}\n\n`
+  })
+
+  texto += `--------------------------------------------------\n`
+  texto += `VALOR TOTAL DO PEDIDO: ${formatMoney(totalPedido)}\n`
+  if (pedidoMin > 0) {
+    texto += `PEDIDO MÍNIMO: ${formatMoney(pedidoMin)} (${statusMinTexto})\n`
+  }
+  texto += `==================================================\n`
+
+  return texto
+}
 
 interface PedidoViewProps {
   rodadaAtivaId?: number
@@ -227,50 +278,12 @@ export function PedidoView({
         }
       }
 
-      // Gera texto comercial para WhatsApp / E-mail
-      const dataFormatada = new Date().toLocaleDateString('pt-BR')
-      let statusMinTexto = 'Sem exigência de mínimo'
-      if (pedidoMin > 0) {
-        statusMinTexto =
-          statusMin === 'ok'
-            ? `✓ Atingiu o pedido mínimo (+${formatMoney(difMin)})`
-            : `⚠️ Abaixo do pedido mínimo em ${formatMoney(difMin)}`
-      }
-
-      let texto = `==================================================\n`
-      texto += `PEDIDO DE COMPRA - ${fornecedor.nome}\n`
-      texto += `Rodada: #${rodadaAtual?.id || selectedRodadaId} - ${rodadaAtual?.descricao || 'Cotação'}\n`
-      texto += `Data: ${dataFormatada}\n`
-      if (fornecedor.contato || fornecedor.telefone || fornecedor.email) {
-        texto += `Contato: ${fornecedor.contato || 'N/A'}`
-        if (fornecedor.telefone) texto += ` | Tel: ${fornecedor.telefone}`
-        if (fornecedor.email) texto += ` | Email: ${fornecedor.email}`
-        texto += `\n`
-      }
-      texto += `==================================================\n\n`
-      texto += `ITENS DO PEDIDO:\n`
-
-      itensLinha.forEach((item, idx) => {
-        texto += `${idx + 1}. ${item.produto_nome}${item.marca ? ` [Marca: ${item.marca}]` : ''}\n`
-        texto += `   - Quantidade: ${item.embalagens_comprar} ${item.embalagem} (${item.quantidade_efetiva} ${item.unidade})\n`
-        texto += `   - Preço por Embalagem: ${formatMoney(item.preco_embalagem, 2)} | Preço Unitário: ${formatMoney(item.preco_unitario)}\n`
-        texto += `   - Subtotal: ${formatMoney(item.subtotal)}\n\n`
-      })
-
-      texto += `--------------------------------------------------\n`
-      texto += `VALOR TOTAL DO PEDIDO: ${formatMoney(totalPedido)}\n`
-      if (pedidoMin > 0) {
-        texto += `PEDIDO MÍNIMO: ${formatMoney(pedidoMin)} (${statusMinTexto})\n`
-      }
-      texto += `==================================================\n`
-
       listaPedidos.push({
         fornecedor,
         itens: itensLinha,
         total_pedido: totalPedido,
         status_minimo: statusMin,
         diferenca_minimo: difMin,
-        texto_formatado: texto,
       })
     }
 
@@ -281,23 +294,24 @@ export function PedidoView({
     return pedidosAgrupados.reduce((acc, p) => acc + p.total_pedido, 0)
   }, [pedidosAgrupados])
 
-  // Copiar Texto Individual
-  const handleCopiarPedido = useCallback((texto: string, nomeForn: string) => {
+  // Copiar Texto Individual (texto gerado sob demanda, só no clique)
+  const handleCopiarPedido = useCallback((pedido: PedidoPorFornecedor) => {
+    const texto = formatarTextoPedido(pedido, rodadaAtual, selectedRodadaId)
     navigator.clipboard.writeText(texto)
     notifications.show({
       title: 'Pedido Copiado!',
-      message: `O texto do pedido de ${nomeForn} foi copiado para a área de transferência.`,
+      message: `O texto do pedido de ${pedido.fornecedor.nome} foi copiado para a área de transferência.`,
       color: 'teal',
       icon: <IconCheck size={16} />,
     })
-  }, [])
+  }, [rodadaAtual, selectedRodadaId])
 
   // Copiar Todos os Pedidos da Rodada em Lote
   const handleCopiarTodos = useCallback(() => {
     if (pedidosAgrupados.length === 0) return
 
     const textoCompleto = pedidosAgrupados
-      .map((p) => p.texto_formatado)
+      .map((p) => formatarTextoPedido(p, rodadaAtual, selectedRodadaId))
       .join('\n\n\n')
 
     navigator.clipboard.writeText(textoCompleto)
@@ -307,7 +321,7 @@ export function PedidoView({
       color: 'teal',
       icon: <IconClipboardCopy size={16} />,
     })
-  }, [pedidosAgrupados])
+  }, [pedidosAgrupados, rodadaAtual, selectedRodadaId])
 
   // Imprimir Todos os Pedidos
   const handleImprimirTodos = () => {

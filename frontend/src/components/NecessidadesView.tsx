@@ -436,6 +436,7 @@ export function NecessidadesView({
   const table = useMantineReactTable({
     ...getVirtualizedTableProps<Necessidade>({
       enableTopToolbar: true,
+      enableRowVirtualization: true,
     }),
     columns,
     data: necessidades,
